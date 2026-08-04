@@ -10,6 +10,7 @@ import {
   Calendar, 
   Building2 
 } from 'lucide-react';
+import { fetchCertificatesFromFirebase } from '../firebase';
 import { CERTIFICATE_CATEGORIES } from '../data/certificateTypes';
 import { WARDS } from '../data/villages';
 import { CertificateRecord, UnionParishadConfig } from '../types';
@@ -33,7 +34,38 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
       const url = `/api/admin/logs?ward=${encodeURIComponent(selectedWard)}&category=${encodeURIComponent(selectedCategory)}&search=${encodeURIComponent(searchQuery)}`;
       const res = await fetch(url);
       const data = await res.json();
-      setLogs(data.logs || []);
+      let serverLogs: CertificateRecord[] = data.logs || [];
+
+      const fbLogs = await fetchCertificatesFromFirebase();
+      
+      // Merge unique records
+      const logMap = new Map<string, CertificateRecord>();
+      [...serverLogs, ...fbLogs].forEach(item => {
+        if (item.memoNo && !logMap.has(item.memoNo)) {
+          logMap.set(item.memoNo, item);
+        }
+      });
+
+      let merged = Array.from(logMap.values());
+
+      // Apply client-side filters if needed
+      if (selectedWard) {
+        merged = merged.filter(c => c.citizen && c.citizen.wardNo === selectedWard);
+      }
+      if (selectedCategory && selectedCategory !== 'সব ধরন') {
+        merged = merged.filter(c => c.category === selectedCategory || c.typeLabel === selectedCategory);
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        merged = merged.filter(c => 
+          c.memoNo.toLowerCase().includes(q) ||
+          (c.citizen && c.citizen.name.toLowerCase().includes(q)) ||
+          (c.citizen && c.citizen.nid && c.citizen.nid.includes(q)) ||
+          (c.citizen && c.citizen.village && c.citizen.village.toLowerCase().includes(q))
+        );
+      }
+
+      setLogs(merged);
     } catch (e) {
       console.error('Error fetching logs:', e);
     } finally {

@@ -61,7 +61,7 @@ export const CERTIFICATE_TYPES: CertificateTypeConfig[] = [
       {
         key: 'warish_list',
         title: 'ওয়ারিশগণের তালিকা',
-        headers: ['ক্রমিক', 'ওয়ারিশের নাম', 'সম্পর্ক', 'বয়স', 'জাতীয় পরিচয়পত্র / জন্ম সনদ নম্বর']
+        headers: ['ক্রমিক নং', 'নাম', 'জন্ম তারিখ', 'সম্পর্ক', 'মন্তব্য']
       }
     ]
   },
@@ -77,7 +77,7 @@ export const CERTIFICATE_TYPES: CertificateTypeConfig[] = [
       {
         key: 'family_list',
         title: 'পরিবারের সদস্যদের তালিকা',
-        headers: ['ক্রমিক', 'সদস্যের নাম', 'সম্পর্ক', 'বয়স', 'পেশা']
+        headers: ['ক্রমিক নং', 'নাম', 'জন্ম তারিখ', 'সম্পর্ক', 'মন্তব্য']
       }
     ]
   },
@@ -94,7 +94,7 @@ export const CERTIFICATE_TYPES: CertificateTypeConfig[] = [
       {
         key: 'deceased_warish_list',
         title: 'জীবিত ওয়ারিশগণের বিবরণ',
-        headers: ['ক্রমিক', 'ওয়ারিশের নাম', 'সম্পর্ক', 'বয়স', 'মন্তব্য']
+        headers: ['ক্রমিক নং', 'নাম', 'জন্ম তারিখ', 'সম্পর্ক', 'মন্তব্য']
       }
     ]
   },

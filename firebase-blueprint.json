@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "certificates": {
+      "title": "Certificates",
+      "description": "Master record of issued Union Parishad certificates",
+      "properties": {
+        "memoNo": { "type": "string", "description": "Official memo tracking number" },
+        "certificateType": { "type": "string", "description": "Type of certificate" },
+        "applicantName": { "type": "string", "description": "Applicant full name" },
+        "fatherName": { "type": "string", "description": "Father or husband name" },
+        "motherName": { "type": "string", "description": "Mother name" },
+        "village": { "type": "string", "description": "Village name" },
+        "postOffice": { "type": "string", "description": "Post Office name" },
+        "wordNo": { "type": "string", "description": "Ward number" },
+        "nidBirthNo": { "type": "string", "description": "National ID or Birth Reg number" },
+        "issueDate": { "type": "string", "description": "Bengali issue date" },
+        "bodyText": { "type": "string", "description": "Generated bureaucratic body text" },
+        "status": { "type": "string", "description": "Status (active, cancelled)" },
+        "createdAt": { "type": "string", "description": "Creation timestamp ISO string" },
+        "createdBy": { "type": "string", "description": "User email or identifier" }
+      },
+      "required": ["memoNo", "certificateType", "applicantName", "issueDate"]
+    },
+    "configs": {
+      "title": "System Configuration",
+      "description": "Union Parishad master configuration settings",
+      "properties": {
+        "unionName": { "type": "string", "description": "Union Parishad Name" },
+        "upazila": { "type": "string", "description": "Upazila Name" },
+        "district": { "type": "string", "description": "District Name" },
+        "chairmanName": { "type": "string", "description": "Chairman Name" },
+        "chairmanTitle": { "type": "string", "description": "Chairman Title" },
+        "chairmanPhone": { "type": "string", "description": "Chairman Phone" },
+        "logoUrl": { "type": "string", "description": "Union Seal/Logo URL" }
+      },
+      "required": ["unionName", "chairmanName"]
+    }
+  }
+}

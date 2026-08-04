@@ -30,6 +30,8 @@ import {
 import { NidScannerModal } from './NidScannerModal';
 import { WarishTableBuilder } from './WarishTableBuilder';
 
+import { saveCertificateToFirebase } from '../firebase';
+
 interface CertificateFormProps {
   config: UnionParishadConfig;
   onCertificateGenerated: (cert: CertificateRecord) => void;
@@ -137,6 +139,24 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
     if (result.wardNo) setWardNo(result.wardNo);
   };
 
+  // MFS Payment State
+  const [paymentMethod, setPaymentMethod] = useState<'bKash' | 'Nagad' | 'Rocket' | 'Cash' | 'Upay'>('Cash');
+  const [trxId, setTrxId] = useState('');
+
+  // Dynamic Fee Calculation
+  const calculateFee = () => {
+    if (config.typeFeeOverrides && config.typeFeeOverrides[selectedTypeKey]) {
+      return config.typeFeeOverrides[selectedTypeKey];
+    }
+    const cat = selectedTypeObj.category;
+    if (config.categoryFees && config.categoryFees[cat]) {
+      return config.categoryFees[cat];
+    }
+    return config.certificateFeeDefault || 50;
+  };
+
+  const currentFee = calculateFee();
+
   // Handle Submit Form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,7 +197,11 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
           tables: tablesData
         },
         customNote,
-        highThinking
+        highThinking,
+        feeAmount: currentFee,
+        paymentMethod,
+        trxId: trxId.trim(),
+        paymentStatus: 'paid'
       };
 
       const res = await fetch('/api/certificate/generate', {
@@ -189,6 +213,10 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
       const resData = await res.json();
 
       if (resData.status === 'success' && resData.certificate) {
+        // Asynchronously sync to Firebase Firestore for cloud persistence
+        saveCertificateToFirebase(resData.certificate).catch(err => 
+          console.warn('Firebase sync warning (certificate still saved locally):', err)
+        );
         onCertificateGenerated(resData.certificate);
       } else {
         setErrorMessage(resData.message || 'সনদ তৈরিতে ত্রুটি ঘটিয়াছে।');
@@ -608,6 +636,97 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
             placeholder="যেমন: আবেদনকারীর জমি অধিগ্রহণ বা চাকরির সুবিধার্থে বিশেষ ছাড়ের বিষয়টি উল্লেখ করা হউক।"
             className="w-full px-3 py-2 bg-white border border-emerald-300 rounded-lg text-xs focus:border-emerald-700 focus:outline-none"
           />
+        </div>
+
+        {/* Bangladeshi MFS Mobile Banking Payment Gateway Section */}
+        <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div>
+              <h3 className="text-sm font-extrabold text-amber-300 flex items-center gap-2">
+                <span>৩. সরকারি সেবা ফি ও মোবাইল ব্যাংকিং (MFS) পেমেন্ট</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                নির্বাচিত সনদের ক্যাটাগরি: <span className="text-emerald-300 font-bold">{selectedTypeObj.category}</span>
+              </p>
+            </div>
+
+            <div className="bg-emerald-950 px-4 py-2 rounded-xl border border-emerald-700 text-right">
+              <span className="text-[10px] text-emerald-300 block font-semibold">নির্ধারিত সরকারি ফি</span>
+              <span className="text-xl font-black text-amber-400">৳{currentFee}.০০</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Payment Method Selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-2">
+                পেমেন্ট মাধ্যম নির্বাচন করুন:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'bKash', label: 'বিকাশ', num: config.paymentBkashNumber || '01799-112233', bg: 'bg-pink-600' },
+                  { id: 'Nagad', label: 'নগদ', num: config.paymentNagadNumber || '01812-445566', bg: 'bg-orange-600' },
+                  { id: 'Rocket', label: 'রকেট', num: config.paymentRocketNumber || '01911-223344', bg: 'bg-purple-600' },
+                  { id: 'Cash', label: 'ক্যাশ', num: 'কাউন্টার আদায়', bg: 'bg-emerald-700' }
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.id as any)}
+                    className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                      paymentMethod === m.id
+                        ? 'border-amber-400 bg-slate-800 text-white ring-2 ring-amber-400/50'
+                        : 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-500'
+                    }`}
+                  >
+                    <span className={`w-3 h-3 rounded-full ${m.bg}`} />
+                    <span className="text-xs font-bold">{m.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* MFS Instructions & TrxID Entry */}
+            <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 flex flex-col justify-between space-y-2">
+              {paymentMethod !== 'Cash' ? (
+                <>
+                  <div className="text-xs space-y-1">
+                    <p className="font-bold text-amber-300 flex items-center gap-1">
+                      <span>{paymentMethod} মার্চেন্ট/পার্সোনাল নম্বর:</span>
+                      <span className="font-mono bg-slate-900 px-2 py-0.5 rounded text-white font-extrabold">
+                        {paymentMethod === 'bKash' ? config.paymentBkashNumber : paymentMethod === 'Nagad' ? config.paymentNagadNumber : config.paymentRocketNumber}
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-slate-300 leading-tight">
+                      {config.paymentInstructions || 'উক্ত নম্বরে সনদের ফি Send Money / Merchant Payment করে TrxID লিখুন।'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      ট্রানজেকশন আইডি (TrxID) প্রদান করুন:
+                    </label>
+                    <input
+                      type="text"
+                      value={trxId}
+                      onChange={(e) => setTrxId(e.target.value)}
+                      placeholder="যেমন: B8X9A10K2Z"
+                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-amber-300 focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs space-y-1 my-auto">
+                  <p className="font-bold text-emerald-400 flex items-center gap-1">
+                    <span>✅ ক্যাশ কাউন্টার পেমেন্ট নির্বাচিত</span>
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    আবেদনকারীর নিকট হইতে ইউনিয়নের ক্যাশ কাউন্টারে ৳{currentFee} ফি সরাসরি নগদ গ্রহণ করা হইয়াছে।
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Error Notification */}

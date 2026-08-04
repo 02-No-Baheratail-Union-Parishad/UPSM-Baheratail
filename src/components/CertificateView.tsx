@@ -9,7 +9,13 @@ import {
   EyeOff, 
   CheckCircle2, 
   Share2, 
-  ArrowLeft 
+  ArrowLeft,
+  Sliders,
+  Maximize2,
+  QrCode,
+  ShieldCheck,
+  CreditCard,
+  Check
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
 
@@ -20,7 +26,15 @@ interface CertificateViewProps {
 }
 
 export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, config, onBack }) => {
-  const [showHeaderInPrint, setShowHeaderInPrint] = useState(true);
+  const [showHeaderInPrint, setShowHeaderInPrint] = useState(config.enableHeaderInPrint !== false);
+  const [fontSize, setFontSize] = useState<number>(config.bodyFontSize || 16);
+  const [headerStyle, setHeaderStyle] = useState<'tri-column' | 'classic' | 'centered'>(config.templateHeaderStyle || 'tri-column');
+  const [borderStyle, setBorderStyle] = useState<'double-green-red' | 'double-green' | 'single-green' | 'none'>(config.borderStyle || 'double-green-red');
+  const [blankSealSize, setBlankSealSize] = useState<number>(config.blankSealSize ?? 96);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [editableBodyText, setEditableBodyText] = useState(certificate.bodyText);
+
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -30,9 +44,14 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const c = certificate.citizen;
   const extraTables = certificate.extra?.tables || {};
 
+  // Build real verification URL for QR code
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://baheratailup.gov.bd';
+  const realVerifyUrl = `${origin}/verify/${certificate.memoNo}`;
+  const qrImageUrl = certificate.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(realVerifyUrl)}`;
+
   return (
     <div className="space-y-6">
-      {/* Action Toolbar */}
+      {/* Action & Customizer Toolbar */}
       <div className="bg-white p-4 rounded-xl shadow-md border border-slate-200 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-2">
           {onBack && (
@@ -48,9 +67,39 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>স্মারক নং: {certificate.memoNo}</span>
           </div>
+
+          {certificate.feeAmount && (
+            <span className="px-2.5 py-1 bg-amber-100 text-amber-900 text-xs font-bold rounded-full flex items-center gap-1">
+              <CreditCard className="w-3.5 h-3.5 text-amber-700" />
+              <span>ফি: ৳{certificate.feeAmount} ({certificate.paymentMethod || 'ক্যাশ'})</span>
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Edit AI Text Toggle */}
+          <button
+            onClick={() => setIsEditingText(!isEditingText)}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+              isEditingText
+                ? 'bg-amber-400 text-slate-950 border-amber-500'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+            }`}
+            title="AI এর ভুল সংশোধন বা সনদের বিবরণী সরাসরি এডিট করুন"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isEditingText ? 'এডিটর বন্ধ করুন' : 'সনদের টেক্সট এডিট / সংশোধন'}</span>
+          </button>
+
+          {/* Live Customizer Toggle */}
+          <button
+            onClick={() => setShowCustomizer(!showCustomizer)}
+            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>লাইভ টেমপ্লেট কাস্টমাইজার</span>
+          </button>
+
           {/* Header Toggle */}
           <button
             onClick={() => setShowHeaderInPrint(!showHeaderInPrint)}
@@ -62,19 +111,19 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
             title="সরকারি প্যাডে প্রিন্ট করার জন্য হেডার অন/অফ করুন"
           >
             {showHeaderInPrint ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span>{showHeaderInPrint ? 'ডিজিটাল হেডার দৃশ্যমান' : 'হেডার লুকানো (প্রি-প্রিন্টেড প্যাড)'}</span>
+            <span>{showHeaderInPrint ? 'ডিজিটাল হেডার অন' : 'হেডার লুকানো (প্যাড)'}</span>
           </button>
 
           {/* Print Button */}
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow transition flex items-center gap-2 cursor-pointer"
           >
-            <Printer className="w-4 h-4" />
+            <Printer className="w-4 h-4 text-amber-300" />
             <span>প্রিন্ট করুন</span>
           </button>
 
-          {/* Doc Link */}
+          {/* Google Doc Link */}
           <a
             href={`https://docs.google.com/document/d/${config.templateDocId}/edit`}
             target="_blank"
@@ -82,10 +131,85 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
             className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition flex items-center gap-1.5"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span>গুগল ডক ফাইল</span>
+            <span>Google Doc টেমপ্লেট</span>
           </a>
         </div>
       </div>
+
+      {/* Live Customizer Panel */}
+      {showCustomizer && (
+        <div className="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 space-y-4 print:hidden">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <h3 className="text-xs font-bold text-amber-300 flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-amber-400" />
+              <span>সনদের টেমপ্লেট ও লেআউট লাইভ কাস্টমাইজার</span>
+            </h3>
+            <span className="text-[10px] bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded font-mono">
+              REAL-TIME PREVIEW
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+            {/* Header Style */}
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">হেডার লেআউট:</label>
+              <select
+                value={headerStyle}
+                onChange={(e) => setHeaderStyle(e.target.value as any)}
+                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-white rounded focus:border-amber-400 font-semibold"
+              >
+                <option value="tri-column">১. ত্রিমুখী ৩-কলাম হেডার (ছবি অনুযায়ী)</option>
+                <option value="centered">২. সেন্টার্ড লোগো ও টাইটেল</option>
+                <option value="classic">৩. ক্লাসিকাল সরকারি প্যাড</option>
+              </select>
+            </div>
+
+            {/* Font Size */}
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">ফন্ট সাইজ (পিটি): {fontSize}px</label>
+              <input
+                type="range"
+                min={13}
+                max={20}
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer"
+              />
+            </div>
+
+            {/* Border Style */}
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">ফ্রেম বর্ডার ডিজাইন:</label>
+              <select
+                value={borderStyle}
+                onChange={(e) => setBorderStyle(e.target.value as any)}
+                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-white rounded focus:border-amber-400 font-semibold"
+              >
+                <option value="double-green-red">১. ডবল বর্ডার (সবুজ ও লাল স্ট্রাইপ)</option>
+                <option value="double-green">২. ডবল সবুজ বর্ডার</option>
+                <option value="single-green">৩. একক চিকন সবুজ বর্ডার</option>
+                <option value="none">৪. নো বর্ডার (প্লেন কাগজ)</option>
+              </select>
+            </div>
+
+            {/* Blank Seal Diameter */}
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">
+                গোল সিল ফাঁকা ডায়ামিটার: {blankSealSize === 0 ? 'হাইড' : `${blankSealSize}px`}
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={140}
+                step={8}
+                value={blankSealSize}
+                onChange={(e) => setBlankSealSize(Number(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Certificate Print Paper Canvas */}
       <div 
@@ -105,52 +229,88 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
           />
         </div>
 
-        {/* Outer Frame Border for Official Look */}
-        <div className="border-4 border-double border-emerald-900 p-6 md:p-8 h-full flex flex-col justify-between relative z-10 min-h-[960px]">
+        {/* Outer Frame Border matching chosen borderStyle */}
+        <div 
+          className={`p-6 md:p-8 h-full flex flex-col justify-between relative z-10 min-h-[960px] ${
+            borderStyle === 'double-green-red'
+              ? 'border-4 border-emerald-950 outline-2 outline-red-700 outline-offset-2'
+              : borderStyle === 'double-green'
+              ? 'border-4 border-double border-emerald-900'
+              : borderStyle === 'single-green'
+              ? 'border-2 border-emerald-800'
+              : ''
+          }`}
+        >
           
           {/* Header Section */}
           <div>
             {showHeaderInPrint && (
-              <header className="text-center space-y-2 pb-4 border-b-2 border-emerald-900">
-                <p className="text-sm font-bold text-emerald-900 tracking-wide">
+              <header className="pb-4 border-b-2 border-emerald-900">
+                <p className="text-center text-base md:text-lg font-extrabold text-emerald-950 tracking-wide mb-2">
                   গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
                 </p>
 
-                {/* Header 3-Column Grid */}
-                <div className="grid grid-cols-12 items-center gap-2 my-2">
-                  {/* Left Column: Chairman Details */}
-                  <div className="col-span-4 text-left space-y-0.5">
-                    <p className="text-xs font-bold text-slate-900">{config.chairmanName}</p>
-                    <p className="text-[11px] font-semibold text-emerald-800">{config.chairmanTitle}</p>
-                    <p className="text-[10px] text-slate-600">{config.upName}</p>
-                    <p className="text-[10px] text-slate-600">{config.upazila}, {config.district}</p>
-                  </div>
+                {/* Header Style 1: Tri-Column (Matching User Reference Image) */}
+                {headerStyle === 'tri-column' && (
+                  <div className="grid grid-cols-12 items-center gap-2 my-2">
+                    {/* Left Column: Chairman Details */}
+                    <div className="col-span-4 text-left space-y-0.5">
+                      <p className="text-sm font-extrabold text-slate-950">{config.chairmanName}</p>
+                      <p className="text-xs font-bold text-emerald-900">{config.chairmanTitle}</p>
+                      <p className="text-[11px] text-slate-700 font-semibold">{config.upName}</p>
+                      <p className="text-[11px] text-slate-600 font-medium">{config.upazila}, {config.district}</p>
+                    </div>
 
-                  {/* Center Column: UP Logo & Title */}
-                  <div className="col-span-4 text-center flex flex-col items-center justify-center">
-                    <img 
-                      src={config.logoUrl} 
-                      alt="UP Logo" 
-                      className="w-16 h-16 object-contain mb-1"
-                    />
-                    <h2 className="text-lg md:text-xl font-extrabold text-emerald-950 leading-tight">
-                      {config.upName}
-                    </h2>
-                    <p className="text-[11px] font-semibold text-emerald-900">
-                      {config.address}
-                    </p>
-                  </div>
+                    {/* Center Column: UP Logo & Title */}
+                    <div className="col-span-4 text-center flex flex-col items-center justify-center">
+                      <img 
+                        src={config.logoUrl} 
+                        alt="UP Logo" 
+                        className="w-16 h-16 object-contain mb-1"
+                      />
+                      <h2 className="text-xl md:text-2xl font-black text-emerald-950 leading-tight">
+                        {config.upName}
+                      </h2>
+                      <p className="text-xs font-bold text-emerald-900 mt-0.5">
+                        {config.address}
+                      </p>
+                    </div>
 
-                  {/* Right Column: Secretary Details */}
-                  <div className="col-span-4 text-right space-y-0.5">
-                    <p className="text-xs font-bold text-slate-900">{config.secretaryName}</p>
-                    <p className="text-[11px] font-semibold text-emerald-800">{config.secretaryTitle}</p>
-                    <p className="text-[10px] text-slate-600">{config.upName}</p>
-                    <p className="text-[10px] text-slate-600">{config.upazila}, {config.district}</p>
+                    {/* Right Column: Secretary Details */}
+                    <div className="col-span-4 text-right space-y-0.5">
+                      <p className="text-sm font-extrabold text-slate-950">{config.secretaryName}</p>
+                      <p className="text-xs font-bold text-emerald-900">{config.secretaryTitle}</p>
+                      <p className="text-[11px] text-slate-700 font-semibold">{config.upName}</p>
+                      <p className="text-[11px] text-slate-600 font-medium">{config.upazila}, {config.district}</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="h-0.5 bg-emerald-900 w-full my-1"></div>
+                {/* Header Style 2: Centered */}
+                {headerStyle === 'centered' && (
+                  <div className="text-center flex flex-col items-center justify-center my-3">
+                    <img src={config.logoUrl} alt="Logo" className="w-16 h-16 object-contain mb-2" />
+                    <h2 className="text-2xl font-black text-emerald-950">{config.upName}</h2>
+                    <p className="text-xs font-semibold text-slate-700">{config.address}</p>
+                  </div>
+                )}
+
+                {/* Header Style 3: Classic */}
+                {headerStyle === 'classic' && (
+                  <div className="flex items-center justify-between my-2">
+                    <img src={config.logoUrl} alt="Logo" className="w-14 h-14 object-contain" />
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-emerald-950">{config.upName}</h2>
+                      <p className="text-xs text-slate-600">{config.address}</p>
+                    </div>
+                    <div className="text-right text-xs">
+                      <p className="font-bold">{config.chairmanName}</p>
+                      <p className="text-emerald-800">{config.chairmanTitle}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="h-0.5 bg-emerald-900 w-full my-1" />
               </header>
             )}
 
@@ -168,20 +328,47 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
 
             {/* Certificate Title Badge */}
             <div className="text-center my-6">
-              <span className="inline-block bg-emerald-900 text-white font-extrabold text-lg md:text-xl px-8 py-2 rounded-md shadow-sm border border-emerald-950 tracking-wider">
+              <span className="inline-block bg-emerald-950 text-white font-extrabold text-lg md:text-xl px-8 py-2 rounded-md shadow-sm border border-emerald-900 tracking-wider">
                 {certificate.typeLabel}
               </span>
             </div>
 
-            {/* Main Bureaucratic Body Text */}
-            <div className="my-6 text-justify leading-loose text-base font-medium text-slate-900 whitespace-pre-line px-2 indent-8">
-              {certificate.bodyText}
-            </div>
+            {/* Main Bureaucratic Body Text with Dynamic Font Size & AI Correction Mode */}
+            {isEditingText ? (
+              <div className="my-6 p-4 bg-amber-50 rounded-xl border-2 border-amber-300 space-y-2 print:hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-700" />
+                    <span>এআই জেনারেটেড সনদের বিবরণী সরাসরি এডিট / সংশোধন করুন:</span>
+                  </span>
+                  <button
+                    onClick={() => setIsEditingText(false)}
+                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded transition cursor-pointer"
+                  >
+                    সেভ ও সম্পন্ন
+                  </button>
+                </div>
+                <textarea
+                  rows={6}
+                  value={editableBodyText}
+                  onChange={(e) => setEditableBodyText(e.target.value)}
+                  className="w-full p-3 bg-white border border-amber-300 rounded-lg text-sm text-slate-900 leading-relaxed focus:border-amber-600 focus:outline-none"
+                  style={{ fontSize: `${fontSize}px` }}
+                />
+              </div>
+            ) : (
+              <div 
+                className="my-6 text-justify leading-relaxed font-medium text-slate-900 whitespace-pre-line px-2 indent-8"
+                style={{ fontSize: `${fontSize}px` }}
+              >
+                {editableBodyText}
+              </div>
+            )}
 
             {/* Extra Field Details (if applicable) */}
             {certificate.extra?.simpleFields && Object.keys(certificate.extra.simpleFields).length > 0 && (
               <div className="my-4 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-1.5 text-xs text-slate-800">
-                <p className="font-bold text-emerald-900 border-b border-slate-200 pb-1 mb-2">সংযুক্ত অতিরিক্ত তথ্য:</p>
+                <p className="font-bold text-emerald-900 border-b border-slate-200 pb-1 mb-2">সংযুক্ত অতিরিক্ত বিবরণী:</p>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(certificate.extra.simpleFields).map(([k, v]) => (
                     <div key={k} className="flex gap-1">
@@ -199,16 +386,16 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 {Object.entries(extraTables).map(([tableKey, rows]) => (
                   <div key={tableKey} className="space-y-2">
                     <p className="font-bold text-sm text-emerald-950 border-b-2 border-emerald-900 pb-1">
-                      উত্তরাধিকার / তালিকা বিবরণী:
+                      উত্তরাধিকার / পরিবারের তালিকা বিবরণী:
                     </p>
                     <table className="w-full text-xs text-left border-collapse border border-slate-900">
                       <thead>
                         <tr className="bg-emerald-900 text-white font-bold">
                           <th className="border border-slate-900 p-2 text-center w-12">ক্রমিক</th>
                           <th className="border border-slate-900 p-2">সদস্যের নাম</th>
+                          <th className="border border-slate-900 p-2 text-center">জন্ম তারিখ / বয়স</th>
                           <th className="border border-slate-900 p-2">সম্পর্ক</th>
-                          <th className="border border-slate-900 p-2 text-center">বয়স</th>
-                          <th className="border border-slate-900 p-2">জাতীয় পরিচয়পত্র / জন্ম সনদ / মন্তব্য</th>
+                          <th className="border border-slate-900 p-2">জাতীয় পরিচয়পত্র / মন্তব্য</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -216,8 +403,8 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                           <tr key={rIdx} className="odd:bg-white even:bg-slate-50">
                             <td className="border border-slate-900 p-2 text-center font-bold">{row[0] || rIdx + 1}</td>
                             <td className="border border-slate-900 p-2 font-semibold text-slate-900">{row[1]}</td>
-                            <td className="border border-slate-900 p-2">{row[2]}</td>
-                            <td className="border border-slate-900 p-2 text-center">{row[3]}</td>
+                            <td className="border border-slate-900 p-2 text-center">{row[2]}</td>
+                            <td className="border border-slate-900 p-2 font-semibold">{row[3]}</td>
                             <td className="border border-slate-900 p-2">{row[4]}</td>
                           </tr>
                         ))}
@@ -229,55 +416,66 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
             )}
 
             {/* Closing Wishing Statement */}
-            <div className="mt-6 text-sm font-medium text-slate-900">
-              আমি তাহার সর্বাঙ্গীন মঙ্গল ও উত্তরোত্তর সমৃদ্ধি কামনা করি।
+            <div className="mt-6 text-sm font-semibold text-slate-900">
+              আমি তাহার সর্বাঙ্গীন মঙ্গল ও উত্তরোত্তর সাফল্য কামনা করি।
             </div>
           </div>
 
-          {/* Footer Signatures & QR Verification Anchor */}
+          {/* Footer Signatures, QR Verification & Blank Round Seal */}
           <div className="mt-16 pt-8 border-t border-slate-300">
             <div className="grid grid-cols-12 items-end justify-between gap-4">
               
-              {/* Left: QR Code Verification */}
+              {/* Left: Dynamic QR Code linked directly to Certificate Memo Verification */}
               <div className="col-span-4 flex flex-col items-start justify-end space-y-1">
-                {certificate.qrCodeUrl ? (
+                <a
+                  href={realVerifyUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="অনলাইন সত্যতা যাচাই করতে ক্লিক বা স্ক্যান করুন"
+                  className="block group"
+                >
                   <img 
-                    src={certificate.qrCodeUrl} 
-                    alt="QR Verification" 
-                    className="w-24 h-24 border border-emerald-800 p-1 rounded bg-white shadow-sm"
+                    src={qrImageUrl} 
+                    alt="QR Verification Link" 
+                    className="w-24 h-24 border-2 border-emerald-900 p-1 rounded-lg bg-white shadow-sm group-hover:scale-105 transition"
                   />
-                ) : (
-                  <div className="w-20 h-20 border border-emerald-800 bg-slate-100 flex items-center justify-center text-[9px] text-slate-500 text-center">
-                    কিউআর কোড
+                </a>
+                <p className="text-[10px] font-bold text-emerald-950 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-700 inline" />
+                  <span>ডিজিটাল সত্যতা যাচাইকরণের QR</span>
+                </p>
+                <p className="text-[9px] font-mono text-slate-600 font-bold">
+                  {certificate.memoNo}
+                </p>
+              </div>
+
+              {/* Center: Blank Round Seal Area for Manual Rubber Stamp */}
+              <div className="col-span-4 text-center flex flex-col items-center justify-end">
+                {blankSealSize > 0 && (
+                  <div 
+                    className="rounded-full border-2 border-dashed border-slate-400 flex flex-col items-center justify-center text-center p-1 bg-slate-50/50 print:bg-transparent"
+                    style={{ width: `${blankSealSize}px`, height: `${blankSealSize}px` }}
+                  >
+                    <span className="text-[9px] font-bold text-slate-400 leading-tight select-none">
+                      গোল সিল মোহরের স্থান
+                    </span>
                   </div>
                 )}
-                <p className="text-[10px] font-bold text-emerald-950">
-                  ডিজিটাল সত্যতা যাচাইকরণের জন্য স্ক্যান করুন
-                </p>
-                <p className="text-[9px] font-mono text-slate-500">
-                  baheratailup.gov.bd/verify/{certificate.memoNo}
+                <p className="text-[10px] font-semibold text-slate-500 mt-1">
+                  (অফিশিয়াল ম্যানুয়াল সিল)
                 </p>
               </div>
 
-              {/* Center: Official Seal */}
-              <div className="col-span-4 text-center flex flex-col items-center justify-end">
-                <div className="w-24 h-24 rounded-full border-2 border-dashed border-emerald-800 flex items-center justify-center text-center p-2 text-[10px] font-bold text-emerald-900 bg-emerald-50/50">
-                  {config.sealText}
-                </div>
-                <p className="text-[10px] font-semibold text-slate-600 mt-1">ইউনিয়ন পরিষদ সিল</p>
-              </div>
-
-              {/* Right: Chairman Signature */}
+              {/* Right: Chairman Signature Block */}
               <div className="col-span-4 text-right space-y-1">
                 <div className="h-12 flex items-end justify-end">
-                  {/* Digital Signature representation */}
-                  <span className="font-serif italic text-emerald-900 font-extrabold text-sm border-b border-emerald-900 px-4">
+                  <span className="font-serif italic text-emerald-950 font-extrabold text-sm border-b-2 border-emerald-950 px-4">
                     {config.chairmanName}
                   </span>
                 </div>
-                <p className="text-xs font-bold text-slate-900">{config.chairmanName}</p>
+                <p className="text-xs font-bold text-slate-950">{config.chairmanName}</p>
                 <p className="text-[11px] font-semibold text-emerald-900">{config.chairmanTitle}</p>
-                <p className="text-[10px] text-slate-600">{config.upName}</p>
+                <p className="text-[10px] text-slate-700 font-medium">{config.upName}</p>
                 <p className="text-[10px] text-slate-600">{config.upazila}, {config.district}</p>
               </div>
 

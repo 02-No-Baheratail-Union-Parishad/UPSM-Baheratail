@@ -6,7 +6,10 @@ import { CertificateView } from './components/CertificateView';
 import { VerificationPortal } from './components/VerificationPortal';
 import { CitizenLogs } from './components/CitizenLogs';
 import { AdminSettings } from './components/AdminSettings';
-import { CertificateRecord, UnionParishadConfig } from './types';
+import { CitizenMasterRegister } from './components/CitizenMasterRegister';
+import { DeveloperProfile } from './components/DeveloperProfile';
+import { fetchConfigFromFirebase } from './firebase';
+import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
 
 export default function App() {
@@ -14,7 +17,7 @@ export default function App() {
   const [config, setConfig] = useState<UnionParishadConfig>(DEFAULT_UP_CONFIG);
   const [generatedCert, setGeneratedCert] = useState<CertificateRecord | null>(null);
 
-  // Fetch initial config from server
+  // Fetch initial config from server & Firebase Firestore
   useEffect(() => {
     fetch('/api/admin/config')
       .then((res) => res.json())
@@ -24,6 +27,12 @@ export default function App() {
         }
       })
       .catch((err) => console.error('Error loading config:', err));
+
+    fetchConfigFromFirebase().then(fbConfig => {
+      if (fbConfig) {
+        setConfig(fbConfig);
+      }
+    }).catch(err => console.warn('Firestore config load warning:', err));
   }, []);
 
   const handleCertificateGenerated = (cert: CertificateRecord) => {
@@ -35,6 +44,10 @@ export default function App() {
     if (tab !== 'create') {
       setGeneratedCert(null);
     }
+  };
+
+  const handleApplyForCitizen = (citizen: CitizenAccountRecord) => {
+    setActiveTab('create');
   };
 
   return (
@@ -82,6 +95,14 @@ export default function App() {
 
         {activeTab === 'logs' && (
           <CitizenLogs config={config} />
+        )}
+
+        {activeTab === 'citizens' && (
+          <CitizenMasterRegister config={config} onApplyForCitizen={handleApplyForCitizen} />
+        )}
+
+        {activeTab === 'developer' && (
+          <DeveloperProfile config={config} onUpdateConfig={setConfig} />
         )}
 
         {activeTab === 'admin' && (

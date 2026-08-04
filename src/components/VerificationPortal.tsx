@@ -12,6 +12,7 @@ import {
   Award, 
   FileCheck 
 } from 'lucide-react';
+import { searchCertificateInFirebase } from '../firebase';
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { CertificateView } from './CertificateView';
 
@@ -38,12 +39,44 @@ export const VerificationPortal: React.FC<VerificationPortalProps> = ({ config }
     try {
       const res = await fetch(`/api/certificate/verify/${encodeURIComponent(memoInput.trim())}`);
       const data = await res.json();
-      setVerificationData(data);
+      
+      if (data.found && data.certificate) {
+        setVerificationData(data);
+      } else {
+        // Fallback to Firebase Firestore
+        const fbRecord = await searchCertificateInFirebase(memoInput.trim());
+        if (fbRecord) {
+          setVerificationData({
+            found: true,
+            certificate: fbRecord,
+            message: 'ফায়ারবেস ক্লাউড ডাটাবেস হইতে সফলভাবে পাওয়া গিয়াছে।'
+          });
+        } else {
+          setVerificationData(data);
+        }
+      }
     } catch (err) {
-      setVerificationData({
-        found: false,
-        message: 'যাচাইকরণ সার্ভারে সংযোগে ত্রুটি ঘটিয়াছে।'
-      });
+      // Direct Firebase Firestore check on network error
+      try {
+        const fbRecord = await searchCertificateInFirebase(memoInput.trim());
+        if (fbRecord) {
+          setVerificationData({
+            found: true,
+            certificate: fbRecord,
+            message: 'ফায়ারবেস ক্লাউড ডাটাবেস হইতে সফলভাবে পাওয়া গিয়াছে।'
+          });
+        } else {
+          setVerificationData({
+            found: false,
+            message: 'যাচাইকরণ সার্ভারে সংযোগে ত্রুটি ঘটিয়াছে।'
+          });
+        }
+      } catch (fbErr) {
+        setVerificationData({
+          found: false,
+          message: 'যাচাইকরণ সার্ভারে সংযোগে ত্রুটি ঘটিয়াছে।'
+        });
+      }
     } finally {
       setLoading(false);
     }
