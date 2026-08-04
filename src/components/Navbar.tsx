@@ -8,7 +8,8 @@ import {
   Sparkles, 
   Building2,
   Code2,
-  UserCheck
+  UserCheck,
+  Layers
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 
@@ -21,6 +22,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config }) => {
   const navItems = [
     { id: 'home', label: 'ড্যাশবোর্ড', icon: Home },
+    { id: 'pending', label: 'চেয়ারম্যান অনুমোদন', icon: ShieldCheck, badge: 'পেন্ডিং' },
+    { id: 'heatmap', label: 'উন্নয়ন হিটম্যাপ', icon: Layers, badge: 'D3 এনালাইটিক্স' },
     { id: 'create', label: 'নতুন প্রত্যয়নপত্র', icon: FileText, badge: '৪০+ ধরন' },
     { id: 'logs', label: 'সনদ পেজ ও রেকর্ড', icon: FileText },
     { id: 'citizens', label: 'নাগরিক একাউন্ট', icon: UserCheck, badge: 'ওয়ার্ড ফিল্টার' },

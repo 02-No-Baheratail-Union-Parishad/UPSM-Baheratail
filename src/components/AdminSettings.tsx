@@ -22,6 +22,7 @@ import { saveConfigToFirebase } from '../firebase';
 import { UnionParishadConfig } from '../types';
 import { CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { AppsScriptModal } from './AppsScriptModal';
+import { PendingApprovals } from './PendingApprovals';
 
 interface AdminSettingsProps {
   config: UnionParishadConfig;
@@ -33,7 +34,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isAppsScriptOpen, setIsAppsScriptOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types'>('general');
+  const [activeTab, setActiveTab] = useState<'pending' | 'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types'>('pending');
   
   // Certificate Types Editing State
   const [certSearch, setCertSearch] = useState('');
@@ -98,6 +99,18 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
       {/* Admin Tab Chooser */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-slate-200/70 p-1.5 rounded-2xl border border-slate-300/80">
         <button
+          onClick={() => setActiveTab('pending')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === 'pending'
+              ? 'bg-emerald-900 text-amber-300 shadow-md ring-2 ring-amber-400/50'
+              : 'text-slate-800 hover:bg-slate-300/80'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-amber-300" />
+          <span>১. চেয়ারম্যান অনুমোদন পেন্ডিং (Pending Approvals)</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('general')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             activeTab === 'general'
@@ -106,7 +119,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
           }`}
         >
           <Building2 className="w-4 h-4 text-amber-300" />
-          <span>১. ইউপি ও অফিসার তথ্য</span>
+          <span>২. ইউপি ও অফিসার তথ্য</span>
         </button>
 
         <button
@@ -170,7 +183,13 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
         </button>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      {/* TAB 0: Pending Approvals for Chairman */}
+      {activeTab === 'pending' && (
+        <PendingApprovals config={formData} />
+      )}
+
+      {activeTab !== 'pending' && (
+        <form onSubmit={handleSave} className="space-y-6">
         {/* TAB 1: General Info */}
         {activeTab === 'general' && (
           <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-6">
@@ -873,6 +892,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
           </button>
         </div>
       </form>
+      )}
 
       {/* Apps Script Code Modal */}
       <AppsScriptModal isOpen={isAppsScriptOpen} onClose={() => setIsAppsScriptOpen(false)} />

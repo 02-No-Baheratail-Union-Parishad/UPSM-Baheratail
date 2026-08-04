@@ -158,7 +158,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
   const currentFee = calculateFee();
 
   // Handle Submit Form
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, targetStatus: 'issued' | 'pending_approval' = 'issued') => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -201,7 +201,8 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
         feeAmount: currentFee,
         paymentMethod,
         trxId: trxId.trim(),
-        paymentStatus: 'paid'
+        paymentStatus: 'paid',
+        status: targetStatus
       };
 
       const res = await fetch('/api/certificate/generate', {
@@ -756,23 +757,36 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
             <span>ফর্ম রিসেট করুন</span>
           </button>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-8 py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin text-amber-300" />
-                <span>Gemini AI দাপ্তরিক সনদ জেনারেট করিতেছে...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 text-amber-300" />
-                <span>✅ প্রত্যয়নপত্র জেনারেট করুন</span>
-              </>
-            )}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, 'pending_approval')}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-5 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              <UserCheck className="w-4 h-4 text-slate-950" />
+              <span>চেয়ারম্যান অনুমোদনের জন্য প্রেরণ</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, 'issued')}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-7 py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                  <span>দাপ্তরিক সনদ জেনারেট হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>✅ সরাসরি ইস্যু ও প্রিন্ট করুন</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </form>
 

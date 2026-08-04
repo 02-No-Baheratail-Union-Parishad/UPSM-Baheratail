@@ -13,7 +13,8 @@ import {
   Clock,
   BarChart2,
   PieChart as PieIcon,
-  ShieldAlert
+  ShieldAlert,
+  Layers
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -156,11 +157,19 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
             </button>
 
             <button
-              onClick={() => onNavigateTab('verify')}
-              className="px-5 py-3 bg-emerald-800/90 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl border border-emerald-700 backdrop-blur transition flex items-center gap-2 cursor-pointer"
+              onClick={() => onNavigateTab('pending')}
+              className="px-5 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm rounded-xl shadow transition flex items-center gap-2 cursor-pointer"
             >
-              <ShieldCheck className="w-5 h-5 text-amber-300" />
-              <span>সনদ অনলাইন ভেরিফিকেশন</span>
+              <ShieldAlert className="w-5 h-5 text-slate-950" />
+              <span>চেয়ারম্যান অনুমোদন পোর্টাল</span>
+            </button>
+
+            <button
+              onClick={() => onNavigateTab('heatmap')}
+              className="px-5 py-3 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-sm rounded-xl border border-emerald-600 backdrop-blur transition flex items-center gap-2 cursor-pointer"
+            >
+              <Layers className="w-5 h-5 text-amber-300" />
+              <span>উন্নয়ন হিটম্যাপ</span>
             </button>
           </div>
         </div>

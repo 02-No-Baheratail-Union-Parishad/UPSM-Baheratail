@@ -85,6 +85,96 @@ function seedSampleData() {
       status: "issued",
       issuedBy: "প্যানেল চেয়ারম্যান - ০১",
       createdAt: new Date("2026-07-20").toISOString()
+    },
+    {
+      id: "cert_1003",
+      memoNo: "BUP-2026-1102",
+      issueDate: "০২/০৮/২০২৬ খ্রি.",
+      issueDateEn: "2026-08-02",
+      typeKey: "citizenship",
+      typeLabel: "নাগরিকত্ব সনদপত্র",
+      category: "নাগরিকত্ব ও পরিচয়",
+      citizen: {
+        nid: "1988451029",
+        name: "মোঃ জলিল শেখ",
+        father: "মৃত ইনসান শেখ",
+        mother: "মোছাঃ ফাতেমা বেগম",
+        gender: "পুরুষ",
+        mobile: "01755123456",
+        village: "ইন্দারজানী",
+        postOffice: "বহেড়াতৈল",
+        postCode: "১৯৫০",
+        wardNo: "০৩"
+      },
+      extra: { simpleFields: {}, tables: {} },
+      bodyText: "এই মর্মে প্রত্যয়ন করা যাইতেছে যে, মোঃ জলিল শেখ, পিতা: মৃত ইনসান শেখ, মাতা: মোছাঃ ফাতেমা বেগম, গ্রাম: ইন্দারজানী, ৩নং ওয়ার্ড, ০২নং বহেড়াতৈল ইউনিয়ন পরিষদ, উপজেলা: সখিপুর, জেলা: টাঙ্গাইল। তিনি উক্ত ওয়ার্ডের নিয়মিত স্থায়ী বাসিন্দা এবং জন্মসূত্রে বাংলাদেশের নাগরিক।",
+      verificationUrl: "/verify/BUP-2026-1102",
+      status: "pending_approval",
+      issuedBy: "ইউডিসি উদ্যোক্তা (UDC Operator)",
+      createdAt: new Date("2026-08-02T10:15:00").toISOString(),
+      feeAmount: 50,
+      paymentStatus: "paid",
+      trxId: "BK892301X9"
+    },
+    {
+      id: "cert_1004",
+      memoNo: "BUP-2026-1108",
+      issueDate: "০৩/০৮/২০২৬ খ্রি.",
+      issueDateEn: "2026-08-03",
+      typeKey: "income",
+      typeLabel: "বাৎসরিক আয়ের সনদপত্র",
+      category: "আর্থিক ও সম্পত্তি",
+      citizen: {
+        nid: "1994203918",
+        name: "মোঃ জহিরুল ইসলাম",
+        father: "হাজী আজগর আলী",
+        mother: "মোছাঃ মাজেদা খাতুন",
+        gender: "পুরুষ",
+        mobile: "01912384756",
+        village: "গোহালিয়া বাড়ি",
+        postOffice: "বহেড়াতৈল",
+        postCode: "১৯৫০",
+        wardNo: "০৪"
+      },
+      extra: { simpleFields: { annualIncome: "১,৫০,০০০ (এক লক্ষ পঞ্চাশ হাজার) টাকা" }, tables: {} },
+      bodyText: "এই মর্মে প্রত্যয়ন করা যাইতেছে যে, মোঃ জহিরুল ইসলাম, পিতা: হাজী আজগর আলী, গ্রাম: গোহালিয়া বাড়ি, ৪নং ওয়ার্ড, ০২নং বহেড়াতৈল ইউনিয়ন পরিষদ। তাহার কৃষি ও ব্যবসা হইতে বাৎসরিক আনুমানিক আয় ১,৫০,০০০ (এক লক্ষ পঞ্চাশ হাজার) টাকা।",
+      verificationUrl: "/verify/BUP-2026-1108",
+      status: "pending_approval",
+      issuedBy: "ইউডিসি উদ্যোক্তা (UDC Operator)",
+      createdAt: new Date("2026-08-03T14:20:00").toISOString(),
+      feeAmount: 100,
+      paymentStatus: "paid",
+      trxId: "NG551920Z1"
+    },
+    {
+      id: "cert_1005",
+      memoNo: "BUP-2026-1115",
+      issueDate: "০৪/০৮/২০২৬ খ্রি.",
+      issueDateEn: "2026-08-04",
+      typeKey: "remarriage_not",
+      typeLabel: "পুনঃ বিবাহ না হওয়ার সনদপত্র",
+      category: "সামাজিক ও অন্যান্য",
+      citizen: {
+        nid: "1982391023",
+        name: "মোছাঃ রহিমা খাতুন",
+        father: "মৃত মকসেদ আলী",
+        mother: "মোছাঃ জামিলা খাতুন",
+        gender: "মহিলা",
+        mobile: "01833445566",
+        village: "কড়ইচালা",
+        postOffice: "বহেড়াতৈল",
+        postCode: "১৯৫০",
+        wardNo: "০৬"
+      },
+      extra: { simpleFields: {}, tables: {} },
+      bodyText: "এই মর্মে প্রত্যয়ন করা যাইতেছে যে, মোছাঃ রহিমা খাতুন, স্বামী: মৃত সোবহান আলী, গ্রাম: কড়ইচালা, ৬নং ওয়ার্ড, ০২নং বহেড়াতৈল ইউনিয়ন পরিষদ। স্বামীর মৃত্যুর পর তিনি অদ্যবধি দ্বিতীয় কোনো বিবাহ বন্ধনে আবদ্ধ হন নাই।",
+      verificationUrl: "/verify/BUP-2026-1115",
+      status: "pending_approval",
+      issuedBy: "প্রশাসনিক কর্মকর্তা (সচিব)",
+      createdAt: new Date("2026-08-04T09:10:00").toISOString(),
+      feeAmount: 50,
+      paymentStatus: "paid",
+      trxId: "RK771920A3"
     }
   ];
 
@@ -288,8 +378,8 @@ ${upConfig.defaultPromptPrefix}
         bodyText: generatedBodyText,
         qrCodeUrl: qrCodeDataUrl,
         verificationUrl: verificationPath,
-        status: "issued",
-        issuedBy: upConfig.secretaryName,
+        status: req.body.status || "issued",
+        issuedBy: req.body.status === "pending_approval" ? "ইউডিসি উদ্যোক্তা (অনুমোদন অপেক্ষায়)" : upConfig.secretaryName,
         createdAt: now.toISOString()
       };
 
@@ -532,6 +622,102 @@ ${upConfig.defaultPromptPrefix}
       monthlyStats,
       categoryDistribution,
       upConfig
+    });
+  });
+
+  // Get Pending Approvals List
+  app.get("/api/admin/pending", (_req, res) => {
+    const pendingList = certificateStore.filter(
+      c => c.status === "pending_approval" || c.status === "draft"
+    );
+    res.json({
+      success: true,
+      total: pendingList.length,
+      pending: pendingList
+    });
+  });
+
+  // Approve Certificate (One-click Chairman Action)
+  app.post("/api/admin/approve-cert", (req, res) => {
+    const { id, approvedBy } = req.body;
+    const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
+
+    if (certIndex === -1) {
+      return res.status(404).json({ success: false, message: "আবেদনপত্র পাওয়া যায় নাই।" });
+    }
+
+    const now = new Date();
+    const approvedByName = approvedBy || upConfig.chairmanName || "ইউপি চেয়ারম্যান";
+
+    certificateStore[certIndex] = {
+      ...certificateStore[certIndex],
+      status: "issued",
+      approvedBy: approvedByName,
+      approvedAt: now.toISOString(),
+      issuedBy: approvedByName
+    };
+
+    res.json({
+      success: true,
+      message: `সনদ নং ${certificateStore[certIndex].memoNo} সফলভাবে চেয়ারম্যান কর্তৃক অনুমোদিত ও ইস্যু করা হইয়াছে!`,
+      sheetSynced: true,
+      certificate: certificateStore[certIndex]
+    });
+  });
+
+  // Cancel Certificate (One-click Chairman Action)
+  app.post("/api/admin/cancel-cert", (req, res) => {
+    const { id, cancelledBy, reason } = req.body;
+    const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
+
+    if (certIndex === -1) {
+      return res.status(404).json({ success: false, message: "আবেদনপত্র পাওয়া যায় নাই।" });
+    }
+
+    const now = new Date();
+    const cancelledByName = cancelledBy || upConfig.chairmanName || "ইউপি চেয়ারম্যান";
+
+    certificateStore[certIndex] = {
+      ...certificateStore[certIndex],
+      status: "cancelled",
+      cancelledBy: cancelledByName,
+      cancelledAt: now.toISOString(),
+      rejectionReason: reason || "তথ্য অসম্পূর্ণ বা অনুপযুক্ত আবেদন"
+    };
+
+    res.json({
+      success: true,
+      message: `সনদ আবেদন নং ${certificateStore[certIndex].memoNo} বাতিল করা হইয়াছে।`,
+      sheetSynced: true,
+      certificate: certificateStore[certIndex]
+    });
+  });
+
+  // Batch Approve All Pending
+  app.post("/api/admin/batch-approve", (req, res) => {
+    const { approvedBy } = req.body;
+    const now = new Date();
+    const approvedByName = approvedBy || upConfig.chairmanName || "ইউপি চেয়ারম্যান";
+    let count = 0;
+
+    certificateStore.forEach((c, idx) => {
+      if (c.status === "pending_approval") {
+        certificateStore[idx] = {
+          ...c,
+          status: "issued",
+          approvedBy: approvedByName,
+          approvedAt: now.toISOString(),
+          issuedBy: approvedByName
+        };
+        count++;
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `মোট ${count} টি পেন্ডিং আবেদন সফলভাবে অনুমোদন করা হইয়াছে!`,
+      approvedCount: count,
+      sheetSynced: true
     });
   });
 

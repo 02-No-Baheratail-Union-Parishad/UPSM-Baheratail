@@ -62,8 +62,13 @@ export interface CertificateRecord {
   bodyText: string;
   qrCodeUrl?: string;
   verificationUrl: string;
-  status: 'issued' | 'revoked' | 'draft';
+  status: 'pending_approval' | 'approved' | 'issued' | 'revoked' | 'cancelled' | 'draft';
   issuedBy: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
+  rejectionReason?: string;
   createdAt: string;
   feeAmount?: number;
   paymentMethod?: 'bKash' | 'Nagad' | 'Rocket' | 'Cash' | 'Upay';
