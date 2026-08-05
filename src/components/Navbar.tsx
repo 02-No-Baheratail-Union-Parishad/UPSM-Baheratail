@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   ShieldCheck, 
@@ -9,20 +9,78 @@ import {
   Building2,
   Code2,
   UserCheck,
-  Layers
+  Layers,
+  Bell
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
+import { 
+  fetchPendingCertificatesCountFromFirebase, 
+  subscribePendingCertificatesCount 
+} from '../firebase';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   config: UnionParishadConfig;
+  pendingCount?: number;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config, pendingCount: propPendingCount }) => {
+  const [pendingCount, setPendingCount] = useState<number>(propPendingCount ?? 0);
+
+  // Fetch pending count from backend API and Firestore
+  const fetchPendingCount = async () => {
+    let apiTotal = 0;
+    try {
+      const res = await fetch('/api/admin/pending');
+      const data = await res.json();
+      if (data.success && typeof data.total === 'number') {
+        apiTotal = data.total;
+      }
+    } catch (err) {
+      console.warn('Could not fetch pending count for navbar API:', err);
+    }
+
+    try {
+      const fsTotal = await fetchPendingCertificatesCountFromFirebase();
+      setPendingCount(Math.max(apiTotal, fsTotal));
+    } catch (err) {
+      setPendingCount(apiTotal);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingCount();
+
+    // Subscribe to Firestore real-time updates for pending certificates
+    const unsubscribeFirestore = subscribePendingCertificatesCount((fsCount) => {
+      setPendingCount(prev => Math.max(prev, fsCount));
+    });
+
+    // Poll backend API every 8 seconds as fallback
+    const interval = setInterval(fetchPendingCount, 8000);
+
+    return () => {
+      unsubscribeFirestore();
+      clearInterval(interval);
+    };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (typeof propPendingCount === 'number') {
+      setPendingCount(propPendingCount);
+    }
+  }, [propPendingCount]);
+
   const navItems = [
     { id: 'home', label: 'ড্যাশবোর্ড', icon: Home },
-    { id: 'pending', label: 'চেয়ারম্যান অনুমোদন', icon: ShieldCheck, badge: 'পেন্ডিং' },
+    { 
+      id: 'pending', 
+      label: 'চেয়ারম্যান অনুমোদন', 
+      icon: ShieldCheck, 
+      badge: pendingCount > 0 ? `${pendingCount} টি` : '০ টি',
+      isPendingTab: true
+    },
     { id: 'heatmap', label: 'উন্নয়ন হিটম্যাপ', icon: Layers, badge: 'D3 এনালাইটিক্স' },
     { id: 'create', label: 'নতুন প্রত্যয়নপত্র', icon: FileText, badge: '৪০+ ধরন' },
     { id: 'logs', label: 'সনদ পেজ ও রেকর্ড', icon: FileText },
@@ -73,8 +131,36 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config 
           </div>
         </div>
 
-        {/* Quick Action button */}
-        <div className="flex items-center gap-2">
+        {/* Quick Action buttons & Pending Notification Badge */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Chairman Pending Approval Notification Button */}
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+              pendingCount > 0
+                ? 'bg-amber-400/10 border-amber-400 text-amber-300 hover:bg-amber-400/20'
+                : 'bg-emerald-950/60 border-emerald-700 text-emerald-200 hover:bg-emerald-800'
+            }`}
+            title="চেয়ারম্যান অনুমোদন পেন্ডিং আবেদনসমূহ"
+          >
+            <div className="relative">
+              <Bell className={`w-4 h-4 ${pendingCount > 0 ? 'text-amber-300 animate-bounce' : 'text-emerald-300'}`} />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
+              )}
+            </div>
+            <span>চেয়ারম্যান অনুমোদন</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+                pendingCount > 0
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'bg-emerald-800 text-emerald-200'
+              }`}
+            >
+              {pendingCount}
+            </span>
+          </button>
+
           <button
             onClick={() => setActiveTab('create')}
             className="flex items-center gap-2 px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-sm font-semibold rounded-lg shadow transition-all duration-200 cursor-pointer active:scale-95"
@@ -104,7 +190,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config 
                 <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-emerald-300'}`} />
                 <span>{item.label}</span>
                 {item.badge && (
-                  <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-amber-400 text-emerald-950 font-bold rounded-full">
+                  <span
+                    className={`ml-1 px-2 py-0.5 text-[10px] font-bold rounded-full transition-all ${
+                      item.isPendingTab && pendingCount > 0
+                        ? 'bg-rose-500 text-white font-black animate-pulse shadow'
+                        : 'bg-amber-400 text-emerald-950'
+                    }`}
+                  >
                     {item.badge}
                   </span>
                 )}
@@ -116,3 +208,4 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config 
     </header>
   );
 };
+

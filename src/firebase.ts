@@ -11,7 +11,9 @@ import {
   where, 
   orderBy, 
   deleteDoc,
-  serverTimestamp 
+  onSnapshot,
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 import { CertificateRecord, UnionParishadConfig } from './types';
@@ -44,6 +46,47 @@ export async function saveCertificateToFirebase(record: CertificateRecord): Prom
     return docId;
   } catch (error) {
     console.error('Error saving certificate to Firebase:', error);
+    throw error;
+  }
+}
+
+/**
+ * Batch write operation to restore historical records into Firestore in chunks of up to 400 records.
+ */
+export async function batchRestoreCertificatesToFirebase(records: CertificateRecord[]): Promise<{ count: number; batches: number }> {
+  try {
+    if (!Array.isArray(records) || records.length === 0) {
+      return { count: 0, batches: 0 };
+    }
+
+    const BATCH_SIZE = 400; // Safe threshold under Firestore 500 writes limit per batch
+    let totalRestored = 0;
+    let batchCount = 0;
+
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const chunk = records.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+
+      for (const record of chunk) {
+        if (!record || !record.memoNo) continue;
+        const docId = record.memoNo.replace(/[^a-zA-Z0-9.-]/g, '_') || `cert_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const docRef = doc(db, CERTIFICATES_COLLECTION, docId);
+        const cleanData = JSON.parse(JSON.stringify(record));
+        batch.set(docRef, {
+          ...cleanData,
+          updatedAt: new Date().toISOString(),
+          timestamp: serverTimestamp()
+        }, { merge: true });
+        totalRestored++;
+      }
+
+      await batch.commit();
+      batchCount++;
+    }
+
+    return { count: totalRestored, batches: batchCount };
+  } catch (error) {
+    console.error('Error batch restoring certificates to Firestore:', error);
     throw error;
   }
 }
@@ -124,5 +167,44 @@ export async function fetchConfigFromFirebase(): Promise<UnionParishadConfig | n
   } catch (error) {
     console.error('Error fetching config from Firebase:', error);
     return null;
+  }
+}
+
+export async function fetchPendingCertificatesCountFromFirebase(): Promise<number> {
+  try {
+    const colRef = collection(db, CERTIFICATES_COLLECTION);
+    const snapshot = await getDocs(colRef);
+    let count = 0;
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.status === 'pending_approval' || data.status === 'draft') {
+        count++;
+      }
+    });
+    return count;
+  } catch (error) {
+    console.error('Error fetching pending count from Firestore:', error);
+    return 0;
+  }
+}
+
+export function subscribePendingCertificatesCount(callback: (count: number) => void): () => void {
+  try {
+    const colRef = collection(db, CERTIFICATES_COLLECTION);
+    return onSnapshot(colRef, (snapshot) => {
+      let count = 0;
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.status === 'pending_approval' || data.status === 'draft') {
+          count++;
+        }
+      });
+      callback(count);
+    }, (error) => {
+      console.warn('Firestore subscription warning:', error);
+    });
+  } catch (error) {
+    console.warn('Firestore subscription failed:', error);
+    return () => {};
   }
 }

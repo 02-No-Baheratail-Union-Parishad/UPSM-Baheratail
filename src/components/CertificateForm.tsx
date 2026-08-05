@@ -258,26 +258,32 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
           </div>
         </div>
 
-        {/* Categories Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-          {CERTIFICATE_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                selectedCategory === cat
-                  ? 'bg-emerald-800 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* Categories Chips & Count */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            {CERTIFICATE_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                  selectedCategory === cat
+                    ? 'bg-emerald-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 shrink-0 self-start sm:self-auto">
+            মোট {filteredTypes.length} টি সনদের তালিকা
+          </span>
         </div>
 
-        {/* Certificate Types Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto p-1 bg-slate-50 rounded-xl border border-slate-200">
+        {/* Certificate Types Grid (40+ types) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[420px] overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
           {filteredTypes.map((type) => {
             const isSelected = selectedTypeKey === type.key;
             return (

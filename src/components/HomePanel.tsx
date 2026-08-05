@@ -411,15 +411,15 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
                       {categoryTypes.length} টি
                     </span>
                   </h3>
-                  <ul className="mt-2 space-y-1 text-xs text-slate-700">
-                    {categoryTypes.slice(0, 4).map((t) => (
+                  <ul className="mt-2 space-y-1 text-xs text-slate-700 max-h-56 overflow-y-auto pr-1">
+                    {categoryTypes.map((t) => (
                       <li
                         key={t.key}
                         onClick={() => onNavigateTab('create', t.key)}
-                        className="hover:text-emerald-800 hover:font-bold transition cursor-pointer flex items-center gap-1.5 py-0.5"
+                        className="hover:text-emerald-800 hover:font-bold transition cursor-pointer flex items-center gap-1.5 py-0.5 border-b border-slate-100 last:border-none"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                        <span>{t.label}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0"></span>
+                        <span className="truncate">{t.label}</span>
                       </li>
                     ))}
                   </ul>

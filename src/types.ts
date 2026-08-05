@@ -132,6 +132,7 @@ export interface UnionParishadConfig {
   githubRepoUrl?: string;
   githubBranch?: string;
   googleDriveBackupUrl?: string;
+  archiveFolderId?: string;
   mcpEndpointUrl?: string;
   webhookUrl?: string;
   webhookSecret?: string;
@@ -144,6 +145,38 @@ export interface UnionParishadConfig {
     webhookIntegration?: boolean;
     mcpProtocolAgent?: boolean;
   };
+}
+
+export interface ApiKeyRecord {
+  id: string;
+  name: string;
+  key: string;
+  permissions: 'read' | 'write' | 'admin';
+  createdAt: string;
+  lastUsedAt?: string;
+  status: 'active' | 'revoked';
+}
+
+export interface WebhookConfig {
+  id: string;
+  name: string;
+  url: string;
+  secret?: string;
+  events: ('certificate.created' | 'certificate.approved' | 'certificate.cancelled' | 'citizen.registered')[];
+  enabled: boolean;
+  createdAt: string;
+}
+
+export interface WebhookLogRecord {
+  id: string;
+  webhookName: string;
+  url: string;
+  event: string;
+  payloadSummary: string;
+  status: 'success' | 'failed';
+  httpStatus: number;
+  timestamp: string;
+  error?: string;
 }
 
 export interface CitizenAccountRecord {
@@ -186,3 +219,18 @@ export interface VerificationResult {
   verifiedAt: string;
   message?: string;
 }
+
+export interface BackupSnapshot {
+  id: string;
+  filename: string;
+  timestamp: string;
+  archiveFolderId: string;
+  sheetId: string;
+  recordsCount: number;
+  sizeKb?: number;
+  status: 'completed' | 'in_progress' | 'failed';
+  downloadUrl?: string;
+  driveFileId?: string;
+  notes?: string;
+}
+

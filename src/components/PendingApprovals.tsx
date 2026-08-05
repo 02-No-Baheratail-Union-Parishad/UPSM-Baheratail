@@ -21,6 +21,7 @@ import {
   Database
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
+import { CERTIFICATE_TYPES, CERTIFICATE_CATEGORIES } from '../data/certificateTypes';
 import { saveCertificateToFirebase } from '../firebase';
 
 interface PendingApprovalsProps {
@@ -30,10 +31,13 @@ interface PendingApprovalsProps {
 
 export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCertificateStatusUpdated }) => {
   const [pendingList, setPendingList] = useState<CertificateRecord[]>([]);
+  const [approvedTodayCount, setApprovedTodayCount] = useState<number>(0);
+  const [rejectedCount, setRejectedCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedWard, setSelectedWard] = useState<string>('সব ওয়ার্ড');
-  const [selectedCategory, setSelectedCategory] = useState<string>('সব ধরন');
+  const [selectedCategory, setSelectedCategory] = useState<string>('সব ক্যাটাগরি');
+  const [selectedCertType, setSelectedCertType] = useState<string>('সব সনদের ধরন');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [previewCert, setPreviewCert] = useState<CertificateRecord | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -42,14 +46,20 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
   const [rejectingCert, setRejectingCert] = useState<CertificateRecord | null>(null);
   const [rejectReasonInput, setRejectReasonInput] = useState<string>('তথ্য অসম্পূর্ণ বা এনআইডি যাচাই ব্যর্থ');
 
-  // Fetch Pending List from Server
+  // Fetch Pending List & Stats from Server
   const fetchPendingList = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/pending');
       const data = await res.json();
-      if (data.success && Array.isArray(data.pending)) {
-        setPendingList(data.pending);
+      if (data.success) {
+        if (Array.isArray(data.pending)) {
+          setPendingList(data.pending);
+        }
+        if (data.stats) {
+          setApprovedTodayCount(data.stats.approvedToday || 0);
+          setRejectedCount(data.stats.totalRejected || 0);
+        }
       }
     } catch (err) {
       console.error('Error fetching pending list:', err);
@@ -89,8 +99,9 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
           );
         }
 
-        // Remove from local pending list
+        // Remove from local pending list & increment approved today count
         setPendingList(prev => prev.filter(c => c.id !== cert.id));
+        setApprovedTodayCount(prev => prev + 1);
         showToast(data.message || 'সনদ সফলভাবে চেয়ারম্যান কর্তৃক অনুমোদিত হইয়াছে!', 'success');
         if (onCertificateStatusUpdated) onCertificateStatusUpdated();
       } else {
@@ -130,6 +141,7 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
         }
 
         setPendingList(prev => prev.filter(c => c.id !== cert.id));
+        setRejectedCount(prev => prev + 1);
         showToast(data.message || 'আবেদন বাতিল করা হইয়াছে।', 'error');
         setRejectingCert(null);
         if (onCertificateStatusUpdated) onCertificateStatusUpdated();
@@ -151,6 +163,7 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
       return;
     }
 
+    const approveCount = pendingList.length;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/batch-approve', {
@@ -164,6 +177,7 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
 
       if (data.success) {
         setPendingList([]);
+        setApprovedTodayCount(prev => prev + approveCount);
         showToast(data.message || 'সকল পেন্ডিং আবেদন সফলভাবে অনুমোদন হইয়াছে!', 'success');
         if (onCertificateStatusUpdated) onCertificateStatusUpdated();
       }
@@ -174,19 +188,54 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
     }
   };
 
+  // Derive dynamic unique categories and certificate types from CERTIFICATE_TYPES & pendingList
+  const categoriesList = Array.from(
+    new Set([
+      'সব ক্যাটাগরি',
+      ...CERTIFICATE_CATEGORIES.filter(c => c !== 'সব ধরন'),
+      ...pendingList.map(item => item.category).filter(Boolean)
+    ])
+  );
+
+  const certTypesList = Array.from(
+    new Set([
+      'সব সনদের ধরন',
+      ...CERTIFICATE_TYPES.map(t => t.label),
+      ...pendingList.map(item => item.typeLabel).filter(Boolean)
+    ])
+  );
+
   // Filter pending items
   const filteredList = pendingList.filter(item => {
+    const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
-      item.citizen.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.memoNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.citizen.nid && item.citizen.nid.includes(searchQuery)) ||
-      item.typeLabel.toLowerCase().includes(searchQuery.toLowerCase());
+      !q ||
+      item.citizen.name.toLowerCase().includes(q) ||
+      item.memoNo.toLowerCase().includes(q) ||
+      (item.citizen.nid && item.citizen.nid.includes(q)) ||
+      (item.citizen.mobile && item.citizen.mobile.includes(q)) ||
+      item.citizen.village.toLowerCase().includes(q) ||
+      item.typeLabel.toLowerCase().includes(q);
 
     const matchesWard = selectedWard === 'সব ওয়ার্ড' || item.citizen.wardNo === selectedWard;
-    const matchesCategory = selectedCategory === 'সব ধরন' || item.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'সব ক্যাটাগরি' || item.category === selectedCategory;
+    const matchesCertType = selectedCertType === 'সব সনদের ধরন' || item.typeLabel === selectedCertType;
 
-    return matchesSearch && matchesWard && matchesCategory;
+    return matchesSearch && matchesWard && matchesCategory && matchesCertType;
   });
+
+  const isFilterActive =
+    searchQuery.trim() !== '' ||
+    selectedWard !== 'সব ওয়ার্ড' ||
+    selectedCategory !== 'সব ক্যাটাগরি' ||
+    selectedCertType !== 'সব সনদের ধরন';
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setSelectedWard('সব ওয়ার্ড');
+    setSelectedCategory('সব ক্যাটাগরি');
+    setSelectedCertType('সব সনদের ধরন');
+  };
 
   return (
     <div className="space-y-6">
@@ -248,62 +297,236 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
         </div>
       </div>
 
-      {/* Control Bar & Filters */}
-      <div className="bg-white p-5 rounded-2xl shadow-md border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-          <input
-            type="text"
-            placeholder="আবেদনকারীর নাম, স্মারক নং, এনআইডি বা সনদের নাম দিয়ে খুঁজুন..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-emerald-600 focus:outline-none text-slate-900 font-medium"
-          />
+      {/* Summary Stats Overview Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Pending Card */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-200 relative overflow-hidden flex items-center justify-between group hover:shadow-md transition">
+          <div className="space-y-1 z-10">
+            <span className="text-xs font-bold text-amber-700 block flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+              <span>মোট পেন্ডিং আবেদন</span>
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-black text-amber-950">{pendingList.length}</span>
+              <span className="text-xs font-semibold text-amber-600">টি অপেক্ষমাণ</span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">চেয়ারম্যান অনুমোদনের অপেক্ষায়</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-100/80 border border-amber-200 flex items-center justify-center shrink-0 text-amber-700 group-hover:scale-110 transition">
+            <Clock className="w-6 h-6 text-amber-600" />
+          </div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-amber-500" />
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700">
-            <Filter className="w-3.5 h-3.5 text-emerald-700" />
-            <span>ওয়ার্ড:</span>
-            <select
-              value={selectedWard}
-              onChange={e => setSelectedWard(e.target.value)}
-              className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer"
-            >
-              <option value="সব ওয়ার্ড">সব ওয়ার্ড</option>
-              <option value="০১">০১ নং ওয়ার্ড</option>
-              <option value="০২">০২ নং ওয়ার্ড</option>
-              <option value="০৩">০৩ নং ওয়ার্ড</option>
-              <option value="০৪">০৪ নং ওয়ার্ড</option>
-              <option value="০৫">০৫ নং ওয়ার্ড</option>
-              <option value="০৬">০৬ নং ওয়ার্ড</option>
-              <option value="০৭">০৭ নং ওয়ার্ড</option>
-              <option value="০৮">০৮ নং ওয়ার্ড</option>
-              <option value="০৯">০৯ নং ওয়ার্ড</option>
-            </select>
+        {/* Today's Approvals Card */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-200 relative overflow-hidden flex items-center justify-between group hover:shadow-md transition">
+          <div className="space-y-1 z-10">
+            <span className="text-xs font-bold text-emerald-700 block flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>আজকের অনুমোদিত সনদ</span>
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-black text-emerald-950">{approvedTodayCount}</span>
+              <span className="text-xs font-semibold text-emerald-600">টি ইস্যুকৃত</span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">আজকে চেয়ারম্যান কর্তৃক অনুমোদিত</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-100/80 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 group-hover:scale-110 transition">
+            <ShieldCheck className="w-6 h-6 text-emerald-600" />
+          </div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-emerald-600" />
+        </div>
+
+        {/* Rejected Applications Card */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-rose-200 relative overflow-hidden flex items-center justify-between group hover:shadow-md transition">
+          <div className="space-y-1 z-10">
+            <span className="text-xs font-bold text-rose-700 block flex items-center gap-1.5">
+              <XCircle className="w-4 h-4 text-rose-600" />
+              <span>বাতিল বা প্রত্যাখ্যাত</span>
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-black text-rose-950">{rejectedCount}</span>
+              <span className="text-xs font-semibold text-rose-600">টি বাতিল</span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">তথ্য অসঙ্গতির কারণে ফেরত</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-rose-100/80 border border-rose-200 flex items-center justify-center shrink-0 text-rose-700 group-hover:scale-110 transition">
+            <XCircle className="w-6 h-6 text-rose-600" />
+          </div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-rose-500" />
+        </div>
+
+        {/* Total Processed Card */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-indigo-200 relative overflow-hidden flex items-center justify-between group hover:shadow-md transition">
+          <div className="space-y-1 z-10">
+            <span className="text-xs font-bold text-indigo-700 block flex items-center gap-1.5">
+              <CheckCheck className="w-4 h-4 text-indigo-600" />
+              <span>মোট নিষ্পত্তিকৃত আবেদন</span>
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-black text-indigo-950">
+                {approvedTodayCount + rejectedCount}
+              </span>
+              <span className="text-xs font-semibold text-indigo-600">টি সম্পন্ন</span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">অনুমোদন ও নিষ্পত্তির মোট কাজ</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 border border-indigo-200 flex items-center justify-center shrink-0 text-indigo-700 group-hover:scale-110 transition">
+            <Sparkles className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-indigo-600" />
+        </div>
+      </div>
+
+      {/* Control Bar & Filters */}
+      <div className="bg-white p-5 rounded-2xl shadow-md border border-slate-200 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Enhanced Search Input */}
+          <div className="relative flex-1 min-w-[260px]">
+            <Search className="w-4 h-4 text-emerald-700 absolute left-3 top-3" />
+            <input
+              type="text"
+              placeholder="আবেদনকারীর নাম, স্মারক নং, এনআইডি, মোবাইল বা সনদের নাম দিয়ে সার্চ করুন..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-emerald-600 focus:outline-none text-slate-900 font-medium"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
+                title="সার্চ ক্লিয়ার করুন"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <button
-            onClick={fetchPendingList}
-            disabled={loading}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-300 transition cursor-pointer flex items-center gap-1 text-xs font-bold"
-            title="পুনরায় রিফ্রেশ করুন"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-700' : ''}`} />
-            <span className="hidden sm:inline">রিফ্রেশ</span>
-          </button>
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Category Filter */}
+            <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700">
+              <Filter className="w-3.5 h-3.5 text-emerald-700" />
+              <span>ক্যাটাগরি:</span>
+              <select
+                value={selectedCategory}
+                onChange={e => setSelectedCategory(e.target.value)}
+                className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer max-w-[150px]"
+              >
+                {categoriesList.map(cat => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {pendingList.length > 0 && (
+            {/* Certificate Type Filter */}
+            <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700">
+              <FileText className="w-3.5 h-3.5 text-emerald-700" />
+              <span>সনদের ধরন:</span>
+              <select
+                value={selectedCertType}
+                onChange={e => setSelectedCertType(e.target.value)}
+                className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer max-w-[160px]"
+              >
+                {certTypesList.map(t => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Ward Filter */}
+            <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700">
+              <span>ওয়ার্ড:</span>
+              <select
+                value={selectedWard}
+                onChange={e => setSelectedWard(e.target.value)}
+                className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer"
+              >
+                <option value="সব ওয়ার্ড">সব ওয়ার্ড</option>
+                <option value="০১">০১ নং ওয়ার্ড</option>
+                <option value="০২">০২ নং ওয়ার্ড</option>
+                <option value="০৩">০৩ নং ওয়ার্ড</option>
+                <option value="০৪">০৪ নং ওয়ার্ড</option>
+                <option value="০৫">০৫ নং ওয়ার্ড</option>
+                <option value="০৬">০৬ নং ওয়ার্ড</option>
+                <option value="০৭">০৭ নং ওয়ার্ড</option>
+                <option value="০৮">০৮ নং ওয়ার্ড</option>
+                <option value="০৯">০৯ নং ওয়ার্ড</option>
+              </select>
+            </div>
+
             <button
-              onClick={handleBatchApprove}
+              onClick={fetchPendingList}
               disabled={loading}
-              className="px-4 py-2 bg-emerald-900 hover:bg-emerald-950 text-amber-300 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-300 transition cursor-pointer flex items-center gap-1 text-xs font-bold"
+              title="পুনরায় রিফ্রেশ করুন"
             >
-              <CheckCheck className="w-4 h-4 text-amber-300" />
-              <span>একসাথে সব অনুমোদন ({pendingList.length})</span>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-700' : ''}`} />
+              <span className="hidden sm:inline">রিফ্রেশ</span>
             </button>
+
+            {pendingList.length > 0 && (
+              <button
+                onClick={handleBatchApprove}
+                disabled={loading}
+                className="px-4 py-2 bg-emerald-900 hover:bg-emerald-950 text-amber-300 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <CheckCheck className="w-4 h-4 text-amber-300" />
+                <span>একসাথে সব অনুমোদন ({pendingList.length})</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Category Filter Pills & Filter Summary */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold text-slate-500 mr-1">দ্রুত ফিল্টার:</span>
+            {['সব ক্যাটাগরি', 'নাগরিকত্ব ও পরিচয়', 'আর্থিক ও সম্পত্তি', 'চারিত্রিক সনদপত্র'].map(pill => {
+              const isSelected =
+                pill === 'চারিত্রিক সনদপত্র'
+                  ? selectedCertType === 'চারিত্রিক সনদপত্র'
+                  : selectedCategory === pill;
+              return (
+                <button
+                  key={pill}
+                  onClick={() => {
+                    if (pill === 'চারিত্রিক সনদপত্র') {
+                      setSelectedCertType('চারিত্রিক সনদপত্র');
+                    } else {
+                      setSelectedCategory(pill);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold transition cursor-pointer border ${
+                    isSelected
+                      ? 'bg-emerald-900 text-amber-300 border-emerald-800 shadow-sm'
+                      : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  {pill}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Filter Info & Reset Button */}
+          {isFilterActive && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                ফিল্টারকৃত ফলাফল: {filteredList.length} টি
+              </span>
+              <button
+                onClick={resetFilters}
+                className="text-[11px] text-rose-700 hover:text-rose-900 font-bold underline flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+                <span>ফিল্টার রিসেট</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

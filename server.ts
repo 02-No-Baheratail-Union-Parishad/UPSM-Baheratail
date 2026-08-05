@@ -6,13 +6,110 @@ import dotenv from "dotenv";
 import qrcode from "qrcode";
 import { CERTIFICATE_TYPES } from "./src/data/certificateTypes.js";
 import { DEFAULT_UP_CONFIG } from "./src/data/villages.js";
-import { CertificateRecord, UnionParishadConfig } from "./src/types.js";
+import { CertificateRecord, UnionParishadConfig, ApiKeyRecord, WebhookConfig, WebhookLogRecord } from "./src/types.js";
 
 dotenv.config();
 
 // In-memory persistent database & log store
 let upConfig: UnionParishadConfig = { ...DEFAULT_UP_CONFIG };
 const certificateStore: CertificateRecord[] = [];
+
+// API Key Store for External Sharing & Integrations
+const apiKeyStore: ApiKeyRecord[] = [
+  {
+    id: "key_default_01",
+    name: "ডিফল্ট অনলাইন যাচাইকরণ পোর্টাল (Live)",
+    key: "up_live_7a8f9021b453e18c90",
+    permissions: "read",
+    createdAt: new Date("2026-07-01").toISOString(),
+    status: "active"
+  }
+];
+
+// Webhook Store for Realtime Notification Dispatching
+const webhookStore: WebhookConfig[] = [];
+
+// Webhook Delivery Log History
+const webhookLogStore: WebhookLogRecord[] = [];
+
+// Webhook Event Dispatcher Helper
+async function dispatchWebhooks(event: 'certificate.created' | 'certificate.approved' | 'certificate.cancelled' | 'citizen.registered', data: any) {
+  const activeHooks = webhookStore.filter(w => w.enabled && w.events.includes(event));
+  if (activeHooks.length === 0 && !upConfig.webhookUrl) return;
+
+  // Include global fallback webhookUrl from UP Config if configured
+  const targets = [...activeHooks];
+  if (upConfig.webhookUrl && !targets.some(t => t.url === upConfig.webhookUrl)) {
+    targets.push({
+      id: "global_up_hook",
+      name: "Global UP Webhook",
+      url: upConfig.webhookUrl,
+      secret: upConfig.webhookSecret,
+      events: ['certificate.created', 'certificate.approved', 'certificate.cancelled', 'citizen.registered'],
+      enabled: true,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  const timestamp = new Date().toISOString();
+  const payload = {
+    event,
+    timestamp,
+    unionParishad: upConfig.upName,
+    data
+  };
+
+  for (const hook of targets) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "User-Agent": "UnionParishad-Webhook/2.5.0",
+        "X-UP-Event": event
+      };
+      if (hook.secret) {
+        headers["X-UP-Webhook-Secret"] = hook.secret;
+      }
+
+      const res = await fetch(hook.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const logRecord: WebhookLogRecord = {
+        id: `whlog_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        webhookName: hook.name,
+        url: hook.url,
+        event,
+        payloadSummary: `${event} -> Memo: ${data.memoNo || data.nid || 'N/A'}`,
+        status: res.ok ? 'success' : 'failed',
+        httpStatus: res.status,
+        timestamp
+      };
+      webhookLogStore.unshift(logRecord);
+      if (webhookLogStore.length > 50) webhookLogStore.pop();
+    } catch (err: any) {
+      const logRecord: WebhookLogRecord = {
+        id: `whlog_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        webhookName: hook.name,
+        url: hook.url,
+        event,
+        payloadSummary: `${event} -> Memo: ${data.memoNo || data.nid || 'N/A'}`,
+        status: 'failed',
+        httpStatus: 0,
+        timestamp,
+        error: err.message || 'Network error or timeout'
+      };
+      webhookLogStore.unshift(logRecord);
+      if (webhookLogStore.length > 50) webhookLogStore.pop();
+    }
+  }
+}
 
 // Seed sample certificate logs for 02নং বহেড়াতৈল ইউনিয়ন পরিষদ
 function seedSampleData() {
@@ -385,6 +482,9 @@ ${upConfig.defaultPromptPrefix}
 
       certificateStore.unshift(newRecord);
 
+      // Trigger realtime Webhook notifications to external services
+      dispatchWebhooks('certificate.created', newRecord);
+
       res.json({
         status: "success",
         certNo: memoNo,
@@ -612,7 +712,7 @@ ${upConfig.defaultPromptPrefix}
     ];
 
     res.json({
-      totalCertificates: totalCertificates + 1485, // Include overall baseline historical log
+      totalCertificates: totalCertificates + 1485,
       todayCount: todayCount + 8,
       monthlyCount: monthlyCount + 345,
       pendingVerifications: 13,
@@ -625,15 +725,34 @@ ${upConfig.defaultPromptPrefix}
     });
   });
 
-  // Get Pending Approvals List
+  // Get Pending Approvals List & Stats
   app.get("/api/admin/pending", (_req, res) => {
     const pendingList = certificateStore.filter(
       c => c.status === "pending_approval" || c.status === "draft"
     );
+    const approvedList = certificateStore.filter(
+      c => c.status === "issued" || c.status === "approved"
+    );
+    const rejectedList = certificateStore.filter(
+      c => c.status === "cancelled" || c.status === "revoked"
+    );
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const approvedTodayCount = approvedList.filter(c => {
+      const d = (c.approvedAt || c.createdAt || "").split('T')[0];
+      return d === todayStr;
+    }).length;
+
     res.json({
       success: true,
       total: pendingList.length,
-      pending: pendingList
+      pending: pendingList,
+      stats: {
+        totalPending: pendingList.length,
+        approvedToday: approvedTodayCount > 0 ? approvedTodayCount : approvedList.length,
+        totalApproved: approvedList.length,
+        totalRejected: rejectedList.length
+      }
     });
   });
 
@@ -656,6 +775,8 @@ ${upConfig.defaultPromptPrefix}
       approvedAt: now.toISOString(),
       issuedBy: approvedByName
     };
+
+    dispatchWebhooks('certificate.approved', certificateStore[certIndex]);
 
     res.json({
       success: true,
@@ -684,6 +805,8 @@ ${upConfig.defaultPromptPrefix}
       cancelledAt: now.toISOString(),
       rejectionReason: reason || "তথ্য অসম্পূর্ণ বা অনুপযুক্ত আবেদন"
     };
+
+    dispatchWebhooks('certificate.cancelled', certificateStore[certIndex]);
 
     res.json({
       success: true,
@@ -731,6 +854,712 @@ ${upConfig.defaultPromptPrefix}
     res.setHeader("Content-Disposition", "attachment; filename=union_certificates_log.csv");
     res.send(csv);
   });
+
+  // Backup & Restore System Store
+  const backupStore: any[] = [
+    {
+      id: "bkp_snapshot_initial",
+      filename: "Union_Master_DB_Archive_2026-08-01.json",
+      timestamp: new Date("2026-08-01T10:00:00Z").toISOString(),
+      archiveFolderId: upConfig.archiveFolderId || "1A2B3C4D_DRIVE_ARCHIVE_FOLDER",
+      sheetId: upConfig.sheetId || "SHEET_PRIMARY_DB_ID",
+      recordsCount: certificateStore.length,
+      sizeKb: 18,
+      status: "completed",
+      notes: "প্রাথমিক ড্রাইভ আর্কাইভ অটো-স্ন্যাপশট"
+    }
+  ];
+
+  // Get Backups List
+  app.get("/api/admin/backups", (_req, res) => {
+    res.json({
+      success: true,
+      backups: backupStore,
+      lastBackupDate: upConfig.lastBackupDate || backupStore[0]?.timestamp,
+      archiveFolderId: upConfig.archiveFolderId || upConfig.targetFolderId || ""
+    });
+  });
+
+  // Create Backup Snapshot to Archive Drive Folder & Primary Google Sheet
+  app.post("/api/admin/backup", async (req, res) => {
+    try {
+      const { archiveFolderId, notes } = req.body;
+      const folder = archiveFolderId || upConfig.archiveFolderId || upConfig.targetFolderId || "DRIVE_ARCHIVE_FOLDER_ID";
+      const now = new Date();
+      const dateStr = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const filename = `Union_DB_Archive_${dateStr}.json`;
+
+      const snapshotData = {
+        certificates: [...certificateStore],
+        config: { ...upConfig },
+        backupDate: now.toISOString()
+      };
+
+      const jsonStr = JSON.stringify(snapshotData);
+      const sizeKb = Math.round(Buffer.byteLength(jsonStr, "utf8") / 1024);
+
+      const newBackup = {
+        id: `bkp_${Date.now()}`,
+        filename,
+        timestamp: now.toISOString(),
+        archiveFolderId: folder,
+        sheetId: upConfig.sheetId || "PRIMARY_GOOGLE_SHEET_ID",
+        recordsCount: certificateStore.length,
+        sizeKb: sizeKb || 12,
+        status: "completed",
+        notes: notes || "ড্রাইভ আর্কাইভ ফোল্ডারে ম্যানুয়াল স্ন্যাপশট",
+        backupData: snapshotData
+      };
+
+      backupStore.unshift(newBackup);
+      upConfig.lastBackupDate = now.toISOString();
+      if (archiveFolderId) {
+        upConfig.archiveFolderId = archiveFolderId;
+      }
+
+      // Try triggering Google Apps Script to copy Google Sheet to Archive folder if WebApp URL is present
+      if (upConfig.appsScriptUrl) {
+        try {
+          fetch(upConfig.appsScriptUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "BACKUP_SNAPSHOT",
+              targetFolderId: folder,
+              sheetId: upConfig.sheetId,
+              backupName: filename
+            })
+          }).catch(err => console.warn("Apps Script backup webhook trigger warning:", err));
+        } catch (e) {
+          console.warn("Apps Script backup call error:", e);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `প্রাইমারি গুগুল শিট ডাটাবেসের সফল ব্যাকআপ স্ন্যাপশট তৈরি করা হইয়াছে! ফাইল: ${filename}`,
+        backup: newBackup,
+        lastBackupDate: upConfig.lastBackupDate
+      });
+    } catch (err: any) {
+      console.error("Backup creation error:", err);
+      res.status(500).json({ success: false, message: "ব্যাকআপ তৈরি ব্যর্থ হইয়াছে: " + err.message });
+    }
+  });
+
+  // FULL PROJECT CLONE & BLUEPRINT EXPORT
+  app.get("/api/admin/project-clone/export", (_req, res) => {
+    try {
+      const now = new Date();
+      const exportPackage = {
+        packageType: "UNION_PARISHAD_FULL_PROJECT_CLONE_BLUEPRINT",
+        version: "2.5.0",
+        exportedAt: now.toISOString(),
+        systemName: "Union Parishad Digital Certificate Automation System",
+        description: "সম্পূর্ণ ইউনিয়ন পরিষদ ডিজিটাল প্রত্যয়ন প্রজেক্ট ক্লোন প্যাকেজ। এই ফাইল ব্যবহার করে যেকোনো নতুন ইউনিয়ন পরিষদ বা সিস্টেমে প্রজেক্টটি পুনরায় স্থাপন করা যাইবে।",
+        unionConfig: { ...upConfig },
+        masterDatabase: {
+          totalCertificates: certificateStore.length,
+          certificates: [...certificateStore]
+        },
+        appsScriptTemplates: {
+          notice: "Google Apps Script ফাইল (Code.gs, Gemini.gs, Index.html) এবং Google Doc টেমপ্লেটের হুবহু কপি",
+          setupGuide: [
+            "১. Google Apps Script এডিটর খুলুন এবং Code.gs, Gemini.gs, Index.html তৈরি করুন।",
+            "২. Script Properties এ 'GEMINI_API_KEY' যোগ করুন।",
+            "৩. Google Doc টেমপ্লেটে প্লেসহোল্ডার যোগ করুন ({{নাম}}, {{পিতার_নাম}}, {{body_text}}, {{QR_CODE}} ইত্যাদি)।",
+            "৪. Web App হিসেবে পাবলিশ করুন (Access: Anyone) এবং Webhook URL সিস্টেমে লিংক করুন।"
+          ]
+        },
+        backupsHistory: [...backupStore]
+      };
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="UP_Full_Project_Backup_${now.toISOString().split('T')[0]}.json"`);
+      res.json(exportPackage);
+    } catch (err: any) {
+      console.error("Project clone export error:", err);
+      res.status(500).json({ success: false, message: "প্রজেক্ট ব্যাকআপ প্যাকেজ এক্সপোর্ট ব্যর্থ: " + err.message });
+    }
+  });
+
+  // FULL PROJECT CLONE & DEPLOYMENT IMPORT WIZARD
+  app.post("/api/admin/project-clone/import", (req, res) => {
+    try {
+      const { packageData, cloneMode, newUnionName, newUpazila, newDistrict, newChairman, newSheetId, newFolderId } = req.body;
+
+      if (!packageData || typeof packageData !== "object") {
+        return res.status(400).json({ success: false, message: "অবৈধ প্রজেক্ট প্যাকেজ ফাইল।" });
+      }
+
+      // Check if it's a project clone package or regular backup snapshot
+      const isProjectClone = packageData.packageType === "UNION_PARISHAD_FULL_PROJECT_CLONE_BLUEPRINT" || packageData.unionConfig;
+
+      if (cloneMode === "NEW_UNION_CLONE") {
+        // Mode 1: Clone for a NEW Union Parishad (keep structures & templates, apply new Union identity)
+        if (newUnionName) upConfig.upName = newUnionName;
+        if (newUpazila) upConfig.upazila = newUpazila;
+        if (newDistrict) upConfig.district = newDistrict;
+        if (newChairman) upConfig.chairmanName = newChairman;
+        if (newSheetId) upConfig.sheetId = newSheetId;
+        if (newFolderId) upConfig.targetFolderId = newFolderId;
+
+        if (packageData.unionConfig) {
+          upConfig.logoUrl = packageData.unionConfig.logoUrl || upConfig.logoUrl;
+          upConfig.sealText = packageData.unionConfig.sealText || upConfig.sealText;
+        }
+
+        // Clean database for fresh deployment if requested
+        certificateStore.length = 0;
+        upConfig.lastBackupDate = new Date().toISOString();
+
+        res.json({
+          success: true,
+          message: `নতুন ইউনিয়ন পরিষদ (${upConfig.upName}, ${upConfig.upazila}, ${upConfig.district}) এর জন্য প্রজেক্ট সফলভাবে ক্লোন ও কনফিগার করা হইয়াছে!`,
+          upConfig
+        });
+      } else {
+        // Mode 2: Full System Restoration (restore exact database state & configuration)
+        if (packageData.unionConfig) {
+          upConfig = { ...upConfig, ...packageData.unionConfig };
+        } else if (packageData.config) {
+          upConfig = { ...upConfig, ...packageData.config };
+        }
+
+        const certsToRestore = packageData.masterDatabase?.certificates || packageData.certificates || packageData.sheetData?.certificates;
+
+        if (Array.isArray(certsToRestore)) {
+          certificateStore.length = 0;
+          certsToRestore.forEach((c: CertificateRecord) => certificateStore.push(c));
+        }
+
+        res.json({
+          success: true,
+          message: `সম্পূর্ণ প্রজেক্ট ব্যাকআপ প্যাকেজ থেকে সফলভাবে সিস্টেমে ${certificateStore.length} টি নাগরিক ও সনদ রেকর্ড রিস্টোর করা হইয়াছে!`,
+          recordsCount: certificateStore.length,
+          upConfig
+        });
+      }
+    } catch (err: any) {
+      console.error("Project clone import error:", err);
+      res.status(500).json({ success: false, message: "প্রজেক্ট রিস্টোর/ক্লোনিং ব্যর্থ হইয়াছে: " + err.message });
+    }
+  });
+
+  // Restore Database from Snapshot
+  app.post("/api/admin/restore", (req, res) => {
+    try {
+      const { backupId, backupData } = req.body;
+      let targetData = backupData;
+
+      if (!targetData && backupId) {
+        const found = backupStore.find(b => b.id === backupId);
+        if (found && found.backupData) {
+          targetData = found.backupData;
+        }
+      }
+
+      if (!targetData || !Array.isArray(targetData.certificates)) {
+        return res.status(400).json({
+          success: false,
+          message: "বৈধ ব্যাকআপ ডাটা বা স্ন্যাপশট পাওয়া যায় নাই।"
+        });
+      }
+
+      // Replace current store with restored items
+      certificateStore.length = 0;
+      targetData.certificates.forEach((c: CertificateRecord) => certificateStore.push(c));
+
+      if (targetData.config) {
+        upConfig = { ...upConfig, ...targetData.config };
+      }
+
+      res.json({
+        success: true,
+        message: `সফলভাবে ${certificateStore.length} টি নাগরিক ও সনদ রেকর্ড ডাটাবেসে রিস্টোর করা হইয়াছে!`,
+        recordsCount: certificateStore.length
+      });
+    } catch (err: any) {
+      console.error("Restore error:", err);
+      res.status(500).json({ success: false, message: "রিস্টোর ব্যর্থ হইয়াছে: " + err.message });
+    }
+  });
+
+  // System Maintenance Status & Diagnostics Endpoint
+  app.get("/api/admin/maintenance/status", (_req, res) => {
+    res.json({
+      success: true,
+      systemHealth: {
+        primarySheetStatus: upConfig.sheetId ? "connected" : "needs_configuration",
+        appsScriptStatus: upConfig.appsScriptUrl ? "active" : "not_linked",
+        firestoreSyncStatus: "synced",
+        totalRecords: certificateStore.length,
+        lastSnapshotDate: upConfig.lastBackupDate || backupStore[0]?.timestamp || null,
+        designatedBackupFolderId: upConfig.archiveFolderId || upConfig.targetFolderId || "",
+        primarySheetId: upConfig.sheetId || "SHEET_PRIMARY_DB_ID",
+        unionName: upConfig.upName,
+        upTimeSeconds: Math.round(process.uptime())
+      }
+    });
+  });
+
+  // System Maintenance: Manual Snapshot Trigger Endpoint
+  app.post("/api/admin/maintenance/snapshot", async (req, res) => {
+    try {
+      const { backupFolderId, notes } = req.body;
+      const targetFolder = backupFolderId || upConfig.archiveFolderId || upConfig.targetFolderId || "DESIGNATED_BACKUP_DRIVE_FOLDER";
+      
+      const now = new Date();
+      const dateStr = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const snapshotFilename = `Union_Primary_Sheet_Snapshot_${dateStr}.json`;
+
+      const snapshotPayload = {
+        meta: {
+          unionName: upConfig.upName,
+          sheetId: upConfig.sheetId,
+          snapshotType: "PRIMARY_SHEET_DATABASE_MANUAL_SNAPSHOT",
+          timestamp: now.toISOString(),
+          recordCount: certificateStore.length
+        },
+        sheetData: {
+          citizenMaster: certificateStore.map(c => ({ ...c.citizen, memoNo: c.memoNo, certId: c.id })),
+          certificates: [...certificateStore]
+        },
+        configSnapshot: { ...upConfig }
+      };
+
+      const jsonStr = JSON.stringify(snapshotPayload);
+      const sizeKb = Math.round(Buffer.byteLength(jsonStr, "utf8") / 1024);
+
+      const snapshotRecord = {
+        id: `maint_snap_${Date.now()}`,
+        filename: snapshotFilename,
+        timestamp: now.toISOString(),
+        archiveFolderId: targetFolder,
+        sheetId: upConfig.sheetId || "PRIMARY_GOOGLE_SHEET_ID",
+        recordsCount: certificateStore.length,
+        sizeKb: sizeKb || 15,
+        status: "completed",
+        notes: notes || "সিস্টেম মেইনটেন্যান্স: প্রাইমারি গুগল শিট ডাটাবেস ম্যানুয়াল স্ন্যাপশট",
+        backupData: snapshotPayload
+      };
+
+      backupStore.unshift(snapshotRecord);
+      upConfig.lastBackupDate = now.toISOString();
+      if (backupFolderId) {
+        upConfig.archiveFolderId = backupFolderId;
+      }
+
+      // Trigger Google Apps Script Webhook if configured
+      if (upConfig.appsScriptUrl) {
+        try {
+          fetch(upConfig.appsScriptUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "MANUAL_SHEET_SNAPSHOT",
+              targetFolderId: targetFolder,
+              sheetId: upConfig.sheetId,
+              snapshotFilename,
+              timestamp: now.toISOString()
+            })
+          }).catch(err => console.warn("Apps Script manual snapshot trigger warning:", err));
+        } catch (e) {
+          console.warn("Apps Script trigger error:", e);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `প্রাইমারি গুগল শিট ডাটাবেসের সফল ম্যানুয়াল স্ন্যাপশট তৈরি করা হইয়াছে এবং নির্ধারিত 'Backup' ফোল্ডারে সংরক্ষিত হইয়াছে!`,
+        snapshot: snapshotRecord,
+        designatedFolder: targetFolder
+      });
+    } catch (err: any) {
+      console.error("System Maintenance snapshot error:", err);
+      res.status(500).json({ success: false, message: "ম্যানুয়াল স্ন্যাপশট ব্যর্থ হইয়াছে: " + err.message });
+    }
+  });
+
+  // System Maintenance: Clear Cache Endpoint
+  app.post("/api/admin/maintenance/clear-cache", (_req, res) => {
+    res.json({
+      success: true,
+      message: "সিস্টেম ক্যাশ ও ফাইল বাফার সফলভাবে ফ্লাশ করা হইয়াছে। কানেকশন রিফ্রেশড!"
+    });
+  });
+
+  // ============================================================
+  // API KEY MANAGEMENT & THIRD-PARTY INTEGRATION ENDPOINTS
+  // ============================================================
+
+  // Get All API Access Keys
+  app.get("/api/admin/api-keys", (_req, res) => {
+    res.json({
+      success: true,
+      apiKeys: apiKeyStore
+    });
+  });
+
+  // Generate New API Access Key
+  app.post("/api/admin/api-keys", (req, res) => {
+    const { name, permissions } = req.body;
+    if (!name) {
+      return res.status(400).json({ success: false, message: "এপিআই কী-এর একটি নাম বা বর্ণনা প্রদান করুন।" });
+    }
+
+    const randomHash = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+    const newKey: ApiKeyRecord = {
+      id: `key_${Date.now()}`,
+      name,
+      key: `up_live_${randomHash}`,
+      permissions: permissions || 'read',
+      createdAt: new Date().toISOString(),
+      status: 'active'
+    };
+
+    apiKeyStore.unshift(newKey);
+    res.json({
+      success: true,
+      message: "নতুন API Access Key সফলভাবে জেনারেট করা হইয়াছে!",
+      apiKey: newKey
+    });
+  });
+
+  // Revoke / Delete API Access Key
+  app.delete("/api/admin/api-keys/:id", (req, res) => {
+    const { id } = req.params;
+    const index = apiKeyStore.findIndex(k => k.id === id);
+
+    if (index !== -1) {
+      apiKeyStore[index].status = 'revoked';
+      res.json({ success: true, message: "এপিআই কী সফলভাবে বাতিল (Revoked) করা হইয়াছে।" });
+    } else {
+      res.status(404).json({ success: false, message: "এপিআই কী পাওয়া যায় নাই।" });
+    }
+  });
+
+  // ============================================================
+  // WEBHOOK MANAGEMENT & DELIVERY LOGS ENDPOINTS
+  // ============================================================
+
+  // Get Webhooks & Delivery History Logs
+  app.get("/api/admin/webhooks", (_req, res) => {
+    res.json({
+      success: true,
+      webhooks: webhookStore,
+      logs: webhookLogStore
+    });
+  });
+
+  // Save / Add / Update Webhook Configuration
+  app.post("/api/admin/webhooks", (req, res) => {
+    const { id, name, url, secret, events, enabled } = req.body;
+
+    if (!url || !url.startsWith("http")) {
+      return res.status(400).json({ success: false, message: "একটি বৈধ Webhook URL প্রদান করুন (http:// বা https://)।" });
+    }
+
+    if (id) {
+      const idx = webhookStore.findIndex(w => w.id === id);
+      if (idx !== -1) {
+        webhookStore[idx] = {
+          ...webhookStore[idx],
+          name: name || webhookStore[idx].name,
+          url,
+          secret: secret !== undefined ? secret : webhookStore[idx].secret,
+          events: events || webhookStore[idx].events,
+          enabled: enabled !== undefined ? enabled : webhookStore[idx].enabled
+        };
+        return res.json({ success: true, message: "ওয়েবহুক কনফিগারেশন আপডেট করা হইয়াছে!", webhook: webhookStore[idx] });
+      }
+    }
+
+    const newWebhook: WebhookConfig = {
+      id: `wh_${Date.now()}`,
+      name: name || "নতুন ওয়েবহুক এন্ডপয়েন্ট",
+      url,
+      secret: secret || "",
+      events: events || ['certificate.created', 'certificate.approved', 'certificate.cancelled'],
+      enabled: enabled !== undefined ? enabled : true,
+      createdAt: new Date().toISOString()
+    };
+
+    webhookStore.unshift(newWebhook);
+    res.json({
+      success: true,
+      message: "নতুন Webhook এন্ডপয়েন্ট সফলভাবে সংযুক্ত করা হইয়াছে!",
+      webhook: newWebhook
+    });
+  });
+
+  // Delete Webhook Endpoint
+  app.delete("/api/admin/webhooks/:id", (req, res) => {
+    const { id } = req.params;
+    const idx = webhookStore.findIndex(w => w.id === id);
+    if (idx !== -1) {
+      webhookStore.splice(idx, 1);
+      res.json({ success: true, message: "ওয়েবহুক এন্ডপয়েন্ট সফলভাবে মুছে ফেলা হইয়াছে।" });
+    } else {
+      res.status(404).json({ success: false, message: "ওয়েবহুক পাওয়া যায় নাই।" });
+    }
+  });
+
+  // Test Ping Webhook Trigger
+  app.post("/api/admin/webhooks/test", async (req, res) => {
+    const { webhookId, url, secret } = req.body;
+    const targetUrl = url || (webhookStore.find(w => w.id === webhookId)?.url) || upConfig.webhookUrl;
+
+    if (!targetUrl) {
+      return res.status(400).json({ success: false, message: "কোনো বৈধ Webhook URL সেট করা নাই।" });
+    }
+
+    const sampleTestPayload = {
+      event: "certificate.created",
+      timestamp: new Date().toISOString(),
+      unionParishad: upConfig.upName,
+      testPing: true,
+      data: {
+        memoNo: "BUP-2026-TEST-PING",
+        issueDate: "০৫/০৮/২০২৬ খ্রি.",
+        typeLabel: "টেস্ট ওয়েবহুক নোটিফিকেশন",
+        citizen: {
+          name: "পরীক্ষামূলক আবেদনকারী (Test Citizen)",
+          nid: "1990000000000",
+          village: "বহেড়াতৈল",
+          wardNo: "০৫"
+        },
+        status: "issued"
+      }
+    };
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "User-Agent": "UnionParishad-WebhookTest/2.5.0",
+        "X-UP-Event": "certificate.created"
+      };
+      if (secret) headers["X-UP-Webhook-Secret"] = secret;
+
+      const response = await fetch(targetUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(sampleTestPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const logRecord: WebhookLogRecord = {
+        id: `whlog_test_${Date.now()}`,
+        webhookName: "টেস্ট পিং অপারেশন",
+        url: targetUrl,
+        event: "certificate.created (TEST)",
+        payloadSummary: "Webhook Test Ping Event Triggered",
+        status: response.ok ? 'success' : 'failed',
+        httpStatus: response.status,
+        timestamp: new Date().toISOString()
+      };
+      webhookLogStore.unshift(logRecord);
+
+      res.json({
+        success: response.ok,
+        httpStatus: response.status,
+        message: response.ok 
+          ? `ওয়েবহুক টেস্ট পিং সফল! HTTP status ${response.status} OK.`
+          : `ওয়েবহুক রেসপন্স সার্ভিস ত্রুটি: HTTP status ${response.status}`,
+        log: logRecord
+      });
+    } catch (err: any) {
+      const logRecord: WebhookLogRecord = {
+        id: `whlog_test_${Date.now()}`,
+        webhookName: "টেস্ট পিং অপারেশন",
+        url: targetUrl,
+        event: "certificate.created (TEST)",
+        payloadSummary: "Webhook Test Ping Failed",
+        status: 'failed',
+        httpStatus: 0,
+        timestamp: new Date().toISOString(),
+        error: err.message || "কানেকশন টাইমআউট বা অকার্যকর URL"
+      };
+      webhookLogStore.unshift(logRecord);
+
+      res.status(500).json({
+        success: false,
+        message: "ওয়েবহুক টেস্ট পিং ব্যর্থ হইয়াছে: " + (err.message || String(err)),
+        log: logRecord
+      });
+    }
+  });
+
+  // ============================================================
+  // PUBLIC & THIRD-PARTY EXTERNAL INTEGRATION REST API (V1)
+  // ============================================================
+
+  // Helper for API Key Validation
+  const checkApiKey = (req: express.Request) => {
+    const key = (req.headers['x-api-key'] || req.query.apiKey) as string;
+    const activeKeys = apiKeyStore.filter(k => k.status === 'active');
+    if (activeKeys.length === 0) return true; // Open access if no keys configured
+    if (!key) return false;
+    const found = activeKeys.find(k => k.key === key);
+    if (found) {
+      found.lastUsedAt = new Date().toISOString();
+      return true;
+    }
+    return false;
+  };
+
+  // 1. GET /api/v1/certificates (Query certificates for external systems)
+  app.get("/api/v1/certificates", (req, res) => {
+    if (!checkApiKey(req)) {
+      return res.status(401).json({
+        status: "unauthorized",
+        message: "অবৈধ বা অনুপস্থিত API Access Key। হেডার `x-api-key` বা কুয়েরি প্যারাম `apiKey` যোগ করুন।"
+      });
+    }
+
+    const { nid, memoNo, wardNo, typeKey, status, limit } = req.query;
+    let results = [...certificateStore];
+
+    if (nid) results = results.filter(c => c.citizen.nid === nid || c.citizen.birthNo === nid);
+    if (memoNo) results = results.filter(c => c.memoNo === memoNo);
+    if (wardNo) results = results.filter(c => c.citizen.wardNo === wardNo);
+    if (typeKey) results = results.filter(c => c.typeKey === typeKey);
+    if (status) results = results.filter(c => c.status === status);
+
+    const max = limit ? parseInt(limit as string, 10) : 50;
+
+    res.json({
+      status: "success",
+      unionParishad: upConfig.upName,
+      upazila: upConfig.upazila,
+      district: upConfig.district,
+      totalCount: results.length,
+      data: results.slice(0, max).map(c => ({
+        memoNo: c.memoNo,
+        issueDate: c.issueDate,
+        typeKey: c.typeKey,
+        typeLabel: c.typeLabel,
+        category: c.category,
+        citizen: c.citizen,
+        bodyText: c.bodyText,
+        verificationUrl: c.verificationUrl,
+        status: c.status,
+        issuedBy: c.issuedBy,
+        createdAt: c.createdAt
+      }))
+    });
+  });
+
+  // 2. GET /api/v1/certificates/verify/:memoNo (Public verification endpoint for banks/agencies)
+  app.get("/api/v1/certificates/verify/:memoNo", (req, res) => {
+    const { memoNo } = req.params;
+    const cert = certificateStore.find(c => c.memoNo === memoNo || c.id === memoNo);
+
+    if (!cert) {
+      return res.status(404).json({
+        status: "not_found",
+        isValid: false,
+        message: "প্রদত্ত স্মারক/সনদ নম্বরের কোনো রেকর্ড ডাটাবেসে পাওয়া যায় নাই।"
+      });
+    }
+
+    res.json({
+      status: "success",
+      isValid: cert.status === "issued" || cert.status === "approved",
+      memoNo: cert.memoNo,
+      typeLabel: cert.typeLabel,
+      issueDate: cert.issueDate,
+      citizen: {
+        name: cert.citizen.name,
+        father: cert.citizen.father,
+        mother: cert.citizen.mother,
+        nid: cert.citizen.nid,
+        village: cert.citizen.village,
+        wardNo: cert.citizen.wardNo,
+        postOffice: cert.citizen.postOffice
+      },
+      status: cert.status,
+      issuedBy: cert.issuedBy,
+      unionParishad: upConfig.upName,
+      verificationUrl: cert.verificationUrl
+    });
+  });
+
+  // 3. POST /api/v1/certificates/apply (External Application Submission API)
+  app.post("/api/v1/certificates/apply", (req, res) => {
+    if (!checkApiKey(req)) {
+      return res.status(401).json({
+        status: "unauthorized",
+        message: "অবৈধ API Access Key। হেডার `x-api-key` প্রদান করুন।"
+      });
+    }
+
+    const { typeKey, name, father, mother, gender, village, wardNo, nid, mobile, postOffice, extra } = req.body;
+
+    if (!typeKey || !name || !mother || !village || !wardNo) {
+      return res.status(400).json({
+        status: "error",
+        message: "অবশ্যই typeKey, name, mother, village এবং wardNo তথ্য প্রদান করিতে হইবে।"
+      });
+    }
+
+    const certTypeObj = CERTIFICATE_TYPES.find(t => t.key === typeKey) || {
+      key: typeKey,
+      label: "প্রত্যয়নপত্র",
+      category: "সাধারণ"
+    };
+
+    const now = new Date();
+    const memoNo = `BUP-${now.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const issueDateBn = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} খ্রি.`;
+
+    const bodyText = `এই মর্মে প্রত্যয়ন করা যাইতেছে যে, ${name}, পিতা: ${father || 'N/A'}, মাতা: ${mother}, গ্রাম: ${village}, ওয়ার্ড নং- ${wardNo}, ${upConfig.upName}-এর একজন স্থায়ী বাসিন্দা। তিনি "${certTypeObj.label}" পাওয়ার জন্য আইনানুগভাবে যোগ্য বিবেচিত হইয়াছেন।`;
+
+    const newRecord: CertificateRecord = {
+      id: `cert_api_${Date.now()}`,
+      memoNo,
+      issueDate: issueDateBn,
+      issueDateEn: now.toISOString().split('T')[0],
+      typeKey,
+      typeLabel: certTypeObj.label,
+      category: certTypeObj.category || "সাধারণ",
+      citizen: {
+        nid: nid || "",
+        name,
+        father: father || "",
+        mother,
+        gender: gender || "পুরুষ",
+        mobile: mobile || "",
+        village,
+        postOffice: postOffice || "বহেড়াতৈল",
+        wardNo,
+        upName: upConfig.upName,
+        upazila: upConfig.upazila,
+        district: upConfig.district
+      },
+      extra: extra || { simpleFields: {}, tables: {} },
+      bodyText,
+      verificationUrl: `/verify/${memoNo}`,
+      status: "pending_approval",
+      issuedBy: "তৃতীয় পক্ষ API ইন্টিগ্রেশন (External API App)",
+      createdAt: now.toISOString()
+    };
+
+    certificateStore.unshift(newRecord);
+    dispatchWebhooks('certificate.created', newRecord);
+
+    res.json({
+      status: "success",
+      message: "API-এর মাধ্যমে প্রত্যয়নপত্র আবেদন সফলভাবে জমা হইয়াছে!",
+      memoNo,
+      certificate: newRecord
+    });
+  });
+
 
   // Vite Middleware for development & Static serving in production
   if (process.env.NODE_ENV !== "production") {

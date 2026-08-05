@@ -11,7 +11,7 @@ import {
   Building2 
 } from 'lucide-react';
 import { fetchCertificatesFromFirebase } from '../firebase';
-import { CERTIFICATE_CATEGORIES } from '../data/certificateTypes';
+import { CERTIFICATE_CATEGORIES, CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { WARDS } from '../data/villages';
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { CertificateView } from './CertificateView';
@@ -25,6 +25,7 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
   const [loading, setLoading] = useState(true);
   const [selectedWard, setSelectedWard] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('সব ধরন');
+  const [selectedCertType, setSelectedCertType] = useState('সকল সনদের ধরন');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCert, setSelectedCert] = useState<CertificateRecord | null>(null);
 
@@ -55,10 +56,14 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
       if (selectedCategory && selectedCategory !== 'সব ধরন') {
         merged = merged.filter(c => c.category === selectedCategory || c.typeLabel === selectedCategory);
       }
+      if (selectedCertType && selectedCertType !== 'সকল সনদের ধরন') {
+        merged = merged.filter(c => c.typeLabel === selectedCertType);
+      }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         merged = merged.filter(c => 
           c.memoNo.toLowerCase().includes(q) ||
+          (c.typeLabel && c.typeLabel.toLowerCase().includes(q)) ||
           (c.citizen && c.citizen.name.toLowerCase().includes(q)) ||
           (c.citizen && c.citizen.nid && c.citizen.nid.includes(q)) ||
           (c.citizen && c.citizen.village && c.citizen.village.toLowerCase().includes(q))
@@ -75,7 +80,7 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
 
   useEffect(() => {
     fetchLogs();
-  }, [selectedWard, selectedCategory, searchQuery]);
+  }, [selectedWard, selectedCategory, selectedCertType, searchQuery]);
 
   const handleExportCsv = () => {
     window.open('/api/admin/export', '_blank');
@@ -129,7 +134,7 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
       </div>
 
       {/* Filter Control Bar */}
-      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Search Input */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -168,6 +173,22 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
             {CERTIFICATE_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Specific Certificate Type Filter (40+ types) */}
+        <div>
+          <select
+            value={selectedCertType}
+            onChange={(e) => setSelectedCertType(e.target.value)}
+            className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:border-emerald-600 focus:outline-none"
+          >
+            <option value="সকল সনদের ধরন">সকল সনদের ধরন (৪০+)</option>
+            {CERTIFICATE_TYPES.map((type) => (
+              <option key={type.key} value={type.label}>
+                {type.label}
               </option>
             ))}
           </select>
