@@ -171,6 +171,14 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
               <Layers className="w-5 h-5 text-amber-300" />
               <span>উন্নয়ন হিটম্যাপ</span>
             </button>
+
+            <button
+              onClick={() => onNavigateTab('members')}
+              className="px-5 py-3 bg-emerald-950 hover:bg-emerald-900 text-emerald-100 font-bold text-sm rounded-xl border border-emerald-700 backdrop-blur transition flex items-center gap-2 cursor-pointer"
+            >
+              <Users className="w-5 h-5 text-emerald-300" />
+              <span>পরিষদ সদস্য ও কর্মকর্তা</span>
+            </button>
           </div>
         </div>
       </div>

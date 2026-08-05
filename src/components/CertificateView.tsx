@@ -18,6 +18,7 @@ import {
   Check
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
+import { formatBanglaDate, convertEnglishDateToBanglaFormatted } from '../lib/utils';
 
 interface CertificateViewProps {
   certificate: CertificateRecord;
@@ -31,6 +32,9 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const [headerStyle, setHeaderStyle] = useState<'tri-column' | 'classic' | 'centered'>(config.templateHeaderStyle || 'tri-column');
   const [borderStyle, setBorderStyle] = useState<'double-green-red' | 'double-green' | 'single-green' | 'none'>(config.borderStyle || 'double-green-red');
   const [blankSealSize, setBlankSealSize] = useState<number>(config.blankSealSize ?? 96);
+  const [dateFormatStyle, setDateFormatStyle] = useState<'numeric' | 'full' | 'long' | 'banglaSan' | 'both'>('full');
+  const [showDigitalSig, setShowDigitalSig] = useState<boolean>(config.enableDigitalSignature !== false);
+  const [showSecretarySig, setShowSecretarySig] = useState<boolean>(config.showSecretarySignature !== false);
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editableBodyText, setEditableBodyText] = useState(certificate.bodyText);
@@ -207,6 +211,45 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 className="w-full accent-amber-400 cursor-pointer"
               />
             </div>
+
+            {/* Date Format Style */}
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">তারিখ ফরম্যাট (Bangla Date):</label>
+              <select
+                value={dateFormatStyle}
+                onChange={(e) => setDateFormatStyle(e.target.value as any)}
+                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-white rounded focus:border-amber-400 font-semibold"
+              >
+                <option value="full">১. পূর্ণাঙ্গ বাংলা (০৫ আগস্ট, ২০২৬ খ্রি.)</option>
+                <option value="numeric">২. নিউমেরিক সংখ্যা (০৫/০৮/২০২৬ খ্রি.)</option>
+                <option value="long">৩. বিস্তারিত অর্ডিনাল (৫ই আগস্ট, ২০২৬ খ্রিস্টাব্দ)</option>
+                <option value="banglaSan">৪. স্থানীয় বাংলা সন (২০ শ্রাবণ, ১৪৩৩ বঙ্গাব্দ)</option>
+                <option value="both">৫. যৌথ উভয় তারিখ (ইংরেজি + বঙ্গাব্দ)</option>
+              </select>
+            </div>
+
+            {/* Signature Display Toggles */}
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-4 text-xs">
+              <label className="text-slate-300 font-semibold cursor-pointer flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showDigitalSig}
+                  onChange={(e) => setShowDigitalSig(e.target.checked)}
+                  className="w-4 h-4 accent-amber-400 cursor-pointer"
+                />
+                <span>ই-স্বাক্ষর (Digital Signature) দেখান</span>
+              </label>
+
+              <label className="text-slate-300 font-semibold cursor-pointer flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showSecretarySig}
+                  onChange={(e) => setShowSecretarySig(e.target.checked)}
+                  className="w-4 h-4 accent-amber-400 cursor-pointer"
+                />
+                <span>সচিবের স্বাক্ষর দেখান</span>
+              </label>
+            </div>
           </div>
         </div>
       )}
@@ -322,7 +365,9 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
               </div>
               <div>
                 <span>তারিখ: </span>
-                <span className="text-emerald-900">{certificate.issueDate}</span>
+                <span className="text-emerald-900 font-bold">
+                  {formatBanglaDate(certificate.issueDateEn || certificate.issueDate, dateFormatStyle)}
+                </span>
               </div>
             </div>
 
@@ -425,31 +470,58 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
           <div className="mt-16 pt-8 border-t border-slate-300">
             <div className="grid grid-cols-12 items-end justify-between gap-4">
               
-              {/* Left: Dynamic QR Code linked directly to Certificate Memo Verification */}
-              <div className="col-span-4 flex flex-col items-start justify-end space-y-1">
-                <a
-                  href={realVerifyUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="অনলাইন সত্যতা যাচাই করতে ক্লিক বা স্ক্যান করুন"
-                  className="block group"
-                >
-                  <img 
-                    src={qrImageUrl} 
-                    alt="QR Verification Link" 
-                    className="w-24 h-24 border-2 border-emerald-900 p-1 rounded-lg bg-white shadow-sm group-hover:scale-105 transition"
-                  />
-                </a>
-                <p className="text-[10px] font-bold text-emerald-950 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-700 inline" />
-                  <span>ডিজিটাল সত্যতা যাচাইকরণের QR</span>
-                </p>
-                <p className="text-[9px] font-mono text-slate-600 font-bold">
-                  {certificate.memoNo}
-                </p>
+              {/* Left Column: Secretary Signature Block & QR Code */}
+              <div className="col-span-4 flex flex-col items-start justify-end space-y-3">
+                {showSecretarySig && (
+                  <div className="space-y-0.5 text-left w-full">
+                    <div className="min-h-[48px] flex items-end justify-start">
+                      {showDigitalSig && config.secretarySignatureUrl ? (
+                        <img 
+                          src={config.secretarySignatureUrl} 
+                          alt="Secretary Digital Signature" 
+                          className="max-h-14 max-w-[150px] object-contain filter contrast-125 mb-1"
+                        />
+                      ) : (
+                        <span className="font-serif italic text-slate-800 font-bold text-xs border-b border-slate-700 px-3 mb-1">
+                          {config.secretaryName}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-bold text-slate-950">{config.secretaryName}</p>
+                    <p className="text-[11px] font-semibold text-emerald-900">{config.secretaryTitle}</p>
+                    <p className="text-[10px] text-slate-600 font-medium">{config.upName}</p>
+                  </div>
+                )}
+
+                {/* QR Code linked directly to Certificate Verification */}
+                <div className="flex items-center gap-2 pt-1">
+                  <a
+                    href={realVerifyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="অনলাইন সত্যতা যাচাই করতে ক্লিক বা স্ক্যান করুন"
+                    className="block group shrink-0"
+                  >
+                    <img 
+                      src={qrImageUrl} 
+                      alt="QR Verification Link" 
+                      className="w-20 h-20 border-2 border-emerald-900 p-1 rounded-lg bg-white shadow-sm group-hover:scale-105 transition"
+                    />
+                  </a>
+                  <div>
+                    <p className="text-[10px] font-bold text-emerald-950 flex items-center gap-0.5">
+                      <ShieldCheck className="w-3 h-3 text-emerald-700 inline shrink-0" />
+                      <span>ডিজিটাল সত্যতা QR</span>
+                    </p>
+                    <p className="text-[9px] font-mono text-slate-700 font-bold">
+                      {certificate.memoNo}
+                    </p>
+                    <p className="text-[8px] text-slate-500 font-semibold">স্ক্যান করে অনলাইনে যাচাই করুন</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Center: Blank Round Seal Area for Manual Rubber Stamp */}
+              {/* Center Column: Blank Round Seal Area for Manual Rubber Stamp */}
               <div className="col-span-4 text-center flex flex-col items-center justify-end">
                 {blankSealSize > 0 && (
                   <div 
@@ -466,12 +538,20 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 </p>
               </div>
 
-              {/* Right: Chairman Signature Block */}
+              {/* Right Column: Chairman Digital Signature Block */}
               <div className="col-span-4 text-right space-y-1">
-                <div className="h-12 flex items-end justify-end">
-                  <span className="font-serif italic text-emerald-950 font-extrabold text-sm border-b-2 border-emerald-950 px-4">
-                    {config.chairmanName}
-                  </span>
+                <div className="min-h-[56px] flex items-end justify-end">
+                  {showDigitalSig && config.chairmanSignatureUrl ? (
+                    <img 
+                      src={config.chairmanSignatureUrl} 
+                      alt="Chairman Digital Signature" 
+                      className="max-h-16 max-w-[170px] object-contain filter contrast-125 mb-1"
+                    />
+                  ) : (
+                    <span className="font-serif italic text-emerald-950 font-extrabold text-sm border-b-2 border-emerald-950 px-4 mb-1">
+                      {config.chairmanName}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs font-bold text-slate-950">{config.chairmanName}</p>
                 <p className="text-[11px] font-semibold text-emerald-900">{config.chairmanTitle}</p>

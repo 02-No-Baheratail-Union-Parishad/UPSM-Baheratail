@@ -1482,7 +1482,7 @@ ${upConfig.defaultPromptPrefix}
         wardNo: cert.citizen.wardNo,
         postOffice: cert.citizen.postOffice
       },
-      status: cert.status,
+      certStatus: cert.status,
       issuedBy: cert.issuedBy,
       unionParishad: upConfig.upName,
       verificationUrl: cert.verificationUrl

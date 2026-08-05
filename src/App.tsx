@@ -10,6 +10,7 @@ import { CitizenMasterRegister } from './components/CitizenMasterRegister';
 import { DeveloperProfile } from './components/DeveloperProfile';
 import { DevelopmentHeatmap } from './components/DevelopmentHeatmap';
 import { PendingApprovals } from './components/PendingApprovals';
+import { CouncilMembers } from './components/CouncilMembers';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
@@ -109,6 +110,10 @@ export default function App() {
 
         {activeTab === 'citizens' && (
           <CitizenMasterRegister config={config} onApplyForCitizen={handleApplyForCitizen} />
+        )}
+
+        {activeTab === 'members' && (
+          <CouncilMembers config={config} onUpdateConfig={setConfig} />
         )}
 
         {activeTab === 'developer' && (

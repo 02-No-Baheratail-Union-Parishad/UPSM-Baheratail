@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { searchCertificateInFirebase } from '../firebase';
 import { CertificateRecord, UnionParishadConfig } from '../types';
+import { formatBanglaDate } from '../lib/utils';
 import { CertificateView } from './CertificateView';
 
 interface VerificationPortalProps {
@@ -144,7 +145,9 @@ export const VerificationPortal: React.FC<VerificationPortalProps> = ({ config }
                 </div>
 
                 <div className="text-right text-xs text-slate-600">
-                  <p className="font-semibold text-slate-900">ইস্যুর তারিখ: {verificationData.certificate.issueDate}</p>
+                  <p className="font-bold text-emerald-950">
+                    ইস্যুর তারিখ: {formatBanglaDate(verificationData.certificate.issueDateEn || verificationData.certificate.issueDate, 'full')}
+                  </p>
                   <p className="text-slate-500">অনুমোদনকারী: {verificationData.certificate.issuedBy}</p>
                 </div>
               </div>

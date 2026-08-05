@@ -76,6 +76,17 @@ export interface CertificateRecord {
   paymentStatus?: 'paid' | 'unpaid' | 'waived';
 }
 
+export interface CouncilMember {
+  id: string;
+  category: 'chairman' | 'reserved_female' | 'general_member' | 'officer' | 'udc' | 'dafadar' | 'gram_police';
+  name: string;
+  designation: string;
+  mobile: string;
+  wardNo?: string;
+  photoUrl?: string;
+  isAutoSynced?: boolean;
+}
+
 export interface UnionParishadConfig {
   upName: string;
   upNameEn: string;
@@ -87,9 +98,13 @@ export interface UnionParishadConfig {
   chairmanName: string;
   chairmanTitle: string;
   chairmanPhone?: string;
+  chairmanSignatureUrl?: string;
   secretaryName: string;
   secretaryTitle: string;
   secretaryPhone?: string;
+  secretarySignatureUrl?: string;
+  enableDigitalSignature?: boolean;
+  showSecretarySignature?: boolean;
   logoUrl: string;
   sealText: string;
   defaultPromptPrefix: string;
@@ -137,6 +152,7 @@ export interface UnionParishadConfig {
   webhookUrl?: string;
   webhookSecret?: string;
   lastBackupDate?: string;
+  councilMembers?: CouncilMember[];
   pluginsConfig?: {
     smsNotification?: boolean;
     gdriveAutoSync?: boolean;

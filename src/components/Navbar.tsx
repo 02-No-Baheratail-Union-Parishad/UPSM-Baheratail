@@ -85,6 +85,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
     { id: 'create', label: 'নতুন প্রত্যয়নপত্র', icon: FileText, badge: '৪০+ ধরন' },
     { id: 'logs', label: 'সনদ পেজ ও রেকর্ড', icon: FileText },
     { id: 'citizens', label: 'নাগরিক একাউন্ট', icon: UserCheck, badge: 'ওয়ার্ড ফিল্টার' },
+    { id: 'members', label: 'পরিষদ সদস্য ও কর্মকর্তা', icon: Users, badge: '২৭ জন' },
     { id: 'verify', label: 'সনদ অনলাইন যাচাই', icon: ShieldCheck },
     { id: 'developer', label: 'ডেভেলপার ও ব্যাকআপ', icon: Code2, badge: 'MCP Sync' },
     { id: 'admin', label: 'অ্যাডমিন সেটআপ', icon: Settings }

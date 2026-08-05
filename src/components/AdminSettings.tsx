@@ -38,8 +38,9 @@ import {
   Terminal
 } from 'lucide-react';
 import { saveConfigToFirebase, batchRestoreCertificatesToFirebase } from '../firebase';
-import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord } from '../types';
+import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember } from '../types';
 import { CERTIFICATE_TYPES } from '../data/certificateTypes';
+import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
 import { AppsScriptModal } from './AppsScriptModal';
 import { PendingApprovals } from './PendingApprovals';
 
@@ -733,6 +734,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
         >
           <Radio className="w-4 h-4 text-amber-300 animate-pulse" />
           <span>৯. API ও ওয়েবহুক (API & Webhooks)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('council_members')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === 'council_members'
+              ? 'bg-emerald-900 text-amber-300 shadow-md ring-2 ring-amber-400/50'
+              : 'text-slate-700 hover:bg-slate-300/80'
+          }`}
+        >
+          <Users className="w-4 h-4 text-amber-300" />
+          <span>১০. পরিষদ সদস্য ও কর্মকর্তা ব্যবস্থাপনা (২৭ জন)</span>
         </button>
       </div>
 
@@ -1495,7 +1509,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
               </div>
             </div>
 
-// Chairman & Secretary Details
+            {/* Chairman & Secretary Details */}
             <div className="pt-2 border-t border-slate-200">
               <p className="font-bold text-xs text-slate-800 mb-3">চেয়ারম্যান ও প্রশাসনিক কর্মকর্তার স্বাক্ষর ও মোবাইল তথ্য:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1527,6 +1541,76 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                       onChange={(e) => setFormData({ ...formData, chairmanPhone: e.target.value })}
                       placeholder="যেমন: ০১৭৯৯-১১২২ ৩৩"
                       className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:border-emerald-600 focus:outline-none font-mono font-bold text-emerald-900"
+                    />
+                  </div>
+
+                  {/* Chairman Digital Signature Upload */}
+                  <div className="pt-2 border-t border-emerald-200/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold text-emerald-950 flex items-center gap-1">
+                        <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>চেয়ারম্যানের ডিজিটাল স্বাক্ষর (Digital Signature)</span>
+                      </label>
+                      {formData.chairmanSignatureUrl && (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-700" />
+                          <span>সংযুক্ত</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {formData.chairmanSignatureUrl ? (
+                      <div className="relative group bg-white border border-slate-300 rounded-lg p-2 flex items-center justify-between gap-3 shadow-sm">
+                        <div className="h-12 max-w-[180px] flex items-center justify-center overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:8px_8px] rounded p-1">
+                          <img
+                            src={formData.chairmanSignatureUrl}
+                            alt="Chairman Signature"
+                            className="max-h-full max-w-full object-contain filter contrast-125"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, chairmanSignatureUrl: '' })}
+                          className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] font-bold transition flex items-center gap-1 border border-red-200 shrink-0 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>রিমুভ</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-white border-2 border-dashed border-emerald-300 rounded-lg text-center space-y-1">
+                        <p className="text-[10px] text-slate-500 font-medium">স্বচ্ছ ব্যাকগ্রাউন্ডের (PNG/JPG) ই-স্বাক্ষর ফাইল আপলোড করুন</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-xs rounded-lg cursor-pointer transition shadow-sm flex items-center justify-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>স্বাক্ষর ফাইল আপলোড করুন</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setFormData({ ...formData, chairmanSignatureUrl: reader.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={formData.chairmanSignatureUrl || ''}
+                      onChange={(e) => setFormData({ ...formData, chairmanSignatureUrl: e.target.value })}
+                      placeholder="অথবা ইমেজের URL লিংক দিন"
+                      className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono focus:border-emerald-600 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1561,6 +1645,105 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                       className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:border-emerald-600 focus:outline-none font-mono font-bold text-emerald-900"
                     />
                   </div>
+
+                  {/* Secretary Digital Signature Upload */}
+                  <div className="pt-2 border-t border-emerald-200/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold text-emerald-950 flex items-center gap-1">
+                        <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>সচিবের ডিজিটাল স্বাক্ষর (Digital Signature)</span>
+                      </label>
+                      {formData.secretarySignatureUrl && (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-700" />
+                          <span>সংযুক্ত</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {formData.secretarySignatureUrl ? (
+                      <div className="relative group bg-white border border-slate-300 rounded-lg p-2 flex items-center justify-between gap-3 shadow-sm">
+                        <div className="h-12 max-w-[180px] flex items-center justify-center overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:8px_8px] rounded p-1">
+                          <img
+                            src={formData.secretarySignatureUrl}
+                            alt="Secretary Signature"
+                            className="max-h-full max-w-full object-contain filter contrast-125"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, secretarySignatureUrl: '' })}
+                          className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] font-bold transition flex items-center gap-1 border border-red-200 shrink-0 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>রিমুভ</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-white border-2 border-dashed border-emerald-300 rounded-lg text-center space-y-1">
+                        <p className="text-[10px] text-slate-500 font-medium">স্বচ্ছ ব্যাকগ্রাউন্ডের (PNG/JPG) ই-স্বাক্ষর ফাইল আপলোড করুন</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-xs rounded-lg cursor-pointer transition shadow-sm flex items-center justify-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>স্বাক্ষর ফাইল আপলোড করুন</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setFormData({ ...formData, secretarySignatureUrl: reader.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={formData.secretarySignatureUrl || ''}
+                      onChange={(e) => setFormData({ ...formData, secretarySignatureUrl: e.target.value })}
+                      placeholder="অথবা ইমেজের URL লিংক দিন"
+                      className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Digital Signature Master Switches */}
+              <div className="mt-4 p-3.5 bg-emerald-50/80 rounded-xl border border-emerald-200 space-y-2">
+                <p className="font-bold text-xs text-emerald-950 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                  <span>সনদে ডিজিটাল স্বাক্ষর প্রদর্শন নিয়ন্ত্রণ:</span>
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer bg-white p-2.5 rounded-lg border border-emerald-200 hover:border-emerald-400 transition shadow-xs">
+                    <input
+                      type="checkbox"
+                      checked={formData.enableDigitalSignature !== false}
+                      onChange={(e) => setFormData({ ...formData, enableDigitalSignature: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span className="font-bold text-slate-800">ইস্যুকৃত সনদে ডিজিটাল স্বাক্ষর প্রদর্শন সক্রিয় রাখুন</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-white p-2.5 rounded-lg border border-emerald-200 hover:border-emerald-400 transition shadow-xs">
+                    <input
+                      type="checkbox"
+                      checked={formData.showSecretarySignature !== false}
+                      onChange={(e) => setFormData({ ...formData, showSecretarySignature: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span className="font-bold text-slate-800">সনদের বাম পার্শ্বে সচিবের স্বাক্ষর ব্লক প্রদর্শন করুন</span>
+                  </label>
                 </div>
               </div>
             </div>
