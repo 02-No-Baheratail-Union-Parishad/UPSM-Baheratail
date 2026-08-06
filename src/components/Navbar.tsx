@@ -10,7 +10,8 @@ import {
   Code2,
   UserCheck,
   Layers,
-  Bell
+  Bell,
+  BarChart2
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
@@ -74,6 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
 
   const navItems = [
     { id: 'home', label: 'ড্যাশবোর্ড', icon: Home },
+    { id: 'analytics', label: '৩০ দিনের ট্রেন্ড', icon: BarChart2, badge: 'Recharts' },
     { 
       id: 'pending', 
       label: 'চেয়ারম্যান অনুমোদন', 

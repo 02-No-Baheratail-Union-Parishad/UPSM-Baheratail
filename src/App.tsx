@@ -11,6 +11,7 @@ import { DeveloperProfile } from './components/DeveloperProfile';
 import { DevelopmentHeatmap } from './components/DevelopmentHeatmap';
 import { PendingApprovals } from './components/PendingApprovals';
 import { CouncilMembers } from './components/CouncilMembers';
+import { CertificateTrendDashboard } from './components/CertificateTrendDashboard';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
@@ -62,6 +63,10 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 my-2">
         {activeTab === 'home' && (
           <HomePanel config={config} onNavigateTab={handleNavigateTab} />
+        )}
+
+        {activeTab === 'analytics' && (
+          <CertificateTrendDashboard onNavigateTab={handleNavigateTab} />
         )}
 
         {activeTab === 'pending' && (

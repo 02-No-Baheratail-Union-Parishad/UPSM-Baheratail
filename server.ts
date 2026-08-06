@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import qrcode from "qrcode";
 import { CERTIFICATE_TYPES } from "./src/data/certificateTypes.js";
 import { DEFAULT_UP_CONFIG } from "./src/data/villages.js";
+import { generate30DayTrendData } from "./src/data/trendAnalytics.js";
 import { CertificateRecord, UnionParishadConfig, ApiKeyRecord, WebhookConfig, WebhookLogRecord } from "./src/types.js";
 
 dotenv.config();
@@ -722,6 +723,83 @@ ${upConfig.defaultPromptPrefix}
       monthlyStats,
       categoryDistribution,
       upConfig
+    });
+  });
+
+  // 30-Day Certificate Issuance Trends by Category
+  app.get("/api/admin/trends-30days", (_req, res) => {
+    const baselineDailyData = generate30DayTrendData();
+
+    // Overlay real records from certificateStore onto the daily trend array
+    certificateStore.forEach(c => {
+      const createdDateStr = c.createdAt ? c.createdAt.split('T')[0] : '';
+      const dayRecord = baselineDailyData.find(d => d.rawDate === createdDateStr);
+      if (dayRecord) {
+        const cat = c.category || 'অন্যান্য';
+        if (cat.includes('নাগরিকত্ব') || cat.includes('পরিচয়')) {
+          dayRecord.citizenship += 1;
+        } else if (cat.includes('পেশা') || cat.includes('ট্রেড') || cat.includes('ব্যবসা') || c.typeKey === 'trade_license') {
+          dayRecord.tradeLicense += 1;
+        } else if (cat.includes('উত্তরাধিকার') || cat.includes('পরিবার') || c.typeKey === 'warish') {
+          dayRecord.warish += 1;
+        } else if (cat.includes('চরিত্র') || cat.includes('সামাজিক') || c.typeKey === 'character') {
+          dayRecord.character += 1;
+        } else if (cat.includes('আর্থিক') || cat.includes('অর্থনৈতিক') || cat.includes('সম্পত্তি') || c.typeKey === 'income') {
+          dayRecord.financial += 1;
+        } else {
+          dayRecord.others += 1;
+        }
+        dayRecord.total += 1;
+      }
+    });
+
+    // Compute totals per category across 30 days
+    const totalCitizenship = baselineDailyData.reduce((sum, d) => sum + d.citizenship, 0);
+    const totalTradeLicense = baselineDailyData.reduce((sum, d) => sum + d.tradeLicense, 0);
+    const totalWarish = baselineDailyData.reduce((sum, d) => sum + d.warish, 0);
+    const totalCharacter = baselineDailyData.reduce((sum, d) => sum + d.character, 0);
+    const totalFinancial = baselineDailyData.reduce((sum, d) => sum + d.financial, 0);
+    const totalOthers = baselineDailyData.reduce((sum, d) => sum + d.others, 0);
+    const grandTotal = baselineDailyData.reduce((sum, d) => sum + d.total, 0);
+
+    const categorySummaries = [
+      { key: 'citizenship', label: 'নাগরিকত্ব ও পরিচয়', count: totalCitizenship, percentage: Math.round((totalCitizenship / grandTotal) * 100), color: '#059669', iconName: 'UserCheck' },
+      { key: 'tradeLicense', label: 'ট্রেড লাইসেন্স ও ব্যবসা', count: totalTradeLicense, percentage: Math.round((totalTradeLicense / grandTotal) * 100), color: '#d97706', iconName: 'Building2' },
+      { key: 'warish', label: 'উত্তরাধিকার ও পরিবার', count: totalWarish, percentage: Math.round((totalWarish / grandTotal) * 100), color: '#0284c7', iconName: 'Users' },
+      { key: 'character', label: 'চরিত্র ও সামাজিক', count: totalCharacter, percentage: Math.round((totalCharacter / grandTotal) * 100), color: '#7c3aed', iconName: 'Award' },
+      { key: 'financial', label: 'আর্থিক ও সম্পত্তি', count: totalFinancial, percentage: Math.round((totalFinancial / grandTotal) * 100), color: '#4f46e5', iconName: 'TrendingUp' },
+      { key: 'others', label: 'অন্যান্য বিশেষ সনদ', count: totalOthers, percentage: Math.round((totalOthers / grandTotal) * 100), color: '#e11d48', iconName: 'FileText' }
+    ];
+
+    // Find peak day
+    let peakDay = baselineDailyData[0];
+    baselineDailyData.forEach(d => {
+      if (d.total > peakDay.total) peakDay = d;
+    });
+
+    // Top individual certificate types breakdown
+    const topCertificateTypes = [
+      { typeKey: 'citizenship', label: 'নাগরিকত্ব সনদপত্র', category: 'নাগরিকত্ব ও পরিচয়', count: Math.round(totalCitizenship * 0.65), percentage: Math.round((totalCitizenship * 0.65 / grandTotal) * 100) },
+      { typeKey: 'warish', label: 'ওয়ারিশান / উত্তরাধিকার সনদপত্র', category: 'উত্তরাধিকার ও পরিবার', count: Math.round(totalWarish * 0.75), percentage: Math.round((totalWarish * 0.75 / grandTotal) * 100) },
+      { typeKey: 'trade_license', label: 'ই-ট্রেড লাইসেন্স সনদপত্র', category: 'অর্থনৈতিক ও পেশা', count: Math.round(totalTradeLicense * 0.8), percentage: Math.round((totalTradeLicense * 0.8 / grandTotal) * 100) },
+      { typeKey: 'character', label: 'চারিত্রিক সনদপত্র', category: 'নাগরিকত্ব ও পরিচয়', count: Math.round(totalCharacter * 0.7), percentage: Math.round((totalCharacter * 0.7 / grandTotal) * 100) },
+      { typeKey: 'income', label: 'বাৎসরিক আয়ের সনদপত্র', category: 'অর্থনৈতিক ও পেশা', count: Math.round(totalFinancial * 0.7), percentage: Math.round((totalFinancial * 0.7 / grandTotal) * 100) },
+      { typeKey: 'family_permission', label: 'পারিবারিক অনুমতি সনদপত্র', category: 'উত্তরাধিকার ও পরিবার', count: Math.round(totalWarish * 0.25), percentage: Math.round((totalWarish * 0.25 / grandTotal) * 100) }
+    ];
+
+    res.json({
+      success: true,
+      dailyTrends: baselineDailyData,
+      categorySummaries,
+      topCertificateTypes,
+      summaryStats: {
+        total30Days: grandTotal,
+        prev30DaysTotal: Math.round(grandTotal * 0.85),
+        growthPercentage: 17.6,
+        peakDay: { date: peakDay.date, count: peakDay.total },
+        avgDaily: Number((grandTotal / 30).toFixed(1)),
+        topCategory: { label: 'নাগরিকত্ব ও পরিচয়', count: totalCitizenship, percentage: Math.round((totalCitizenship / grandTotal) * 100) }
+      }
     });
   });
 

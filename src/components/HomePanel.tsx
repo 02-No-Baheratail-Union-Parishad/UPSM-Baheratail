@@ -34,6 +34,7 @@ import {
 } from 'recharts';
 import { CERTIFICATE_TYPES, CERTIFICATE_CATEGORIES } from '../data/certificateTypes';
 import { UnionParishadConfig } from '../types';
+import { CertificateTrendDashboard } from './CertificateTrendDashboard';
 
 interface HomePanelProps {
   config: UnionParishadConfig;
@@ -166,6 +167,14 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
             </button>
 
             <button
+              onClick={() => onNavigateTab('analytics')}
+              className="px-5 py-3 bg-teal-800 hover:bg-teal-700 text-amber-300 font-bold text-sm rounded-xl border border-teal-600 backdrop-blur transition flex items-center gap-2 cursor-pointer"
+            >
+              <BarChart2 className="w-5 h-5 text-amber-300" />
+              <span>৩০ দিনের এনালাইটিক্স</span>
+            </button>
+
+            <button
               onClick={() => onNavigateTab('heatmap')}
               className="px-5 py-3 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-sm rounded-xl border border-emerald-600 backdrop-blur transition flex items-center gap-2 cursor-pointer"
             >
@@ -246,6 +255,9 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
           </div>
         </div>
       </div>
+
+      {/* 30-Day Certificate Issuance Trends Dashboard (Recharts) */}
+      <CertificateTrendDashboard onNavigateTab={onNavigateTab} />
 
       {/* Analytics Visualization Section using Recharts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
