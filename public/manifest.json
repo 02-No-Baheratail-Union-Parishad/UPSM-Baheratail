@@ -1,0 +1,32 @@
+{
+  "name": "০২নং বহেড়াতৈল ইউনিয়ন পরিষদ - ডিজিটাল প্রত্যয়ন অটোমেশন",
+  "short_name": "বহেড়াতৈল ইউপি",
+  "description": "০২নং বহেড়াতৈল ইউনিয়ন পরিষদ ডিজিটাল প্রত্যয়নপত্র, ওয়ারিশান সনদ ও নাগরিক সেবা পোর্টাল",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["government", "productivity", "utilities"]
+}

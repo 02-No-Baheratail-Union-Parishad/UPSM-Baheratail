@@ -19,7 +19,7 @@ import { AiCitizenAssistant } from './components/AiCitizenAssistant';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
-import { Sparkles, Bot, Mic, MessageSquare } from 'lucide-react';
+import { Sparkles, Bot, Mic, MessageSquare, WifiOff, HardDrive } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
@@ -27,6 +27,21 @@ export default function App() {
   const [generatedCert, setGeneratedCert] = useState<CertificateRecord | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState<boolean>(false);
+  const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
+
+  // Monitor Network Connectivity for PWA Offline Mode
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Fetch initial config from server & Firebase Firestore
   useEffect(() => {
@@ -81,6 +96,21 @@ export default function App() {
           config={config}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
+
+        {/* Offline PWA Service Worker Status Banner */}
+        {isOffline && (
+          <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-slate-950 px-4 py-2.5 shadow-md flex items-center justify-between text-xs font-bold animate-fade-in border-b border-amber-400">
+            <div className="flex items-center gap-2.5 max-w-4xl mx-auto">
+              <div className="p-1.5 bg-slate-950 text-amber-400 rounded-lg shrink-0">
+                <WifiOff className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <span className="font-black underline mr-1">অফলাইন মোড সক্রিয় (Service Worker Local Cache):</span>
+                <span>আপনি বর্তমানে ইন্টারনেট সংযোগ ছাড়াই ডাউনলোডেড সনদপত্র, কিউআর কোড এবং পূর্বে সংরক্ষিত ড্রাফট ফরম ক্যাশ হইতে প্রদর্শন করিতে পারিতেছেন।</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Body Canvas */}
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 my-2">
