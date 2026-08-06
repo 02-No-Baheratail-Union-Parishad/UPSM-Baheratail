@@ -25,6 +25,7 @@ export interface CertificateTypeConfig {
 export interface CitizenData {
   nid?: string;
   birthNo?: string;
+  holdingNo?: string;
   name: string;
   father: string;
   spouseName?: string;
@@ -199,6 +200,7 @@ export interface CitizenAccountRecord {
   id: string;
   nid?: string;
   birthNo?: string;
+  holdingNo?: string;
   name: string;
   father: string;
   mother: string;

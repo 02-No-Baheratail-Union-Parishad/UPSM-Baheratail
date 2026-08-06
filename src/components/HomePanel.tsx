@@ -14,7 +14,8 @@ import {
   BarChart2,
   PieChart as PieIcon,
   ShieldAlert,
-  Layers
+  Layers,
+  Users
 } from 'lucide-react';
 import {
   ResponsiveContainer,
