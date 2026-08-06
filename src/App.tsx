@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { HomePanel } from './components/HomePanel';
 import { CertificateForm } from './components/CertificateForm';
 import { CertificateView } from './components/CertificateView';
@@ -20,6 +21,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [config, setConfig] = useState<UnionParishadConfig>(DEFAULT_UP_CONFIG);
   const [generatedCert, setGeneratedCert] = useState<CertificateRecord | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // Fetch initial config from server & Firebase Firestore
   useEffect(() => {
@@ -56,11 +58,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 selection:bg-emerald-200 selection:text-emerald-900">
-      {/* Navigation Header */}
-      <Navbar activeTab={activeTab} setActiveTab={handleNavigateTab} config={config} />
+      {/* Responsive Left Sidebar Navigation (Fixed Desktop + Mobile Slide-out Drawer) */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={handleNavigateTab}
+        config={config}
+        isOpenMobile={isMobileSidebarOpen}
+        setIsOpenMobile={setIsMobileSidebarOpen}
+      />
 
-      {/* Main Body Canvas */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 my-2">
+      {/* Main Content Area Offset for Desktop Sidebar */}
+      <div className="flex-1 flex flex-col lg:pl-64 transition-all duration-300 min-w-0">
+        {/* Navigation Header */}
+        <Navbar 
+          activeTab={activeTab} 
+          setActiveTab={handleNavigateTab} 
+          config={config}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        />
+
+        {/* Main Body Canvas */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 my-2">
         {activeTab === 'home' && (
           <HomePanel config={config} onNavigateTab={handleNavigateTab} />
         )}
@@ -128,32 +146,33 @@ export default function App() {
         {activeTab === 'admin' && (
           <AdminSettings config={config} onUpdateConfig={setConfig} />
         )}
-      </main>
+        </main>
 
-      {/* Official Government Footer */}
-      <footer className="bg-emerald-950 text-emerald-200 text-xs py-8 border-t border-emerald-900 mt-12 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <h4 className="font-bold text-white text-sm">{config.upName}</h4>
-            <p className="text-emerald-300 text-xs leading-relaxed">{config.address}</p>
-            <p className="text-[11px] text-emerald-400">স্মার্ট সিটিজেন সার্ভিস ও অটোমেশন পোর্টাল</p>
-          </div>
+        {/* Official Government Footer */}
+        <footer className="bg-emerald-950 text-emerald-200 text-xs py-8 border-t border-emerald-900 mt-12 print:hidden">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <h4 className="font-bold text-white text-sm">{config.upName}</h4>
+              <p className="text-emerald-300 text-xs leading-relaxed">{config.address}</p>
+              <p className="text-[11px] text-emerald-400">স্মার্ট সিটিজেন সার্ভিস ও অটোমেশন পোর্টাল</p>
+            </div>
 
-          <div className="space-y-1">
-            <p className="font-bold text-white text-sm">যোগাযোগ ও সহায়তা:</p>
-            <p className="text-emerald-300">চেয়ারম্যান কার্যালয়: {config.chairmanName}</p>
-            <p className="text-emerald-300">প্রশাসনিক কর্মকর্তা: {config.secretaryName}</p>
-            <p className="text-emerald-300">ইমেইল: baheratailunion@gmail.com</p>
-          </div>
+            <div className="space-y-1">
+              <p className="font-bold text-white text-sm">যোগাযোগ ও সহায়তা:</p>
+              <p className="text-emerald-300">চেয়ারম্যান কার্যালয়: {config.chairmanName}</p>
+              <p className="text-emerald-300">প্রশাসনিক কর্মকর্তা: {config.secretaryName}</p>
+              <p className="text-emerald-300">ইমেইল: baheratailunion@gmail.com</p>
+            </div>
 
-          <div className="space-y-1 text-right md:text-right">
-            <p className="font-bold text-white text-sm">কারিগরি পরিচালনায়:</p>
-            <p className="text-emerald-200 font-bold">MD JUBAER HOSSEN</p>
-            <p className="text-emerald-300">মোবাইল: ০১৮৩৪-৩৩ ৩৩ ৩০০</p>
-            <p className="text-[10px] text-emerald-400 mt-2">© ২০২৬ {config.upName}। সর্বস্বত্ব সংরক্ষিত।</p>
+            <div className="space-y-1 text-right md:text-right">
+              <p className="font-bold text-white text-sm">কারিগরি পরিচালনায়:</p>
+              <p className="text-emerald-200 font-bold">MD JUBAER HOSSEN</p>
+              <p className="text-emerald-300">মোবাইল: ০১৮৩৪-৩৩ ৩৩ ৩০০</p>
+              <p className="text-[10px] text-emerald-400 mt-2">© ২০২৬ {config.upName}। সর্বস্বত্ব সংরক্ষিত।</p>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }

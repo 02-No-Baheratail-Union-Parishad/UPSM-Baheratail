@@ -12,7 +12,8 @@ import {
   Layers,
   Bell,
   BarChart2,
-  Globe
+  Globe,
+  Menu
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
@@ -25,9 +26,10 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
   config: UnionParishadConfig;
   pendingCount?: number;
+  onToggleMobileSidebar?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config, pendingCount: propPendingCount }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config, pendingCount: propPendingCount, onToggleMobileSidebar }) => {
   const [pendingCount, setPendingCount] = useState<number>(propPendingCount ?? 0);
 
   // Language state (bn / en)
@@ -137,26 +139,40 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
 
       {/* Main Header Brand Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
-          <div className="w-12 h-12 rounded-full bg-white p-1 flex items-center justify-center shadow-md shrink-0">
-            <img 
-              src={config.logoUrl} 
-              alt="BD Seal" 
-              className="w-10 h-10 object-contain"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
-            <Building2 className="w-8 h-8 text-emerald-800" style={{ display: 'none' }} />
+        <div className="flex items-center justify-between w-full md:w-auto">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
+            <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white p-1 flex items-center justify-center shadow-md shrink-0">
+              <img 
+                src={config.logoUrl} 
+                alt="BD Seal" 
+                className="w-9 h-9 md:w-10 md:h-10 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+              <Building2 className="w-8 h-8 text-emerald-800" style={{ display: 'none' }} />
+            </div>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold tracking-tight text-white leading-tight">
+                {config.upName}
+              </h1>
+              <p className="text-xs md:text-sm text-emerald-200 flex items-center gap-1">
+                <span>{config.address}</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white leading-tight">
-              {config.upName}
-            </h1>
-            <p className="text-xs md:text-sm text-emerald-200 flex items-center gap-1">
-              <span>{config.address}</span>
-            </p>
-          </div>
+
+          {/* Mobile Hamburger Toggle Button */}
+          {onToggleMobileSidebar && (
+            <button
+              onClick={onToggleMobileSidebar}
+              className="lg:hidden p-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 border border-emerald-700 transition cursor-pointer active:scale-95 flex items-center gap-1.5"
+              aria-label="Toggle Navigation Sidebar"
+            >
+              <Menu className="w-5 h-5 text-amber-300" />
+              <span className="text-xs font-bold hidden sm:inline">মেনু</span>
+            </button>
+          )}
         </div>
 
         {/* Quick Action buttons & Pending Notification Badge */}
