@@ -27,7 +27,8 @@ import {
   Image as ImageIcon,
   RotateCcw,
   Check,
-  Loader2
+  Loader2,
+  MessageCircle
 } from 'lucide-react';
 import { UnionParishadConfig, CouncilMember } from '../types';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
@@ -488,6 +489,24 @@ export const CouncilMembers: React.FC<CouncilMembersProps> = ({ config, onUpdate
                         <span>{member.wardNo}</span>
                       </p>
                     )}
+
+                    {/* Mobile Number & Click to Chat Badge */}
+                    <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 min-w-0">
+                        <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span className="truncate">{member.mobile}</span>
+                      </div>
+                      <a
+                        href={`https://wa.me/88${member.mobile.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] rounded-lg shadow-2xs transition shrink-0 active:scale-95"
+                        title="হোয়াটসঅ্যাপে চ্যাট করুন (Click to Chat)"
+                      >
+                        <MessageCircle className="w-3 h-3 text-emerald-100" />
+                        <span>Click to Chat</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -506,11 +525,11 @@ export const CouncilMembers: React.FC<CouncilMembersProps> = ({ config, onUpdate
                   href={`https://wa.me/88${member.mobile.replace(/[^0-9]/g, '')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] rounded-xl flex items-center gap-1 transition shrink-0"
-                  title="হোয়াটসঅ্যাপ বা এসএমএস মেসেজ পাঠান"
+                  className="py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xl flex items-center gap-1 transition shadow-2xs shrink-0 active:scale-95"
+                  title="হোয়াটসঅ্যাপ ডাইরেক্ট চ্যাট (Click to Chat)"
                 >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>এসএমএস</span>
+                  <MessageCircle className="w-3.5 h-3.5 text-white" />
+                  <span>WhatsApp</span>
                 </a>
 
                 <button
