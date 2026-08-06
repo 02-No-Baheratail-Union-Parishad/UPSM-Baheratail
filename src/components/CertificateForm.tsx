@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Search, 
@@ -10,7 +10,10 @@ import {
   Filter, 
   ChevronRight, 
   UserCheck, 
-  RotateCcw 
+  RotateCcw,
+  User,
+  MapPin,
+  Check
 } from 'lucide-react';
 import { 
   CERTIFICATE_TYPES, 
@@ -25,7 +28,8 @@ import {
   CertificateRecord, 
   CertificateTypeConfig, 
   NidScanResult, 
-  UnionParishadConfig 
+  UnionParishadConfig,
+  CitizenAccountRecord
 } from '../types';
 import { NidScannerModal } from './NidScannerModal';
 import { WarishTableBuilder } from './WarishTableBuilder';
@@ -34,10 +38,17 @@ import { saveCertificateToFirebase } from '../firebase';
 
 interface CertificateFormProps {
   config: UnionParishadConfig;
+  initialCitizen?: CitizenAccountRecord | null;
+  onClearInitialCitizen?: () => void;
   onCertificateGenerated: (cert: CertificateRecord) => void;
 }
 
-export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCertificateGenerated }) => {
+export const CertificateForm: React.FC<CertificateFormProps> = ({ 
+  config, 
+  initialCitizen,
+  onClearInitialCitizen,
+  onCertificateGenerated 
+}) => {
   // Category & Type Selection State
   const [selectedCategory, setSelectedCategory] = useState('সব ধরন');
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,6 +85,51 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Auto-fill form from selected initial citizen (e.g. from Citizen Master Register)
+  useEffect(() => {
+    if (initialCitizen) {
+      if (initialCitizen.nid) setNid(initialCitizen.nid);
+      else setNid('');
+
+      if (initialCitizen.birthNo) setBirthNo(initialCitizen.birthNo);
+      else setBirthNo('');
+
+      setName(initialCitizen.name || '');
+      setFather(initialCitizen.father || '');
+      setMother(initialCitizen.mother || '');
+      setSpouseName(initialCitizen.spouseName || '');
+      setGender(initialCitizen.gender || 'পুরুষ');
+      setMobile(initialCitizen.mobile || '');
+
+      if (initialCitizen.wardNo) setWardNo(initialCitizen.wardNo);
+
+      if (initialCitizen.village && KNOWN_VILLAGES.includes(initialCitizen.village)) {
+        setVillageSelect(initialCitizen.village);
+        setVillageOther('');
+      } else if (initialCitizen.village) {
+        setVillageSelect('OTHER');
+        setVillageOther(initialCitizen.village);
+      }
+
+      if (initialCitizen.postOffice && KNOWN_POST_OFFICES.some(p => p.name === initialCitizen.postOffice)) {
+        setPostOfficeSelect(initialCitizen.postOffice);
+        setPostOfficeOther('');
+      } else if (initialCitizen.postOffice) {
+        setPostOfficeSelect('OTHER');
+        setPostOfficeOther(initialCitizen.postOffice);
+      }
+
+      if (initialCitizen.postCode) setPostCodeOther(initialCitizen.postCode);
+
+      if (initialCitizen.holdingNo) {
+        setSimpleFields((prev) => ({
+          ...prev,
+          holdingNo: initialCitizen.holdingNo || ''
+        }));
+      }
+    }
+  }, [initialCitizen]);
 
   // Filtered types list
   const filteredTypes = CERTIFICATE_TYPES.filter((type) => {
@@ -231,6 +287,50 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
 
   return (
     <div className="space-y-6">
+      {/* Active Auto-Filled Citizen Profile Banner */}
+      {initialCitizen && (
+        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-4 rounded-2xl shadow-lg border-2 border-amber-400 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-amber-400 text-emerald-950 rounded-xl font-black shrink-0 shadow-md">
+              <UserCheck className="w-6 h-6" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="bg-amber-400 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
+                  নাগরিক প্রোফাইল অটো-ফিলড
+                </span>
+                <h3 className="text-base font-extrabold text-amber-300">{initialCitizen.name}</h3>
+                {initialCitizen.holdingNo && (
+                  <span className="bg-emerald-950 text-amber-300 text-[11px] font-bold px-2 py-0.5 rounded border border-amber-400/40">
+                    হোল্ডিং: {initialCitizen.holdingNo}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-emerald-100 flex items-center gap-3 flex-wrap">
+                <span>NID/জন্ম নম্বর: <strong className="text-amber-300 font-mono">{initialCitizen.nid || initialCitizen.birthNo || 'N/A'}</strong></span>
+                <span>•</span>
+                <span>গ্রাম: <strong>{initialCitizen.village}</strong> (ওয়ার্ড {initialCitizen.wardNo})</span>
+                <span>•</span>
+                <span>মোবাইল: <strong className="font-mono">{initialCitizen.mobile || 'N/A'}</strong></span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+            <button
+              type="button"
+              onClick={() => {
+                if (onClearInitialCitizen) onClearInitialCitizen();
+              }}
+              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>রিসেট / নতুন ফরম</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Step 1: Certificate Type Chooser */}
       <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
@@ -292,7 +392,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({ config, onCert
                 type="button"
                 onClick={() => {
                   setSelectedTypeKey(type.key);
-                  setSimpleFields({});
+                  setSimpleFields(initialCitizen?.holdingNo ? { holdingNo: initialCitizen.holdingNo } : {});
                   setTablesData({});
                 }}
                 className={`p-3 rounded-xl text-left border transition cursor-pointer flex items-center justify-between ${

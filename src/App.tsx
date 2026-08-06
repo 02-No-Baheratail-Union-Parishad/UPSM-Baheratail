@@ -64,6 +64,8 @@ export default function App() {
     }).catch(err => console.warn('Firestore config load warning:', err));
   }, []);
 
+  const [selectedCitizenForCert, setSelectedCitizenForCert] = useState<CitizenAccountRecord | null>(null);
+
   const handleCertificateGenerated = (cert: CertificateRecord) => {
     setGeneratedCert(cert);
   };
@@ -76,6 +78,7 @@ export default function App() {
   };
 
   const handleApplyForCitizen = (citizen: CitizenAccountRecord) => {
+    setSelectedCitizenForCert(citizen);
     setActiveTab('create');
   };
 
@@ -164,7 +167,12 @@ export default function App() {
                 />
               </div>
             ) : (
-              <CertificateForm config={config} onCertificateGenerated={handleCertificateGenerated} />
+              <CertificateForm 
+                config={config} 
+                initialCitizen={selectedCitizenForCert}
+                onClearInitialCitizen={() => setSelectedCitizenForCert(null)}
+                onCertificateGenerated={handleCertificateGenerated} 
+              />
             )}
           </div>
         )}
