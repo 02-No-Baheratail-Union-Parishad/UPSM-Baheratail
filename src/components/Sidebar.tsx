@@ -111,25 +111,79 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [propPendingCount]);
 
   const navItems = [
-    { id: 'home', label: lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard', icon: Home },
-    { id: 'analytics', label: lang === 'bn' ? '৩০ দিনের ট্রেন্ড' : '30-Day Trends', icon: BarChart2, badge: 'Recharts' },
+    { 
+      id: 'home', 
+      label: lang === 'bn' ? '১. ড্যাশবোর্ড' : '1. Dashboard', 
+      icon: Home,
+      subItems: [
+        { id: 'analytics', label: lang === 'bn' ? '📊 ৩০ দিনের ট্রেন্ড এনালাইটিক্স' : '📊 30-Day Trends Analytics', icon: BarChart2 }
+      ]
+    },
     { 
       id: 'pending', 
-      label: lang === 'bn' ? 'চেয়ারম্যান অনুমোদন' : 'Chairman Approval', 
+      label: lang === 'bn' ? '২. চেয়ারম্যান অনুমোদন সমুহ' : '2. Chairman Approvals', 
       icon: ShieldCheck, 
       badge: pendingCount > 0 ? (lang === 'bn' ? `${pendingCount} টি` : `${pendingCount} Items`) : undefined,
       isPendingTab: true
     },
-    { id: 'map', label: lang === 'bn' ? 'জিআইএস ওয়ার্ড ম্যাপ' : 'GIS Ward Map', icon: MapPin, badge: lang === 'bn' ? 'ওয়ার্ড ১-৯' : 'Ward 1-9' },
-    { id: 'notice', label: lang === 'bn' ? 'ডিজিটাল নোটিশ বোর্ড' : 'Notice Board', icon: Megaphone, badge: lang === 'bn' ? 'লাইভ' : 'Live' },
-    { id: 'heatmap', label: lang === 'bn' ? 'উন্নয়ন হিটম্যাপ' : 'Dev Heatmap', icon: Layers, badge: lang === 'bn' ? 'D3 এনালাইটিক্স' : 'D3' },
-    { id: 'create', label: lang === 'bn' ? 'নতুন প্রত্যয়নপত্র' : 'New Certificate', icon: FileText, badge: lang === 'bn' ? '৪০+ ধরন' : '40+ Types' },
-    { id: 'logs', label: lang === 'bn' ? 'সনদ পেজ ও রেকর্ড' : 'Cert Records', icon: FileText },
-    { id: 'citizens', label: lang === 'bn' ? 'নাগরিক একাউন্ট' : 'Citizen Accounts', icon: UserCheck, badge: lang === 'bn' ? 'ওয়ার্ড ফিল্টার' : 'Ward' },
-    { id: 'members', label: lang === 'bn' ? 'পরিষদ সদস্য ও কর্মকর্তা' : 'Council & Staff', icon: Users, badge: lang === 'bn' ? '২৭ জন' : '27 Officials' },
-    { id: 'verify', label: lang === 'bn' ? 'সনদ অনলাইন যাচাই' : 'Online Verify', icon: ShieldCheck, badge: lang === 'bn' ? 'বাল্ক কিউআর' : 'Bulk QR' },
-    { id: 'developer', label: lang === 'bn' ? 'ডেভেলপার ও ব্যাকআপ' : 'Developer & Backup', icon: Code2, badge: 'MCP Sync' },
-    { id: 'admin', label: lang === 'bn' ? 'অ্যাডমিন সেটআপ' : 'Admin Setup', icon: Settings }
+    { 
+      id: 'citizens', 
+      label: lang === 'bn' ? '৩. নাগরিক একাউন্ট' : '3. Citizen Accounts', 
+      icon: UserCheck, 
+      badge: lang === 'bn' ? 'ওয়ার্ড ফিল্টার' : 'Ward Filter' 
+    },
+    { 
+      id: 'create', 
+      label: lang === 'bn' ? '৪. নতুন প্রত্যয়নপত্র আবেদন' : '4. New Certificate Application', 
+      icon: FileText, 
+      badge: lang === 'bn' ? '৮০+ ধরন' : '80+ Formats' 
+    },
+    { 
+      id: 'logs', 
+      label: lang === 'bn' ? '৫. সনদ পেজ ও রেকর্ড (সকল)' : '5. All Certificate Records', 
+      icon: FileText 
+    },
+    { 
+      id: 'verify', 
+      label: lang === 'bn' ? '৬. সনদ অনলাইন যাচাই' : '6. Online Certificate Verify', 
+      icon: ShieldCheck, 
+      badge: lang === 'bn' ? 'QR স্ক্যান' : 'QR Scan' 
+    },
+    { 
+      id: 'members', 
+      label: lang === 'bn' ? '৭. পরিষদ সদস্য ও কর্মকর্তা' : '7. Council Members & Staff', 
+      icon: Users, 
+      badge: lang === 'bn' ? '২৭ জন' : '27 Officials' 
+    },
+    { 
+      id: 'heatmap', 
+      label: lang === 'bn' ? '৮. উন্নয়ন হিটম্যাপ' : '8. Development Heatmap', 
+      icon: Layers, 
+      badge: lang === 'bn' ? 'D3 এনালাইটিক্স' : 'D3' 
+    },
+    { 
+      id: 'map', 
+      label: lang === 'bn' ? '৯. জিআইএস ওয়ার্ড ম্যাপ' : '9. GIS Ward Map', 
+      icon: MapPin, 
+      badge: lang === 'bn' ? 'ওয়ার্ড ১-৯' : 'Ward 1-9' 
+    },
+    { 
+      id: 'notice', 
+      label: lang === 'bn' ? '১০. ডিজিটাল নোটিশ বোর্ড' : '10. Digital Notice Board', 
+      icon: Megaphone, 
+      badge: lang === 'bn' ? 'লাইভ' : 'Live' 
+    },
+    { 
+      id: 'admin', 
+      label: lang === 'bn' ? '১১. এডমিন সেটআপ' : '11. Admin Setup', 
+      icon: Settings 
+    },
+    { 
+      id: 'developer', 
+      label: lang === 'bn' ? '১২. ডেভেলপার ও ব্যাকআপ' : '12. Developer & Backup', 
+      icon: Code2, 
+      badge: 'MCP Sync' 
+    }
   ];
 
   const handleNavClick = (id: string) => {
@@ -189,10 +243,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 bg-emerald-900/60 border-b border-emerald-800/50">
           <button
             onClick={() => handleNavClick('create')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-xs rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.6)] border border-amber-200 transition active:scale-95 cursor-pointer relative overflow-hidden group"
           >
-            <Sparkles className="w-4 h-4 fill-emerald-950" />
-            <span>{lang === 'bn' ? 'স্মার্ট সনদ তৈরি করুন' : 'Create Smart Certificate'}</span>
+            <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+            <Sparkles className="w-4 h-4 fill-emerald-950 animate-bounce" />
+            <span className="tracking-wide">{lang === 'bn' ? 'স্মার্ট সনদ তৈরি করুন 🟢✨' : 'Create Smart Certificate ✨'}</span>
           </button>
         </div>
 
@@ -202,32 +257,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-emerald-800 text-white shadow-md border-l-4 border-amber-400 font-bold'
-                    : 'text-emerald-100 hover:bg-emerald-900/80 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-300' : 'text-emerald-300'}`} />
-                  <span className="truncate">{item.label}</span>
-                </div>
+              <React.Fragment key={item.id}>
+                <button
+                  onClick={() => handleNavClick(item.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-emerald-800 text-white shadow-md border-l-4 border-amber-400 font-bold'
+                      : 'text-emerald-100 hover:bg-emerald-900/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-300' : 'text-emerald-300'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </div>
 
-                {item.badge && (
-                  <span
-                    className={`px-2 py-0.5 text-[10px] font-black rounded-full shrink-0 ${
-                      item.isPendingTab && pendingCount > 0
-                        ? 'bg-rose-500 text-white animate-bounce shadow-xs'
-                        : 'bg-amber-400 text-emerald-950'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
+                  {item.badge && (
+                    <span
+                      className={`px-2 py-0.5 text-[10px] font-black rounded-full shrink-0 ${
+                        item.isPendingTab && pendingCount > 0
+                          ? 'bg-rose-500 text-white animate-bounce shadow-xs'
+                          : 'bg-amber-400 text-emerald-950'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+
+                {item.subItems && (
+                  <div className="pl-6 space-y-1 my-1">
+                    {item.subItems.map((sub) => {
+                      const SubIcon = sub.icon;
+                      const isSubActive = activeTab === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          onClick={() => handleNavClick(sub.id)}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                            isSubActive
+                              ? 'bg-emerald-800/90 text-amber-300 font-bold border-l-2 border-amber-400'
+                              : 'text-emerald-200 hover:bg-emerald-900/60 hover:text-white'
+                          }`}
+                        >
+                          <SubIcon className="w-3.5 h-3.5 text-amber-300" />
+                          <span>{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </React.Fragment>
             );
           })}
         </div>
@@ -299,13 +378,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className={`p-3 bg-emerald-900/40 border-b border-emerald-800/50 shrink-0 ${isCollapsed ? 'p-2' : ''}`}>
           <button
             onClick={() => handleNavClick('create')}
-            className={`w-full flex items-center justify-center gap-2 py-2.5 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer ${
+            className={`w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-xs rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.6)] border border-amber-200 transition active:scale-95 cursor-pointer relative overflow-hidden group ${
               isCollapsed ? 'px-0' : 'px-3'
             }`}
             title={lang === 'bn' ? 'স্মার্ট সনদ তৈরি করুন' : 'Create Certificate'}
           >
-            <Sparkles className="w-4 h-4 fill-emerald-950 shrink-0" />
-            {!isCollapsed && <span>{lang === 'bn' ? 'স্মার্ট সনদ তৈরি' : 'Create Cert'}</span>}
+            <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+            <Sparkles className="w-4 h-4 fill-emerald-950 shrink-0 animate-bounce" />
+            {!isCollapsed && <span>{lang === 'bn' ? 'স্মার্ট সনদ তৈরি করুন 🟢✨' : 'Create Cert ✨'}</span>}
           </button>
         </div>
 
@@ -316,38 +396,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const isActive = activeTab === item.id;
 
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                title={item.label}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group ${
-                  isActive
-                    ? 'bg-emerald-800 text-white shadow-md border-l-4 border-amber-400 font-bold'
-                    : 'text-emerald-100 hover:bg-emerald-900/70 hover:text-white'
-                } ${isCollapsed ? 'justify-center px-2' : ''}`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Icon className={`w-4.5 h-4.5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-amber-300' : 'text-emerald-300'}`} />
-                  {!isCollapsed && <span className="truncate">{item.label}</span>}
-                </div>
+              <React.Fragment key={item.id}>
+                <button
+                  onClick={() => handleNavClick(item.id)}
+                  title={item.label}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group ${
+                    isActive
+                      ? 'bg-emerald-800 text-white shadow-md border-l-4 border-amber-400 font-bold'
+                      : 'text-emerald-100 hover:bg-emerald-900/70 hover:text-white'
+                  } ${isCollapsed ? 'justify-center px-2' : ''}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={`w-4.5 h-4.5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-amber-300' : 'text-emerald-300'}`} />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </div>
 
-                {!isCollapsed && item.badge && (
-                  <span
-                    className={`px-2 py-0.5 text-[10px] font-black rounded-full shrink-0 ${
-                      item.isPendingTab && pendingCount > 0
-                        ? 'bg-rose-500 text-white animate-pulse shadow-xs'
-                        : 'bg-amber-400 text-emerald-950'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
+                  {!isCollapsed && item.badge && (
+                    <span
+                      className={`px-2 py-0.5 text-[10px] font-black rounded-full shrink-0 ${
+                        item.isPendingTab && pendingCount > 0
+                          ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                          : 'bg-amber-400 text-emerald-950'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
 
-                {/* Collapsed view indicator badge dot */}
-                {isCollapsed && item.isPendingTab && pendingCount > 0 && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping absolute right-3" />
+                  {/* Collapsed view indicator badge dot */}
+                  {isCollapsed && item.isPendingTab && pendingCount > 0 && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping absolute right-3" />
+                  )}
+                </button>
+
+                {!isCollapsed && item.subItems && (
+                  <div className="pl-6 space-y-1 my-1">
+                    {item.subItems.map((sub) => {
+                      const SubIcon = sub.icon;
+                      const isSubActive = activeTab === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          onClick={() => handleNavClick(sub.id)}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                            isSubActive
+                              ? 'bg-emerald-800/90 text-amber-300 font-bold border-l-2 border-amber-400'
+                              : 'text-emerald-200 hover:bg-emerald-900/60 hover:text-white'
+                          }`}
+                        >
+                          <SubIcon className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </React.Fragment>
             );
           })}
         </div>
