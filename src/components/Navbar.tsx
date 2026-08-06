@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  FileText, 
-  ShieldCheck, 
-  Users, 
-  Settings, 
-  Home, 
   Sparkles, 
   Building2,
-  Code2,
-  UserCheck,
-  Layers,
   Bell,
-  BarChart2,
   Globe,
   Menu
 } from 'lucide-react';
@@ -87,26 +78,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
       setPendingCount(propPendingCount);
     }
   }, [propPendingCount]);
-
-  const navItems = [
-    { id: 'home', label: lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard', icon: Home },
-    { id: 'analytics', label: lang === 'bn' ? '৩০ দিনের ট্রেন্ড' : '30-Day Trends', icon: BarChart2, badge: 'Recharts' },
-    { 
-      id: 'pending', 
-      label: lang === 'bn' ? 'চেয়ারম্যান অনুমোদন' : 'Chairman Approval', 
-      icon: ShieldCheck, 
-      badge: pendingCount > 0 ? (lang === 'bn' ? `${pendingCount} টি` : `${pendingCount} Items`) : (lang === 'bn' ? '০ টি' : '0 Items'),
-      isPendingTab: true
-    },
-    { id: 'heatmap', label: lang === 'bn' ? 'উন্নয়ন হিটম্যাপ' : 'Dev Heatmap', icon: Layers, badge: lang === 'bn' ? 'D3 এনালাইটিক্স' : 'D3 Analytics' },
-    { id: 'create', label: lang === 'bn' ? 'নতুন প্রত্যয়নপত্র' : 'New Certificate', icon: FileText, badge: lang === 'bn' ? '৪০+ ধরন' : '40+ Types' },
-    { id: 'logs', label: lang === 'bn' ? 'সনদ পেজ ও রেকর্ড' : 'Cert Records', icon: FileText },
-    { id: 'citizens', label: lang === 'bn' ? 'নাগরিক একাউন্ট' : 'Citizen Accounts', icon: UserCheck, badge: lang === 'bn' ? 'ওয়ার্ড ফিল্টার' : 'Ward Filter' },
-    { id: 'members', label: lang === 'bn' ? 'পরিষদ সদস্য ও কর্মকর্তা' : 'Council & Staff', icon: Users, badge: lang === 'bn' ? '২৭ জন' : '27 Officials' },
-    { id: 'verify', label: lang === 'bn' ? 'সনদ অনলাইন যাচাই' : 'Online Verify', icon: ShieldCheck },
-    { id: 'developer', label: lang === 'bn' ? 'ডেভেলপার ও ব্যাকআপ' : 'Developer & Backup', icon: Code2, badge: 'MCP Sync' },
-    { id: 'admin', label: lang === 'bn' ? 'অ্যাডমিন সেটআপ' : 'Admin Setup', icon: Settings }
-  ];
 
   return (
     <header className="bg-emerald-900 text-white shadow-lg sticky top-0 z-40 border-b border-emerald-800">
@@ -224,41 +195,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           </button>
         </div>
       </div>
-
-      {/* Navigation Tabs */}
-      <nav className="bg-emerald-950/80 backdrop-blur border-t border-emerald-800/80 px-4">
-        <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? 'bg-emerald-700 text-white shadow-sm font-semibold'
-                    : 'text-emerald-100 hover:bg-emerald-800/60 hover:text-white'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-emerald-300'}`} />
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span
-                    className={`ml-1 px-2 py-0.5 text-[10px] font-bold rounded-full transition-all ${
-                      item.isPendingTab && pendingCount > 0
-                        ? 'bg-rose-500 text-white font-black animate-pulse shadow'
-                        : 'bg-amber-400 text-emerald-950'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
     </header>
   );
 };

@@ -612,6 +612,66 @@ ${upConfig.defaultPromptPrefix}
     }
   });
 
+  // Batch Verify Certificates (Administrative Audit Tool)
+  app.post("/api/certificate/verify-batch", (req, res) => {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "কোনো ভেরিফিকেশন কোড বা তথ্য পাওয়া যায় নাই।" });
+    }
+
+    const results = items.map((rawItem: string, index: number) => {
+      const itemStr = (rawItem || "").toString().trim();
+      const memoMatch = itemStr.match(/BUP-\d{4}-\d{4,6}/i) || itemStr.match(/BUP-[A-Z0-9-]+/i);
+      const memoNo = memoMatch ? memoMatch[0].toUpperCase() : itemStr;
+
+      const cert = certificateStore.find(
+        c => c.memoNo.toLowerCase() === memoNo.toLowerCase() || c.id === memoNo
+      );
+
+      if (cert) {
+        const isApproved = cert.status === 'issued' || cert.status === 'approved';
+        return {
+          id: `audit_${Date.now()}_${index}`,
+          rawInput: itemStr,
+          memoNo: cert.memoNo,
+          found: true,
+          status: cert.status,
+          riskScore: isApproved ? 100 : 60,
+          statusMessage: isApproved ? 'অনলাইন ডাটাবেসে সফলভাবে সত্যায়িত ও বৈধ' : 'আবেদনটি পেন্ডিং অবস্থায় রয়েছে',
+          certificate: cert,
+          verifiedAt: new Date().toISOString()
+        };
+      } else {
+        return {
+          id: `audit_${Date.now()}_${index}`,
+          rawInput: itemStr,
+          memoNo: memoNo || itemStr,
+          found: false,
+          status: 'invalid',
+          riskScore: 0,
+          statusMessage: 'রেকর্ড পাওয়া যায় নাই — নকল/অনিবন্ধিত সনদপত্র',
+          verifiedAt: new Date().toISOString()
+        };
+      }
+    });
+
+    const validCount = results.filter(r => r.found && (r.status === 'issued' || r.status === 'approved')).length;
+    const pendingCount = results.filter(r => r.found && r.status === 'pending_approval').length;
+    const invalidCount = results.filter(r => !r.found || r.status === 'cancelled').length;
+
+    res.json({
+      success: true,
+      totalProcessed: results.length,
+      validCount,
+      pendingCount,
+      invalidCount,
+      authenticityRate: results.length > 0 ? Math.round((validCount / results.length) * 100) : 0,
+      results,
+      auditedAt: new Date().toISOString(),
+      auditedBy: upConfig.secretaryName || "অ্যাডমিন নিরীক্ষক"
+    });
+  });
+
   // Search Citizen by NID / Birth Reg
   app.get("/api/citizen/search", (req, res) => {
     const query = (req.query.nid || req.query.query || "").toString().trim();

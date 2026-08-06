@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'logs', label: lang === 'bn' ? 'সনদ পেজ ও রেকর্ড' : 'Cert Records', icon: FileText },
     { id: 'citizens', label: lang === 'bn' ? 'নাগরিক একাউন্ট' : 'Citizen Accounts', icon: UserCheck, badge: lang === 'bn' ? 'ওয়ার্ড ফিল্টার' : 'Ward' },
     { id: 'members', label: lang === 'bn' ? 'পরিষদ সদস্য ও কর্মকর্তা' : 'Council & Staff', icon: Users, badge: lang === 'bn' ? '২৭ জন' : '27 Officials' },
-    { id: 'verify', label: lang === 'bn' ? 'সনদ অনলাইন যাচাই' : 'Online Verify', icon: ShieldCheck },
+    { id: 'verify', label: lang === 'bn' ? 'সনদ অনলাইন যাচাই' : 'Online Verify', icon: ShieldCheck, badge: lang === 'bn' ? 'বাল্ক কিউআর' : 'Bulk QR' },
     { id: 'developer', label: lang === 'bn' ? 'ডেভেলপার ও ব্যাকআপ' : 'Developer & Backup', icon: Code2, badge: 'MCP Sync' },
     { id: 'admin', label: lang === 'bn' ? 'অ্যাডমিন সেটআপ' : 'Admin Setup', icon: Settings }
   ];
