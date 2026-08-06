@@ -672,6 +672,69 @@ ${upConfig.defaultPromptPrefix}
     });
   });
 
+  // Smart Gemini Citizen Assistant Endpoint
+  app.post("/api/ai/assistant", async (req, res) => {
+    try {
+      const { prompt, history } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ error: "প্রশ্ন প্রদান করা আবশ্যক।" });
+      }
+
+      const ai = getGeminiClient();
+
+      const systemInstruction = `
+তুমি ${upConfig.upName}, ${upConfig.address}-এর একজন অত্যন্ত বিনয়ী, দক্ষ ও প্রজ্ঞাবান অনলাইন প্রশাসনিক কৃত্রিম বুদ্ধিমত্তা সহকারী।
+তোমার দায়িত্ব:
+১. নাগরিকদের ৪০+ প্রকার ডিজিটাল ইউনিয়ন পরিষদ প্রত্যয়নপত্র (যেমন: নাগরিকত্ব, ওয়ারিশান, চারিত্রিক, পারিবারিক, অবিবাহিত, স্থায়ী বাসিন্দা, ভূমিহীন, অসচ্ছল, ইত্যাদি) সম্পর্কে স্পষ্ট দিকনির্দেশনা প্রদান করা।
+২. ওয়ারিশ বা জটিল সনদের ক্ষেত্রে কী কী ফাইল লাগে (জাতীয় পরিচয়পত্র/জন্ম নিবন্ধন, চেয়ারম্যানের সুপারিশ, খতিয়ান, মৃত্যু সনদ, ২ কপি ছবি ইত্যাদি) তা স্পষ্ট সংক্ষেপে ধাপে ধাপে বুঝিয়ে বলা।
+৩. উত্তর অবশ্যই বিনম্র ও মার্জিত বাংলায় ২-৪ টি সংক্ষিপ্ত অনুচ্ছেদে প্রদান করবে।
+৪. প্রয়োজন অনুযায়ী নাগরিককে "নতুন আবেদন করুন" বা "অনলাইন যাচাইকরণ" পোর্টালে নির্দেশ প্রদান করবে।
+ইউনিয়ন পরিষদের বিবরণ:
+- নাম: ${upConfig.upName}
+- ঠিকানা: ${upConfig.address}
+- চেয়ারম্যান: ${upConfig.chairmanName}
+- সচিব: ${upConfig.secretaryName}
+- ইমেইল: baheratailunion@gmail.com
+`;
+
+      const contents: any[] = [];
+      if (Array.isArray(history)) {
+        history.forEach((h: any) => {
+          if (h.role && h.parts && h.parts[0]?.text) {
+            contents.push({
+              role: h.role === 'user' ? 'user' : 'model',
+              parts: [{ text: h.parts[0].text }]
+            });
+          }
+        });
+      }
+
+      contents.push({
+        role: 'user',
+        parts: [{ text: prompt }]
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.3
+        }
+      });
+
+      res.json({
+        success: true,
+        reply: response.text || "দুঃখিত, কোনো তথ্য পাওয়া যায় নাই।"
+      });
+    } catch (err: any) {
+      console.error("Gemini AI Assistant error:", err);
+      res.status(500).json({
+        error: "Gemini AI উত্তর প্রদানে সমস্যা ঘটিয়াছে: " + (err?.message || "অজানা ত্রুটি")
+      });
+    }
+  });
+
   // Search Citizen by NID / Birth Reg
   app.get("/api/citizen/search", (req, res) => {
     const query = (req.query.nid || req.query.query || "").toString().trim();

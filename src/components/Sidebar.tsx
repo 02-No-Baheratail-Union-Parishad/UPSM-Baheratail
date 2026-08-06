@@ -18,7 +18,9 @@ import {
   X,
   Phone,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  MapPin,
+  Megaphone
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
@@ -118,6 +120,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: pendingCount > 0 ? (lang === 'bn' ? `${pendingCount} টি` : `${pendingCount} Items`) : undefined,
       isPendingTab: true
     },
+    { id: 'map', label: lang === 'bn' ? 'জিআইএস ওয়ার্ড ম্যাপ' : 'GIS Ward Map', icon: MapPin, badge: lang === 'bn' ? 'ওয়ার্ড ১-৯' : 'Ward 1-9' },
+    { id: 'notice', label: lang === 'bn' ? 'ডিজিটাল নোটিশ বোর্ড' : 'Notice Board', icon: Megaphone, badge: lang === 'bn' ? 'লাইভ' : 'Live' },
     { id: 'heatmap', label: lang === 'bn' ? 'উন্নয়ন হিটম্যাপ' : 'Dev Heatmap', icon: Layers, badge: lang === 'bn' ? 'D3 এনালাইটিক্স' : 'D3' },
     { id: 'create', label: lang === 'bn' ? 'নতুন প্রত্যয়নপত্র' : 'New Certificate', icon: FileText, badge: lang === 'bn' ? '৪০+ ধরন' : '40+ Types' },
     { id: 'logs', label: lang === 'bn' ? 'সনদ পেজ ও রেকর্ড' : 'Cert Records', icon: FileText },

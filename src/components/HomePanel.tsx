@@ -35,6 +35,8 @@ import {
 import { CERTIFICATE_TYPES, CERTIFICATE_CATEGORIES } from '../data/certificateTypes';
 import { UnionParishadConfig } from '../types';
 import { CertificateTrendDashboard } from './CertificateTrendDashboard';
+import { NoticeBoardTicker } from './NoticeBoardTicker';
+import { UnionMapViewer } from './UnionMapViewer';
 
 interface HomePanelProps {
   config: UnionParishadConfig;
@@ -531,6 +533,12 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
           </div>
         </div>
       </div>
+
+      {/* Live Digital Notice Board Section */}
+      <NoticeBoardTicker config={config} />
+
+      {/* GIS Interactive Ward Map & Infrastructure Directory */}
+      <UnionMapViewer config={config} />
     </div>
   );
 };

@@ -13,15 +13,20 @@ import { DevelopmentHeatmap } from './components/DevelopmentHeatmap';
 import { PendingApprovals } from './components/PendingApprovals';
 import { CouncilMembers } from './components/CouncilMembers';
 import { CertificateTrendDashboard } from './components/CertificateTrendDashboard';
+import { UnionMapViewer } from './components/UnionMapViewer';
+import { NoticeBoardTicker } from './components/NoticeBoardTicker';
+import { AiCitizenAssistant } from './components/AiCitizenAssistant';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
+import { Sparkles, Bot, Mic, MessageSquare } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [config, setConfig] = useState<UnionParishadConfig>(DEFAULT_UP_CONFIG);
   const [generatedCert, setGeneratedCert] = useState<CertificateRecord | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState<boolean>(false);
 
   // Fetch initial config from server & Firebase Firestore
   useEffect(() => {
@@ -93,6 +98,14 @@ export default function App() {
 
         {activeTab === 'heatmap' && (
           <DevelopmentHeatmap config={config} />
+        )}
+
+        {activeTab === 'map' && (
+          <UnionMapViewer config={config} />
+        )}
+
+        {activeTab === 'notice' && (
+          <NoticeBoardTicker config={config} />
         )}
 
         {activeTab === 'create' && (
@@ -173,6 +186,39 @@ export default function App() {
           </div>
         </footer>
       </div>
+
+      {/* Floating Gemini AI Citizen Voice Assistant Widget Button */}
+      <div className="fixed bottom-6 right-6 z-40 print:hidden">
+        <button
+          onClick={() => setIsAiAssistantOpen(true)}
+          className="group relative flex items-center gap-3 bg-gradient-to-r from-emerald-800 via-emerald-900 to-slate-900 text-white pl-4 pr-5 py-3.5 rounded-full shadow-2xl border-2 border-amber-400/80 hover:border-amber-300 hover:scale-105 transition duration-300 cursor-pointer active:scale-95"
+          title="স্মার্ট ইউপি এআই সহকারী - Gemini AI"
+        >
+          <div className="w-9 h-9 rounded-full bg-amber-400 text-emerald-950 flex items-center justify-center font-black shadow-md group-hover:rotate-12 transition shrink-0">
+            <Sparkles className="w-5 h-5 fill-emerald-950 text-emerald-950 animate-pulse" />
+          </div>
+          <div className="text-left hidden sm:block">
+            <p className="font-extrabold text-xs text-amber-300 leading-tight">
+              স্মার্ট ইউপি এআই সহকারী
+            </p>
+            <p className="text-[10px] text-emerald-200">
+              Gemini 3.6 Flash Voice & AI
+            </p>
+          </div>
+          <span className="relative flex h-3 w-3 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-400"></span>
+          </span>
+        </button>
+      </div>
+
+      {/* Ai Citizen Assistant Modal */}
+      <AiCitizenAssistant
+        config={config}
+        isOpen={isAiAssistantOpen}
+        onClose={() => setIsAiAssistantOpen(false)}
+        onNavigateTab={handleNavigateTab}
+      />
     </div>
   );
 }
