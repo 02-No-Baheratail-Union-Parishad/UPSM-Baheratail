@@ -81,9 +81,12 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
 
   useEffect(() => {
     fetch('/api/admin/stats')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
-        if (data.totalCertificates !== undefined) {
+        if (data && data.totalCertificates !== undefined) {
           setStats({
             totalCertificates: data.totalCertificates || 1487,
             todayCount: data.todayCount || 9,
@@ -111,7 +114,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
           });
         }
       })
-      .catch((e) => console.error('Error fetching stats:', e));
+      .catch((e) => console.warn('Stats fetch notice (using cached/default stats):', e));
   }, []);
 
   // Format ward data for horizontal bar chart

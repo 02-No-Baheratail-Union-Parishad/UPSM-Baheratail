@@ -28,11 +28,14 @@ import {
   RotateCcw,
   Check,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  CreditCard,
+  QrCode
 } from 'lucide-react';
 import { UnionParishadConfig, CouncilMember } from '../types';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
 import { saveConfigToFirebase } from '../firebase';
+import { MemberIdCardModal } from './MemberIdCardModal';
 
 interface CouncilMembersProps {
   config: UnionParishadConfig;
@@ -42,6 +45,10 @@ interface CouncilMembersProps {
 export const CouncilMembers: React.FC<CouncilMembersProps> = ({ config, onUpdateConfig }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // ID Card Modal State
+  const [isIdCardModalOpen, setIsIdCardModalOpen] = useState<boolean>(false);
+  const [selectedIdCardMember, setSelectedIdCardMember] = useState<CouncilMember | null>(null);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
@@ -294,6 +301,18 @@ export const CouncilMembers: React.FC<CouncilMembersProps> = ({ config, onUpdate
 
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => {
+                setSelectedIdCardMember(null);
+                setIsIdCardModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs font-black rounded-xl shadow-lg border border-amber-300 transition active:scale-95 shrink-0 cursor-pointer"
+              title="কর্মকর্তা ও জনপ্রতিনিধিদের ডিজিটাল স্মার্ট আইডি কার্ড ও ভিজিটিং কার্ড জেনারেটর"
+            >
+              <CreditCard className="w-4 h-4 fill-emerald-950/20" />
+              <span>স্মার্ট আইডি কার্ড</span>
+            </button>
+
+            <button
               onClick={() => handleOpenEditModal()}
               className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-amber-300 text-xs font-bold rounded-xl shadow-md border border-emerald-600 transition active:scale-95 shrink-0 cursor-pointer"
             >
@@ -531,6 +550,18 @@ export const CouncilMembers: React.FC<CouncilMembersProps> = ({ config, onUpdate
                   <MessageCircle className="w-3.5 h-3.5 text-white" />
                   <span>WhatsApp</span>
                 </a>
+
+                <button
+                  onClick={() => {
+                    setSelectedIdCardMember(member);
+                    setIsIdCardModalOpen(true);
+                  }}
+                  className="py-1.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-[11px] rounded-xl flex items-center gap-1 transition border border-emerald-300 shrink-0 cursor-pointer"
+                  title="কর্মকর্তার ডিজিটাল স্মার্ট আইডি কার্ড ও কিউআর কোড ভিউ করুন"
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>আইডি কার্ড</span>
+                </button>
 
                 <button
                   onClick={() => handleOpenEditModal(member)}
@@ -787,6 +818,15 @@ export const CouncilMembers: React.FC<CouncilMembersProps> = ({ config, onUpdate
           </div>
         </div>
       )}
+
+      {/* Member Digital ID Card Modal */}
+      <MemberIdCardModal
+        member={selectedIdCardMember}
+        allMembers={members}
+        config={config}
+        isOpen={isIdCardModalOpen}
+        onClose={() => setIsIdCardModalOpen(false)}
+      />
     </div>
   );
 };

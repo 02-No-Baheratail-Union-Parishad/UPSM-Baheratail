@@ -1,9 +1,9 @@
-const CACHE_NAME = 'bup-digital-v1';
+const CACHE_NAME = 'bup-digital-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  'https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap'
+  '/icon.svg'
 ];
 
 // Install Event - Precache core assets
@@ -41,15 +41,37 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Skip non-GET requests or chrome-extension URLs
-  if (req.method !== 'GET' || url.protocol.startsWith('chrome-extension')) {
+  // 1. Only intercept GET requests
+  if (req.method !== 'GET') {
     return;
   }
 
-  // Handle API requests: Try Network first, fallback to offline cache or offline JSON response
+  // 2. Skip non-http(s) protocols (e.g., chrome-extension://)
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // 3. Skip cross-origin requests (e.g., Firestore, Gemini API, external CDN)
+  // Let browser network handle external Google APIs directly without SW intervention
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // 4. Skip Vite dev server internal assets and HMR requests
+  if (
+    url.pathname.startsWith('/@') || 
+    url.pathname.includes('/node_modules/') || 
+    url.search.includes('v=') ||
+    url.pathname.endsWith('.tsx') ||
+    url.pathname.endsWith('.ts')
+  ) {
+    return;
+  }
+
+  // Handle API requests (/api/*): Network-first with cached JSON fallback
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(req)
+      fetch(req.clone())
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
@@ -64,13 +86,14 @@ self.addEventListener('fetch', (event) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Return JSON response indicating offline mode
+          // Fallback offline JSON response
           return new Response(
             JSON.stringify({
               offline: true,
-              message: 'আপনি বর্তমানে অফলাইনে আছেন। সংরক্ষিত স্থানীয় তথ্য দেখানো হইতেছে।'
+              message: 'আপনি বর্তমানে অফলাইনে আছেন। ড্রাফট ও ডাউনলোডকৃত কপি সক্রিয় আছে।'
             }),
             {
+              status: 200,
               headers: { 'Content-Type': 'application/json' }
             }
           );
@@ -79,10 +102,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets / HTML navigation: Stale-While-Revalidate / Cache First
+  // Static Assets / Page Navigation: Cache-First with Network Revalidation
   event.respondWith(
     caches.match(req).then((cachedResponse) => {
-      const fetchPromise = fetch(req)
+      const fetchPromise = fetch(req.clone())
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
@@ -93,16 +116,15 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch((err) => {
-          console.log('[Service Worker] Offline fetch failed for:', req.url);
+          console.log('[Service Worker] Offline fallback for asset:', req.url);
         });
 
-      // Return cached asset immediately if available, or wait for network
       return cachedResponse || fetchPromise || caches.match('/index.html');
     })
   );
 });
 
-// Listen for messages from client
+// Listen for skip waiting command
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

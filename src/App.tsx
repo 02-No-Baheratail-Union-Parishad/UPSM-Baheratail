@@ -46,13 +46,16 @@ export default function App() {
   // Fetch initial config from server & Firebase Firestore
   useEffect(() => {
     fetch('/api/admin/config')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
-        if (data.config) {
+        if (data && data.config) {
           setConfig(data.config);
         }
       })
-      .catch((err) => console.error('Error loading config:', err));
+      .catch((err) => console.warn('Config fetch notice (using default configuration):', err));
 
     fetchConfigFromFirebase().then(fbConfig => {
       if (fbConfig) {
