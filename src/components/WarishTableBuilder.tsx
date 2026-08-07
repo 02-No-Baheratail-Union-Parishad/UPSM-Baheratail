@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Trash2, Users } from 'lucide-react';
 import { TableConfig } from '../types';
 import { toBengaliNumeral } from '../lib/utils';
+import { sanitizeInput } from '../utils/security';
 
 interface WarishTableBuilderProps {
   tableConfig: TableConfig;
@@ -15,10 +16,11 @@ export const WarishTableBuilder: React.FC<WarishTableBuilderProps> = ({
   onChangeRows,
 }) => {
   const handleCellChange = (rowIndex: number, colIndex: number, value: string) => {
+    const sanitizedVal = sanitizeInput(value, 500);
     const updated = rowsData.map((row, rIdx) => {
       if (rIdx === rowIndex) {
         const newRow = [...row];
-        newRow[colIndex] = value;
+        newRow[colIndex] = sanitizedVal;
         return newRow;
       }
       return row;

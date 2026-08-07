@@ -15,6 +15,7 @@ import {
   Check,
   AlertCircle
 } from 'lucide-react';
+import { sanitizeInput } from '../utils/security';
 import { 
   exportFirestoreCollectionsToStorage, 
   fetchFirestoreBackupsFromFirebase, 
@@ -115,9 +116,10 @@ export const BackupManager: React.FC<BackupManagerProps> = ({
     setExportProgress({ stage: 'ব্যাকআপ প্রক্রিয়া শুরু হচ্ছে...', percent: 5 });
 
     try {
+      const sanitizedNotes = sanitizeInput(exportNotes, 500);
       const result = await exportFirestoreCollectionsToStorage(
         selectedCollections,
-        exportNotes,
+        sanitizedNotes,
         (progress) => {
           setExportProgress(progress);
         }
