@@ -35,6 +35,7 @@ import { NidScannerModal } from './NidScannerModal';
 import { WarishTableBuilder } from './WarishTableBuilder';
 
 import { saveCertificateToFirebase } from '../firebase';
+import { sanitizeInput } from '../utils/security';
 
 interface CertificateFormProps {
   config: UnionParishadConfig;
@@ -364,33 +365,55 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Sanitize simpleFields and tablesData to protect against HTML injection / XSS
+      const sanitizedSimpleFields: Record<string, string> = {};
+      Object.keys(simpleFields).forEach((k) => {
+        sanitizedSimpleFields[k] = sanitizeInput(simpleFields[k]);
+      });
+      sanitizedSimpleFields['holdingNo'] = sanitizeInput(holdingNo.trim() || simpleFields['holdingNo'] || '');
+
+      const sanitizedTablesData: Record<string, any[]> = {};
+      Object.keys(tablesData).forEach((k) => {
+        if (Array.isArray(tablesData[k])) {
+          sanitizedTablesData[k] = tablesData[k].map((row: any) => {
+            if (row && typeof row === 'object') {
+              const sanitizedRow: Record<string, any> = {};
+              Object.keys(row).forEach((colKey) => {
+                sanitizedRow[colKey] = typeof row[colKey] === 'string' ? sanitizeInput(row[colKey]) : row[colKey];
+              });
+              return sanitizedRow;
+            }
+            return row;
+          });
+        } else {
+          sanitizedTablesData[k] = tablesData[k];
+        }
+      });
+
       const payload = {
         typeKey: selectedTypeKey,
-        nid,
-        birthNo,
-        name,
-        father,
-        spouseName,
-        mother,
+        nid: sanitizeInput(nid.trim()),
+        birthNo: sanitizeInput(birthNo.trim()),
+        name: sanitizeInput(name.trim()),
+        father: sanitizeInput(father.trim()),
+        spouseName: sanitizeInput(spouseName.trim()),
+        mother: sanitizeInput(mother.trim()),
         gender,
-        mobile,
-        village: getFinalVillage(),
-        postOffice: getFinalPostOffice(),
-        postCode: postOfficeSelect === 'OTHER' ? postCodeOther : '১৯৫০',
-        wardNo,
-        holdingNo: holdingNo.trim(),
+        mobile: sanitizeInput(mobile.trim()),
+        village: sanitizeInput(getFinalVillage()),
+        postOffice: sanitizeInput(getFinalPostOffice()),
+        postCode: sanitizeInput(postOfficeSelect === 'OTHER' ? postCodeOther : '১৯৫০'),
+        wardNo: sanitizeInput(wardNo),
+        holdingNo: sanitizeInput(holdingNo.trim()),
         extra: {
-          simpleFields: {
-            ...simpleFields,
-            holdingNo: holdingNo.trim() || simpleFields['holdingNo'] || ''
-          },
-          tables: tablesData
+          simpleFields: sanitizedSimpleFields,
+          tables: sanitizedTablesData
         },
-        customNote,
-        highThinking,
+        customNote: sanitizeInput(customNote),
+        highThinking: sanitizeInput(highThinking),
         feeAmount: currentFee,
         paymentMethod,
-        trxId: trxId.trim(),
+        trxId: sanitizeInput(trxId.trim()),
         paymentStatus: 'paid',
         status: targetStatus
       };
