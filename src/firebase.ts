@@ -15,6 +15,7 @@ import {
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 import { CertificateRecord, UnionParishadConfig } from './types';
 
@@ -25,6 +26,9 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
+
+// Initialize Firebase Storage
+export const storage = getStorage(app);
 
 const CERTIFICATES_COLLECTION = 'certificates';
 const CONFIGS_COLLECTION = 'configs';
@@ -205,4 +209,109 @@ export function subscribePendingCertificatesCount(callback: (count: number) => v
     console.warn('Firestore subscription failed:', error);
     return () => {};
   }
+}
+
+export interface FirestoreCollectionExportResult {
+  filename: string;
+  timestamp: string;
+  downloadUrl?: string;
+  storagePath?: string;
+  collections: { [colName: string]: number };
+  totalDocuments: number;
+  sizeKb: number;
+  jsonData: any;
+}
+
+/**
+ * Export selected Firestore collections as JSON and save to Firebase Storage
+ */
+export async function exportFirestoreCollectionsToStorage(
+  selectedCollections: string[],
+  notes: string = 'Developer Firestore Export'
+): Promise<FirestoreCollectionExportResult> {
+  const exportData: Record<string, any[]> = {};
+  const collectionCounts: Record<string, number> = {};
+  let totalDocs = 0;
+
+  for (const colName of selectedCollections) {
+    try {
+      const colRef = collection(db, colName);
+      const snap = await getDocs(colRef);
+      const docs: any[] = [];
+      snap.forEach((d) => {
+        docs.push({ _docId: d.id, ...d.data() });
+      });
+      exportData[colName] = docs;
+      collectionCounts[colName] = docs.length;
+      totalDocs += docs.length;
+    } catch (err) {
+      console.warn(`Collection ${colName} export warning:`, err);
+      exportData[colName] = [];
+      collectionCounts[colName] = 0;
+    }
+  }
+
+  const timestamp = new Date().toISOString();
+  const dateStr = timestamp.replace(/[:.]/g, '-').slice(0, 19);
+  const filename = `Firestore_Export_${dateStr}.json`;
+
+  const payload = {
+    meta: {
+      exporterRole: 'developer',
+      exportType: 'FIRESTORE_CUSTOM_COLLECTIONS_BACKUP',
+      timestamp,
+      selectedCollections,
+      collectionCounts,
+      totalDocuments: totalDocs,
+      notes
+    },
+    collectionsData: exportData
+  };
+
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const sizeKb = Math.round(new Blob([jsonStr]).size / 1024);
+
+  let downloadUrl: string | undefined = undefined;
+  let storagePath: string | undefined = undefined;
+
+  // Attempt Firebase Storage Upload
+  try {
+    const storageRef = ref(storage, `backups/firestore_exports/${filename}`);
+    await uploadString(storageRef, jsonStr, 'raw', {
+      contentType: 'application/json'
+    });
+    downloadUrl = await getDownloadURL(storageRef);
+    storagePath = storageRef.fullPath;
+  } catch (storageErr) {
+    console.warn('Firebase Storage upload notice (fallback to local JSON download and Firestore log):', storageErr);
+  }
+
+  // Record export snapshot in Firestore 'backups' collection
+  try {
+    const backupDocRef = doc(db, 'backups', `fs_exp_${Date.now()}`);
+    await setDoc(backupDocRef, {
+      filename,
+      timestamp,
+      recordsCount: totalDocs,
+      sizeKb,
+      status: 'completed',
+      notes: notes || 'Developer Firestore Collections Export',
+      downloadUrl: downloadUrl || null,
+      storagePath: storagePath || null,
+      collections: collectionCounts
+    }, { merge: true });
+  } catch (err) {
+    console.warn('Notice saving backup log to Firestore:', err);
+  }
+
+  return {
+    filename,
+    timestamp,
+    downloadUrl,
+    storagePath,
+    collections: collectionCounts,
+    totalDocuments: totalDocs,
+    sizeKb,
+    jsonData: payload
+  };
 }

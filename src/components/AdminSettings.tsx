@@ -38,7 +38,12 @@ import {
   Send,
   Terminal
 } from 'lucide-react';
-import { saveConfigToFirebase, batchRestoreCertificatesToFirebase } from '../firebase';
+import { 
+  saveConfigToFirebase, 
+  batchRestoreCertificatesToFirebase, 
+  exportFirestoreCollectionsToStorage, 
+  FirestoreCollectionExportResult 
+} from '../firebase';
 import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember } from '../types';
 import { CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
@@ -105,6 +110,60 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   const [firestoreImportCerts, setFirestoreImportCerts] = useState<any[]>([]);
   const [isBatchRestoringFirestore, setIsBatchRestoringFirestore] = useState(false);
   const [firestoreBatchResult, setFirestoreBatchResult] = useState<{ count: number; batches: number } | null>(null);
+
+  // Developer Firestore Collection Export State
+  const [developerSelectedCollections, setDeveloperSelectedCollections] = useState<string[]>([
+    'certificates',
+    'configs',
+    'apiKeys',
+    'webhooks',
+    'backups'
+  ]);
+  const [developerExportNotes, setDeveloperExportNotes] = useState('ডেভেলপার রোল: ফায়ারস্টোর কালেকশন ব্যাকআপ এক্সপোর্ট');
+  const [isExportingFirestoreDev, setIsExportingFirestoreDev] = useState(false);
+  const [firestoreDevExportResult, setFirestoreDevExportResult] = useState<FirestoreCollectionExportResult | null>(null);
+
+  const handleToggleDevCollection = (colName: string) => {
+    setDeveloperSelectedCollections(prev => 
+      prev.includes(colName) ? prev.filter(c => c !== colName) : [...prev, colName]
+    );
+  };
+
+  const handleExecuteDeveloperFirestoreExport = async () => {
+    if (developerSelectedCollections.length === 0) {
+      alert('অনুগ্রহ করে অন্তত একটি ফায়ারস্টোর কালেকশন নির্বাচন করুন।');
+      return;
+    }
+    setIsExportingFirestoreDev(true);
+    setFirestoreDevExportResult(null);
+
+    try {
+      const result = await exportFirestoreCollectionsToStorage(
+        developerSelectedCollections,
+        developerExportNotes
+      );
+      setFirestoreDevExportResult(result);
+      fetchBackupsList();
+    } catch (err: any) {
+      alert('ফায়ারস্টোর এক্সপোর্ট এক্সিকিউশনে ত্রুটি: ' + (err.message || String(err)));
+    } finally {
+      setIsExportingFirestoreDev(false);
+    }
+  };
+
+  const handleDownloadDevExportJson = () => {
+    if (!firestoreDevExportResult) return;
+    const jsonString = JSON.stringify(firestoreDevExportResult.jsonData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = firestoreDevExportResult.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // System Maintenance State
   const [maintHealth, setMaintHealth] = useState<any>(null);
@@ -1079,6 +1138,149 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
               </button>
             </div>
           )}
+
+          {/* DEVELOPER ROLE: FIRESTORE DATABASE EXPORT CARD */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-xl border border-indigo-500/40 space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-indigo-800/80 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl shrink-0">
+                  <Code className="w-6 h-6 text-amber-300" />
+                </div>
+                <div>
+                  <h4 className="font-black text-base text-white flex items-center gap-2">
+                    <span>🔥 ডেভেলপার রোল: Firestore ডাটাবেস এক্সপোর্ট (Cloud Storage & JSON)</span>
+                    <span className="px-2.5 py-0.5 bg-indigo-500/30 text-indigo-200 text-[10px] rounded-md font-extrabold border border-indigo-400/40">
+                      Developer Exclusive
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    নির্দিষ্ট Firestore কালেকশন সিলেক্ট করে JSON ব্যাকআপ তৈরি করুন এবং সরাসরি Firebase Cloud Storage-এ সংরক্ষণ করুন।
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Collection Selector & Export Settings */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-indigo-200 mb-2">
+                  ব্যাকআপের জন্য নির্দিষ্ট ফায়ারস্টোর কালেকশন সমূহ সিলেক্ট করুন:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+                  {[
+                    { key: 'certificates', label: 'certificates' },
+                    { key: 'configs', label: 'configs' },
+                    { key: 'apiKeys', label: 'apiKeys' },
+                    { key: 'webhooks', label: 'webhooks' },
+                    { key: 'backups', label: 'backups' }
+                  ].map(col => (
+                    <button
+                      key={col.key}
+                      type="button"
+                      onClick={() => handleToggleDevCollection(col.key)}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                        developerSelectedCollections.includes(col.key)
+                          ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md font-black'
+                          : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      <span>{col.key}</span>
+                      {developerSelectedCollections.includes(col.key) && (
+                        <CheckCircle2 className="w-4 h-4 text-slate-950 shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                    ব্যাকআপ নোট / বিবরণী:
+                  </label>
+                  <input
+                    type="text"
+                    value={developerExportNotes}
+                    onChange={(e) => setDeveloperExportNotes(e.target.value)}
+                    placeholder="যেমন: ডেভেলপার ডাটাবেস এক্সপোর্ট..."
+                    className="w-full px-3.5 py-2.5 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleExecuteDeveloperFirestoreExport}
+                  disabled={isExportingFirestoreDev || developerSelectedCollections.length === 0}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95 shrink-0"
+                >
+                  {isExportingFirestoreDev ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                      <span>ফায়ারস্টোর এক্সপোর্ট হইতেছে...</span>
+                    </>
+                  ) : (
+                    <>
+                      <HardDrive className="w-4 h-4 text-slate-950" />
+                      <span>🔥 Firestore এক্সপোর্ট ট্রিগার করুন</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Export Result Display */}
+            {firestoreDevExportResult && (
+              <div className="bg-emerald-950/80 p-4 rounded-xl border border-emerald-500/60 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-800/80 pb-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <span className="font-extrabold text-xs text-white">
+                      ফায়ারস্টোর এক্সপোর্ট সম্পন্ন! মোট {firestoreDevExportResult.totalDocuments} টি ডকুমেন্ট ({firestoreDevExportResult.sizeKb} KB)
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] text-amber-300">
+                    {firestoreDevExportResult.filename}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  {Object.entries(firestoreDevExportResult.collections).map(([col, count]) => (
+                    <span key={col} className="px-2.5 py-1 bg-emerald-900/90 text-emerald-200 border border-emerald-600/50 rounded-lg font-mono">
+                      {col}: <strong>{count}</strong> docs
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadDevExportJson}
+                    className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>JSON ব্যাকআপ ডাউনলোড করুন</span>
+                  </button>
+
+                  {firestoreDevExportResult.downloadUrl ? (
+                    <a
+                      href={firestoreDevExportResult.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Cloud className="w-4 h-4 text-amber-300" />
+                      <span>Firebase Cloud Storage ফাইল ভিউ</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  ) : (
+                    <span className="text-[11px] text-slate-300 font-mono">
+                      * Storage Path: {firestoreDevExportResult.storagePath || 'backups/firestore_exports/' + firestoreDevExportResult.filename}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* FIRESTORE BATCH WRITE IMPORT & RESTORE CARD */}
           <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white p-6 rounded-2xl shadow-xl border border-emerald-500/40 space-y-4">
