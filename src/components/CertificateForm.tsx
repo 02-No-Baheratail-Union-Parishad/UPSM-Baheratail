@@ -290,17 +290,75 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
+    // Convert Bengali digits to English digits for length checks
+    const toEnDigits = (str: string) =>
+      str.replace(/[০-৯]/g, (d) => '০১২৩৪৫৬৭৮৯'.indexOf(d).toString());
+
+    // 1. Name check
     if (!name.trim()) {
-      setErrorMessage('অনুগ্রহ করে নাগরিকের নাম প্রদান করুন।');
+      setErrorMessage('⚠️ ত্রুটি: আবেদনকারীর পূর্ণ নাম প্রদান করা আবশ্যক।');
       return;
     }
+
+    // 2. Mother name check
     if (!mother.trim()) {
-      setErrorMessage('মাতার নাম প্রদান করা আবশ্যক।');
+      setErrorMessage('⚠️ ত্রুটি: আবেদনকারীর মাতার নাম প্রদান করা আবশ্যক।');
       return;
     }
+
+    // 3. Father / Spouse check
     if (!father.trim() && !spouseName.trim()) {
-      setErrorMessage('পিতার নাম অথবা স্বামী/স্ত্রীর নাম—অন্তত একটি প্রদান করুন।');
+      setErrorMessage('⚠️ ত্রুটি: পিতার নাম অথবা স্বামী/স্ত্রীর নাম—অন্তত একটি প্রদান করুন।');
       return;
+    }
+
+    // 4. Village check
+    if (!getFinalVillage()) {
+      setErrorMessage('⚠️ ত্রুটি: গ্রাম / এলাকার নাম প্রদান করুন।');
+      return;
+    }
+
+    // 5. NID Number validation (if provided)
+    if (nid.trim()) {
+      const cleanNid = toEnDigits(nid.trim()).replace(/\D/g, '');
+      if (![10, 13, 17].includes(cleanNid.length)) {
+        setErrorMessage(
+          `⚠️ এনআইডি (NID) নম্বর অকার্যকর! জাতীয় পরিচয়পত্র নম্বর ১০, ১৩ অথবা ১৭ সংখ্যার হওয়া আবশ্যক (বর্তমানে ${cleanNid.length} ডিজিট)।`
+        );
+        return;
+      }
+    }
+
+    // 6. Birth Registration Number validation (if provided)
+    if (birthNo.trim()) {
+      const cleanBirth = toEnDigits(birthNo.trim()).replace(/\D/g, '');
+      if (cleanBirth.length !== 17) {
+        setErrorMessage(
+          `⚠️ জন্ম নিবন্ধন নম্বর অকার্যকর! জন্ম নিবন্ধন নম্বর অবশ্যই ১৭ সংখ্যার হতে হবে (বর্তমানে ${cleanBirth.length} ডিজিট)।`
+        );
+        return;
+      }
+    }
+
+    // 7. Mobile Number validation (if provided)
+    if (mobile.trim()) {
+      const cleanMobile = toEnDigits(mobile.trim()).replace(/\D/g, '');
+      if (cleanMobile.length !== 11 || !cleanMobile.startsWith('01')) {
+        setErrorMessage(
+          '⚠️ মোবাইল নম্বর অকার্যকর! বাংলাদেশি মোবাইল নম্বর ০১ দিয়ে শুরু এবং ১১ ডিজিটের হওয়া আবশ্যক (যেমন: 01711223344)।'
+        );
+        return;
+      }
+    }
+
+    // 8. Required Simple Fields check for chosen certificate type
+    if (selectedTypeObj.simpleFields) {
+      for (const field of selectedTypeObj.simpleFields) {
+        if (field.required && (!simpleFields[field.key] || !simpleFields[field.key].trim())) {
+          setErrorMessage(`⚠️ ত্রুটি: "${field.label}" ফিল্ডটি পূরণ করা আবশ্যক।`);
+          return;
+        }
+      }
     }
 
     setIsSubmitting(true);

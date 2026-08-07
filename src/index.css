@@ -1,1 +1,66 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    background-color: #0f172a;
+    color: #f8fafc;
+  }
+}
+
+/* Print Friendly Certificate Layout Rules */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 6mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide non-printable UI components */
+  nav, 
+  aside, 
+  header, 
+  footer, 
+  button, 
+  .no-print, 
+  .print-hide, 
+  [role="dialog"], 
+  #ai-assistant-drawer,
+  .notice-ticker-bar {
+    display: none !important;
+  }
+
+  /* Expand main printable container */
+  main {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Exact color rendering for watermarks & seals */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure print paper canvas fills page cleanly without shadow or border artifacts */
+  .print-paper {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+  }
+}

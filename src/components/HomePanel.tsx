@@ -15,7 +15,13 @@ import {
   PieChart as PieIcon,
   ShieldAlert,
   Layers,
-  Users
+  Users,
+  Search,
+  Baby,
+  HeartPulse,
+  UserCheck,
+  FileSpreadsheet,
+  X
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -33,7 +39,7 @@ import {
   Legend
 } from 'recharts';
 import { CERTIFICATE_TYPES, CERTIFICATE_CATEGORIES } from '../data/certificateTypes';
-import { UnionParishadConfig } from '../types';
+import { UnionParishadConfig, CitizenAccountRecord } from '../types';
 import { CertificateTrendDashboard } from './CertificateTrendDashboard';
 import { NoticeBoardTicker } from './NoticeBoardTicker';
 import { UnionMapViewer } from './UnionMapViewer';
@@ -45,13 +51,65 @@ interface HomePanelProps {
 
 const PIE_COLORS = ['#059669', '#0284c7', '#7c3aed', '#d97706', '#ec4899'];
 
+// Sample citizen dataset for instant smart search
+const SAMPLE_SEARCH_CITIZENS: CitizenAccountRecord[] = [
+  {
+    id: 'cit_1',
+    name: 'মোঃ আব্দুল কুদ্দুস',
+    father: 'মরহুম জলিল সরকার',
+    mother: 'মাজেদা খাতুন',
+    nid: '19842692015000123',
+    mobile: '01711223344',
+    village: 'বহেড়াতৈল',
+    wardNo: '০৫',
+    postOffice: 'বহেড়াতৈল',
+    totalCertificates: 3,
+    registeredAt: '2026-01-15'
+  },
+  {
+    id: 'cit_2',
+    name: 'মোছাঃ ফাতেমা বেগম',
+    father: 'আবু বকর সিদ্দিক',
+    mother: 'রহিমা বেগম',
+    nid: '19922692015000456',
+    mobile: '01812345678',
+    village: 'গড়গোবিন্দপুর',
+    wardNo: '০২',
+    postOffice: 'বহেড়াতৈল',
+    totalCertificates: 2,
+    registeredAt: '2026-02-10'
+  },
+  {
+    id: 'cit_3',
+    name: 'মোঃ রফিকুল ইসলাম',
+    father: 'মোঃ শামসুল হক',
+    mother: 'আমেনা বেগম',
+    nid: '5512345678',
+    mobile: '01911998877',
+    village: 'ডাবচেনি',
+    wardNo: '০৪',
+    postOffice: 'বহেড়াতৈল',
+    totalCertificates: 1,
+    registeredAt: '2026-03-01'
+  }
+];
+
 export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<CitizenAccountRecord[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [stats, setStats] = useState<{
     totalCertificates: number;
     todayCount: number;
     monthlyCount: number;
     pendingVerifications: number;
     verifiedCount: number;
+    birthCount: number;
+    deathCount: number;
+    warishCount: number;
+    characterCount: number;
+    totalRegisteredCitizens: number;
     wardCounts: Record<string, number>;
     monthlyStats: Array<{ month: string; totalIssued: number; verified: number; pending: number }>;
     categoryDistribution: Array<{ name: string; value: number }>;
@@ -61,6 +119,11 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
     monthlyCount: 346,
     pendingVerifications: 13,
     verifiedCount: 1474,
+    birthCount: 482,
+    deathCount: 124,
+    warishCount: 295,
+    characterCount: 386,
+    totalRegisteredCitizens: 2150,
     wardCounts: { '০১': 42, '০২': 35, '০৩': 28, '০৪': 50, '০৫': 65, '০৬': 38, '০৭': 29, '০৮': 31, '০৯': 40 },
     monthlyStats: [
       { month: 'মার্চ', totalIssued: 142, verified: 136, pending: 6 },
@@ -79,6 +142,45 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
     ]
   });
 
+  // Real-time instant citizen search logic
+  useEffect(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    // Load saved citizens from localStorage
+    let savedCitizens: CitizenAccountRecord[] = [];
+    try {
+      const raw = localStorage.getItem('up_citizen_master_db');
+      if (raw) savedCitizens = JSON.parse(raw);
+    } catch (e) {
+      console.warn('LocalStorage citizen parse warning:', e);
+    }
+
+    const allCitizens = [...savedCitizens, ...SAMPLE_SEARCH_CITIZENS];
+    
+    // De-duplicate by NID or ID
+    const uniqueMap = new Map<string, CitizenAccountRecord>();
+    allCitizens.forEach(c => uniqueMap.set(c.nid || c.id, c));
+    const uniqueCitizens = Array.from(uniqueMap.values());
+
+    const filtered = uniqueCitizens.filter(c => {
+      const nameMatch = c.name?.toLowerCase().includes(q);
+      const nidMatch = c.nid?.includes(q) || c.birthNo?.includes(q);
+      const mobileMatch = c.mobile?.includes(q);
+      const villageMatch = c.village?.toLowerCase().includes(q);
+      return nameMatch || nidMatch || mobileMatch || villageMatch;
+    });
+
+    setSearchResults(filtered);
+    setIsSearching(false);
+  }, [searchQuery]);
+
   useEffect(() => {
     fetch('/api/admin/stats')
       .then((res) => {
@@ -87,7 +189,8 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
       })
       .then((data) => {
         if (data && data.totalCertificates !== undefined) {
-          setStats({
+          setStats((prev) => ({
+            ...prev,
             totalCertificates: data.totalCertificates || 1487,
             todayCount: data.todayCount || 9,
             monthlyCount: data.monthlyCount || 346,
@@ -95,23 +198,8 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
             verifiedCount: data.verifiedCount || 1474,
             wardCounts: data.wardCounts && Object.keys(data.wardCounts).length > 0
               ? data.wardCounts
-              : { '০১': 42, '০২': 35, '০৩': 28, '০৪': 50, '০৫': 65, '০৬': 38, '০৭': 29, '০৮': 31, '০৯': 40 },
-            monthlyStats: data.monthlyStats || [
-              { month: 'মার্চ', totalIssued: 142, verified: 136, pending: 6 },
-              { month: 'এপ্রিল', totalIssued: 178, verified: 170, pending: 8 },
-              { month: 'মে', totalIssued: 215, verified: 205, pending: 10 },
-              { month: 'জুন', totalIssued: 260, verified: 248, pending: 12 },
-              { month: 'জুলাই', totalIssued: 310, verified: 298, pending: 12 },
-              { month: 'আগস্ট (চলতি)', totalIssued: 346, verified: 333, pending: 13 }
-            ],
-            categoryDistribution: data.categoryDistribution || [
-              { name: 'নাগরিকত্ব ও পরিচয়', value: 146 },
-              { name: 'উত্তরাধিকার ও পরিবার', value: 99 },
-              { name: 'চরিত্র ও সামাজিক', value: 65 },
-              { name: 'আর্থিক ও সম্পত্তি', value: 43 },
-              { name: 'অন্যান্য প্রত্যয়ন', value: 37 }
-            ]
-          });
+              : prev.wardCounts
+          }));
         }
       })
       .catch((e) => console.warn('Stats fetch notice (using cached/default stats):', e));
@@ -194,6 +282,192 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
               <Users className="w-5 h-5 text-emerald-300" />
               <span>পরিষদ সদস্য ও কর্মকর্তা</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ⚡ REAL-TIME SMART SEARCH BAR (1-Second Instant Citizen & Certificate Search) */}
+      <div className="bg-white p-5 rounded-2xl shadow-md border border-slate-200 space-y-3 relative z-30">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+              <Search className="w-5 h-5 text-emerald-700 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm md:text-base flex items-center gap-2">
+                <span>স্মার্ট নাগরিক ও সনদ তথ্য লাইভ সার্চবার</span>
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                  ১ সেকেন্ডে অনুসন্ধান
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                নাগরিকের নাম, জাতীয় পরিচয়পত্র (NID), জন্ম সনদ নম্বর, মোবাইল নম্বর বা গ্রাম লিখে তাত্ক্ষণিক তথ্য খুঁজুন:
+              </p>
+            </div>
+          </div>
+
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>মুছে ফেলুন</span>
+            </button>
+          )}
+        </div>
+
+        {/* Input Box */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="এখানে নাম (যেমন: আব্দুল কুদ্দুস), NID (১৭ ডিজিট), জন্ম সনদ নং বা মোবাইল নম্বর টাইপ করুন..."
+            className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-200 focus:border-emerald-600 focus:bg-white rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none transition shadow-inner"
+          />
+          <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5" />
+        </div>
+
+        {/* Instant Search Results Dropdown */}
+        {searchQuery.trim().length > 0 && (
+          <div className="mt-2 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden divide-y divide-slate-100 max-h-80 overflow-y-auto">
+            {searchResults.length > 0 ? (
+              searchResults.map((cit) => (
+                <div
+                  key={cit.id}
+                  className="p-3 hover:bg-emerald-50/60 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-slate-900 text-sm">{cit.name}</span>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded text-[10px]">
+                        ওয়ার্ড {cit.wardNo} ({cit.village})
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-slate-600 text-[11px]">
+                      <span>পিতা: {cit.father}</span>
+                      <span>•</span>
+                      <span>NID/জন্ম নং: <strong className="font-mono text-slate-900">{cit.nid || cit.birthNo || 'N/A'}</strong></span>
+                      <span>•</span>
+                      <span>মোবাইল: <strong className="font-mono text-emerald-700">{cit.mobile || 'N/A'}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                        onNavigateTab('create');
+                      }}
+                      className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-lg transition shadow-sm text-xs cursor-pointer flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>আবেদন করুন</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                        onNavigateTab('citizens');
+                      }}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg transition text-xs cursor-pointer"
+                    >
+                      প্রোফাইল
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-slate-500 space-y-1">
+                <p className="font-bold text-sm text-slate-700">কোনো নাগরিকের তথ্য পাওয়া যায়নি!</p>
+                <p className="text-xs">"<strong>{searchQuery}</strong>" দিয়ে কোনো রেকর্ড মিলেনি। সরাসরি নতুন আবেদন ফরম পূরণ করতে পারেন।</p>
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      onNavigateTab('create');
+                    }}
+                    className="px-4 py-2 bg-amber-400 text-emerald-950 font-bold text-xs rounded-lg shadow cursor-pointer"
+                  >
+                    + নতুন সনদ আবেদন তৈরি করুন
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Service Summary Counters Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+          <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+            <span>নাগরিক সেবাসমূহ ও বিষয়ভিত্তিক রেজিস্টার কাউন্টার</span>
+          </h3>
+          <span className="text-xs text-slate-500 font-semibold">লাইভ ডাটাবেজ সামারি</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {/* Counter 1: Birth Certificates */}
+          <div className="bg-emerald-900 text-white p-3.5 rounded-xl shadow-sm border border-emerald-800 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-200">জন্ম সনদ</span>
+              <Baby className="w-4 h-4 text-amber-300" />
+            </div>
+            <p className="text-xl font-black text-amber-300">{stats.birthCount} টি</p>
+            <p className="text-[10px] text-emerald-300 font-medium">নিবন্ধনভুক্ত রেকর্ড</p>
+          </div>
+
+          {/* Counter 2: Death Certificates */}
+          <div className="bg-slate-900 text-white p-3.5 rounded-xl shadow-sm border border-slate-800 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-300">মৃত্যু নিবন্ধিত</span>
+              <HeartPulse className="w-4 h-4 text-rose-400" />
+            </div>
+            <p className="text-xl font-black text-rose-300">{stats.deathCount} টি</p>
+            <p className="text-[10px] text-slate-400 font-medium">ইউনিয়ন রেজিস্টার</p>
+          </div>
+
+          {/* Counter 3: Warish / Heir Certificates */}
+          <div className="bg-amber-950 text-white p-3.5 rounded-xl shadow-sm border border-amber-900 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-amber-200">ওয়ারিশান সনদ</span>
+              <Users className="w-4 h-4 text-amber-400" />
+            </div>
+            <p className="text-xl font-black text-amber-300">{stats.warishCount} টি</p>
+            <p className="text-[10px] text-amber-200 font-medium">উত্তরাধিকার তালিকা</p>
+          </div>
+
+          {/* Counter 4: Character Certificates */}
+          <div className="bg-sky-950 text-white p-3.5 rounded-xl shadow-sm border border-sky-900 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-sky-200">চারিত্রিক ও পরিচয়</span>
+              <UserCheck className="w-4 h-4 text-sky-300" />
+            </div>
+            <p className="text-xl font-black text-sky-200">{stats.characterCount} টি</p>
+            <p className="text-[10px] text-sky-300 font-medium">প্রত্যয়নপত্র জেনারেট</p>
+          </div>
+
+          {/* Counter 5: Registered Citizens */}
+          <div className="bg-purple-950 text-white p-3.5 rounded-xl shadow-sm border border-purple-900 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-purple-200">মোট নাগরিক</span>
+              <Building2 className="w-4 h-4 text-purple-300" />
+            </div>
+            <p className="text-xl font-black text-purple-200">{stats.totalRegisteredCitizens.toLocaleString()} জন</p>
+            <p className="text-[10px] text-purple-300 font-medium">মাস্টার সিটিজেন ডেটা</p>
+          </div>
+
+          {/* Counter 6: QR Verified Certificates */}
+          <div className="bg-teal-950 text-white p-3.5 rounded-xl shadow-sm border border-teal-900 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-teal-200">কিউআর ভেরিফাইড</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            </div>
+            <p className="text-xl font-black text-emerald-300">{stats.verifiedCount.toLocaleString()} টি</p>
+            <p className="text-[10px] text-teal-300 font-medium">অনলাইন সত্যতা ৯৯.১%</p>
           </div>
         </div>
       </div>

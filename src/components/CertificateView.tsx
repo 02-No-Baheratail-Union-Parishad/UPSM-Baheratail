@@ -257,8 +257,9 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
       {/* Certificate Print Paper Canvas */}
       <div 
         ref={printRef} 
-        className="bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-slate-300 max-w-4xl mx-auto relative overflow-hidden text-slate-900 print:shadow-none print:p-6 print:border-none print:m-0 print:w-full"
-        style={{ minHeight: '1050px' }}
+        id="certificate-print-area"
+        className="print-paper bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-slate-300 max-w-4xl mx-auto relative overflow-hidden text-slate-900 print:shadow-none print:p-4 print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none"
+        style={{ minHeight: '1020px' }}
       >
         {/* Background Watermark */}
         <div 

@@ -4,7 +4,9 @@ import {
   Building2,
   Bell,
   Globe,
-  Menu
+  Menu,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
@@ -22,6 +24,25 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config, pendingCount: propPendingCount, onToggleMobileSidebar }) => {
   const [pendingCount, setPendingCount] = useState<number>(propPendingCount ?? 0);
+
+  // Dark Mode Theme State
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('app_theme') === 'dark' || document.documentElement.classList.contains('dark');
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('app_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('app_theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(prev => !prev);
+  };
 
   // Language state (bn / en)
   const [lang, setLang] = useState<'bn' | 'en'>(() => {
@@ -148,6 +169,25 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
 
         {/* Quick Action buttons & Pending Notification Badge */}
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Dark / Light Mode Toggle Button */}
+          <button
+            onClick={toggleDarkMode}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 transition cursor-pointer active:scale-95"
+            title={isDarkMode ? 'লাইট মোডে পরিবর্তন করুন' : 'ডার্ক মোডে পরিবর্তন করুন'}
+          >
+            {isDarkMode ? (
+              <>
+                <Sun className="w-4 h-4 text-amber-300" />
+                <span>লাইট মোড</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4 text-amber-300" />
+                <span>ডার্ক মোড</span>
+              </>
+            )}
+          </button>
+
           {/* Language Toggle Pill in Quick Action Bar */}
           <button
             onClick={toggleLanguage}
