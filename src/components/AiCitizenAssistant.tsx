@@ -20,6 +20,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
+import { sanitizeInput } from '../utils/security';
 
 interface AiCitizenAssistantProps {
   config: UnionParishadConfig;
@@ -146,8 +147,9 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
   };
 
   const handleSendMessage = async (textToSend?: string) => {
-    const query = (textToSend || inputText).trim();
-    if (!query) return;
+    const rawQuery = (textToSend || inputText).trim();
+    if (!rawQuery) return;
+    const query = sanitizeInput(rawQuery, 1000);
 
     const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,

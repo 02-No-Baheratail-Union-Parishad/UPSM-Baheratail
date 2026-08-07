@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { WARDS, KNOWN_VILLAGES } from '../data/villages';
 import { CitizenAccountRecord, UnionParishadConfig, NidScanResult } from '../types';
+import { sanitizeObject } from '../utils/security';
 import { fetchCertificatesFromFirebase } from '../firebase';
 import { NidScannerModal } from './NidScannerModal';
 
@@ -261,7 +262,7 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
       return;
     }
 
-    const createdRecord: CitizenAccountRecord = {
+    const createdRecord: CitizenAccountRecord = sanitizeObject({
       id: `cit_custom_${Date.now()}`,
       nid: newCitizen.nid || '',
       birthNo: newCitizen.birthNo || '',
@@ -278,7 +279,7 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
       postCode: newCitizen.postCode || '১৯৫০',
       totalCertificates: 0,
       registeredAt: new Date().toISOString()
-    };
+    });
 
     setCitizens([createdRecord, ...citizens]);
     setIsAddModalOpen(false);

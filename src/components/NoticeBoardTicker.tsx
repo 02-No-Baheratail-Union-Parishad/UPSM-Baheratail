@@ -15,6 +15,7 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
+import { sanitizeInput } from '../utils/security';
 
 interface NoticeBoardTickerProps {
   config: UnionParishadConfig;
@@ -82,12 +83,12 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
 
     const item: NoticeItem = {
       id: `notice_${Date.now()}`,
-      title: newTitle.trim(),
+      title: sanitizeInput(newTitle.trim(), 300),
       category: newCategory,
       date: new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }),
-      content: newContent.trim(),
+      content: sanitizeInput(newContent.trim(), 3000),
       isPinned: true,
-      publishedBy: config.secretaryName || 'অ্যাডমিন'
+      publishedBy: sanitizeInput(config.secretaryName || 'অ্যাডমিন', 100)
     };
 
     setNotices([item, ...notices]);

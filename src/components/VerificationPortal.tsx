@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { searchCertificateInFirebase } from '../firebase';
 import { CertificateRecord, UnionParishadConfig } from '../types';
+import { sanitizeInput } from '../utils/security';
 import { formatBanglaDate, generateSecurityChecksum } from '../lib/utils';
 import { CertificateView } from './CertificateView';
 import { BulkQrVerifier } from './BulkQrVerifier';
@@ -34,20 +35,21 @@ export const VerificationPortal: React.FC<VerificationPortalProps> = ({ config }
 
   const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!memoInput.trim()) return;
+    const sanitizedMemo = sanitizeInput(memoInput.trim(), 100);
+    if (!sanitizedMemo) return;
 
     setLoading(true);
     setVerificationData(null);
 
     try {
-      const res = await fetch(`/api/certificate/verify/${encodeURIComponent(memoInput.trim())}`);
+      const res = await fetch(`/api/certificate/verify/${encodeURIComponent(sanitizedMemo)}`);
       const data = await res.json();
       
       if (data.found && data.certificate) {
         setVerificationData(data);
       } else {
         // Fallback to Firebase Firestore
-        const fbRecord = await searchCertificateInFirebase(memoInput.trim());
+        const fbRecord = await searchCertificateInFirebase(sanitizedMemo);
         if (fbRecord) {
           setVerificationData({
             found: true,
@@ -61,7 +63,7 @@ export const VerificationPortal: React.FC<VerificationPortalProps> = ({ config }
     } catch (err) {
       // Direct Firebase Firestore check on network error
       try {
-        const fbRecord = await searchCertificateInFirebase(memoInput.trim());
+        const fbRecord = await searchCertificateInFirebase(sanitizedMemo);
         if (fbRecord) {
           setVerificationData({
             found: true,

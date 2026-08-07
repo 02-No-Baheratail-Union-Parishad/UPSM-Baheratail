@@ -33,6 +33,7 @@ import {
   QrCode
 } from 'lucide-react';
 import { UnionParishadConfig, CouncilMember } from '../types';
+import { sanitizeObject } from '../utils/security';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
 import { saveConfigToFirebase } from '../firebase';
 import { MemberIdCardModal } from './MemberIdCardModal';
@@ -95,19 +96,20 @@ export const CouncilMembers: React.FC<CouncilMembersProps> = ({ config, onUpdate
     setSaveSuccessMsg(null);
 
     try {
+      const sanitizedMember = sanitizeObject(editingMember);
       const existingList = getSyncedCouncilMembers(config);
       let updatedList: CouncilMember[];
 
       if (isNewMemberMode) {
-        updatedList = [...existingList, editingMember];
+        updatedList = [...existingList, sanitizedMember];
       } else {
-        updatedList = existingList.map(m => m.id === editingMember.id ? editingMember : m);
+        updatedList = existingList.map(m => m.id === sanitizedMember.id ? sanitizedMember : m);
       }
 
-      const newConfig: UnionParishadConfig = {
+      const newConfig: UnionParishadConfig = sanitizeObject({
         ...config,
         councilMembers: updatedList
-      };
+      });
 
       // Auto-sync Chairman & Secretary if their profiles are modified
       if (editingMember.category === 'chairman' || editingMember.id === 'm_chairman') {

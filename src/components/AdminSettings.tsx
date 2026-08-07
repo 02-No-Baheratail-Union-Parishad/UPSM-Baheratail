@@ -48,6 +48,7 @@ import {
   FirestoreCollectionExportResult 
 } from '../firebase';
 import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember } from '../types';
+import { sanitizeInput, sanitizeObject } from '../utils/security';
 import { CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
 import { AppsScriptModal } from './AppsScriptModal';
@@ -755,15 +756,16 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
     setSaveSuccess(false);
 
     try {
+      const sanitizedConfig = sanitizeObject(formData);
       const res = await fetch('/api/admin/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(sanitizedConfig)
       });
       const data = await res.json();
       
       // Sync config to Firebase Firestore as well
-      saveConfigToFirebase(formData).catch(err =>
+      saveConfigToFirebase(sanitizedConfig).catch(err =>
         console.warn('Firebase config sync warning:', err)
       );
 
