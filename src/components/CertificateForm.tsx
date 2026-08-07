@@ -62,6 +62,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   // Form Basic Data State
   const [nid, setNid] = useState('');
   const [birthNo, setBirthNo] = useState('');
+  const [holdingNo, setHoldingNo] = useState('');
   const [name, setName] = useState('');
   const [father, setFather] = useState('');
   const [spouseName, setSpouseName] = useState('');
@@ -81,6 +82,9 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   const [customNote, setCustomNote] = useState('');
   const [highThinking, setHighThinking] = useState(false);
 
+  // Active Auto-Filled Citizen Record (for visual banner)
+  const [autoFilledProfile, setAutoFilledProfile] = useState<CitizenAccountRecord | null>(initialCitizen || null);
+
   // UI Modals & Loading
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +93,8 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   // Auto-fill form from selected initial citizen (e.g. from Citizen Master Register)
   useEffect(() => {
     if (initialCitizen) {
+      setAutoFilledProfile(initialCitizen);
+
       if (initialCitizen.nid) setNid(initialCitizen.nid);
       else setNid('');
 
@@ -103,6 +109,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
       setMobile(initialCitizen.mobile || '');
 
       if (initialCitizen.wardNo) setWardNo(initialCitizen.wardNo);
+      if (initialCitizen.holdingNo) setHoldingNo(initialCitizen.holdingNo);
 
       if (initialCitizen.village && KNOWN_VILLAGES.includes(initialCitizen.village)) {
         setVillageSelect(initialCitizen.village);
@@ -125,11 +132,40 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
       if (initialCitizen.holdingNo) {
         setSimpleFields((prev) => ({
           ...prev,
-          holdingNo: initialCitizen.holdingNo || ''
+          holdingNo: initialCitizen.holdingNo || prev.holdingNo || ''
         }));
       }
     }
   }, [initialCitizen]);
+
+  // Full Form Reset Handler ("রিসেট / নতুন ফরম")
+  const handleResetForm = () => {
+    setNid('');
+    setBirthNo('');
+    setHoldingNo('');
+    setName('');
+    setFather('');
+    setSpouseName('');
+    setMother('');
+    setGender('পুরুষ');
+    setMobile('');
+    setWardNo('০৫');
+    setVillageSelect('বহেড়াতৈল');
+    setVillageOther('');
+    setPostOfficeSelect('বহেড়াতৈল');
+    setPostOfficeOther('');
+    setPostCodeOther('১৯৫০');
+    setSimpleFields({});
+    setTablesData({});
+    setCustomNote('');
+    setTrxId('');
+    setSearchNidInput('');
+    setCitizenSearchResult(null);
+    setAutoFilledProfile(null);
+    if (onClearInitialCitizen) {
+      onClearInitialCitizen();
+    }
+  };
 
   // Filtered types list
   const filteredTypes = CERTIFICATE_TYPES.filter((type) => {
@@ -165,12 +201,31 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
         setGender(c.gender || 'পুরুষ');
         setMobile(c.mobile || '');
         setNid(c.nid || searchNidInput);
+        if (c.holdingNo) setHoldingNo(c.holdingNo);
         if (c.wardNo) setWardNo(c.wardNo);
         if (c.village && KNOWN_VILLAGES.includes(c.village)) setVillageSelect(c.village);
         else if (c.village) {
           setVillageSelect('OTHER');
           setVillageOther(c.village);
         }
+
+        setAutoFilledProfile({
+          id: c.id || `cit_search_${Date.now()}`,
+          name: c.name || '',
+          father: c.father || '',
+          mother: c.mother || '',
+          spouseName: c.spouseName || '',
+          gender: c.gender || 'পুরুষ',
+          mobile: c.mobile || '',
+          nid: c.nid || searchNidInput,
+          holdingNo: c.holdingNo || '',
+          village: c.village || 'বহেড়াতৈল',
+          wardNo: c.wardNo || '০৫',
+          postOffice: c.postOffice || 'বহেড়াতৈল',
+          totalCertificates: 0,
+          registeredAt: new Date().toISOString()
+        });
+
         setCitizenSearchResult(`✅ পূর্বের ডাটা পাওয়া গিয়াছে: ${c.name} (${c.village})`);
       } else {
         setCitizenSearchResult('⚠️ উক্ত নম্বরে কোনো পূর্বের তথ্য পাওয়া যায় নাই। নতুন তথ্য পূরণ করুন।');
@@ -193,6 +248,23 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
       setVillageSelect(result.village);
     }
     if (result.wardNo) setWardNo(result.wardNo);
+
+    setAutoFilledProfile({
+      id: `cit_scan_${Date.now()}`,
+      name: result.name || name || 'স্ক্যানকৃত নাগরিক',
+      father: result.fatherName || father || '',
+      mother: result.motherName || mother || '',
+      spouseName: result.spouseName || spouseName || '',
+      gender: gender,
+      mobile: mobile,
+      nid: result.nidNo || nid,
+      holdingNo: holdingNo,
+      village: result.village || getFinalVillage(),
+      wardNo: result.wardNo || wardNo,
+      postOffice: getFinalPostOffice(),
+      totalCertificates: 0,
+      registeredAt: new Date().toISOString()
+    });
   };
 
   // MFS Payment State
@@ -248,8 +320,12 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
         postOffice: getFinalPostOffice(),
         postCode: postOfficeSelect === 'OTHER' ? postCodeOther : '১৯৫০',
         wardNo,
+        holdingNo: holdingNo.trim(),
         extra: {
-          simpleFields,
+          simpleFields: {
+            ...simpleFields,
+            holdingNo: holdingNo.trim() || simpleFields['holdingNo'] || ''
+          },
           tables: tablesData
         },
         customNote,
@@ -288,41 +364,63 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   return (
     <div className="space-y-6">
       {/* Active Auto-Filled Citizen Profile Banner */}
-      {initialCitizen && (
-        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-4 rounded-2xl shadow-lg border-2 border-amber-400 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in">
-          <div className="flex items-center gap-3">
+      {(autoFilledProfile || initialCitizen) && (
+        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl border-2 border-amber-400/90 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in relative overflow-hidden">
+          {/* Subtle background icon pattern */}
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 opacity-10 pointer-events-none">
+            <UserCheck className="w-48 h-48 text-white" />
+          </div>
+
+          <div className="flex items-start sm:items-center gap-3.5 z-10">
             <div className="p-3 bg-amber-400 text-emerald-950 rounded-xl font-black shrink-0 shadow-md">
               <UserCheck className="w-6 h-6" />
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="bg-amber-400 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
-                  নাগরিক প্রোফাইল অটো-ফিলড
+                <span className="bg-amber-400 text-emerald-950 text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-emerald-950" />
+                  👤 নাগরিক প্রোফাইল অটো-ফিলড
                 </span>
-                <h3 className="text-base font-extrabold text-amber-300">{initialCitizen.name}</h3>
-                {initialCitizen.holdingNo && (
-                  <span className="bg-emerald-950 text-amber-300 text-[11px] font-bold px-2 py-0.5 rounded border border-amber-400/40">
-                    হোল্ডিং: {initialCitizen.holdingNo}
+                <h3 className="text-base font-extrabold text-amber-300">
+                  {name || (autoFilledProfile && autoFilledProfile.name) || (initialCitizen && initialCitizen.name)}
+                </h3>
+                {(holdingNo || (autoFilledProfile && autoFilledProfile.holdingNo) || (initialCitizen && initialCitizen.holdingNo)) && (
+                  <span className="bg-emerald-950 text-amber-300 text-[11px] font-bold px-2.5 py-0.5 rounded-lg border border-amber-400/40">
+                    হোল্ডিং: {holdingNo || (autoFilledProfile && autoFilledProfile.holdingNo) || (initialCitizen && initialCitizen.holdingNo)}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-emerald-100 flex items-center gap-3 flex-wrap">
-                <span>NID/জন্ম নম্বর: <strong className="text-amber-300 font-mono">{initialCitizen.nid || initialCitizen.birthNo || 'N/A'}</strong></span>
-                <span>•</span>
-                <span>গ্রাম: <strong>{initialCitizen.village}</strong> (ওয়ার্ড {initialCitizen.wardNo})</span>
-                <span>•</span>
-                <span>মোবাইল: <strong className="font-mono">{initialCitizen.mobile || 'N/A'}</strong></span>
+
+              <p className="text-xs text-emerald-100 flex items-center gap-2 sm:gap-3 flex-wrap">
+                <span>
+                  NID/জন্ম নম্বর: <strong className="text-amber-300 font-mono">{nid || birthNo || (autoFilledProfile && (autoFilledProfile.nid || autoFilledProfile.birthNo)) || (initialCitizen && (initialCitizen.nid || initialCitizen.birthNo)) || 'N/A'}</strong>
+                </span>
+                <span className="hidden sm:inline">•</span>
+                <span>
+                  গ্রাম: <strong>{getFinalVillage() || (autoFilledProfile && autoFilledProfile.village) || (initialCitizen && initialCitizen.village)}</strong> (ওয়ার্ড নং {wardNo || (autoFilledProfile && autoFilledProfile.wardNo) || (initialCitizen && initialCitizen.wardNo)})
+                </span>
+                <span className="hidden sm:inline">•</span>
+                <span>
+                  ডাকঘর: <strong>{getFinalPostOffice() || (autoFilledProfile && autoFilledProfile.postOffice) || (initialCitizen && initialCitizen.postOffice)}</strong>
+                </span>
+                {(mobile || (autoFilledProfile && autoFilledProfile.mobile) || (initialCitizen && initialCitizen.mobile)) && (
+                  <>
+                    <span className="hidden sm:inline">•</span>
+                    <span>
+                      মোবাইল: <strong className="font-mono">{mobile || (autoFilledProfile && autoFilledProfile.mobile) || (initialCitizen && initialCitizen.mobile)}</strong>
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+          <div className="flex items-center gap-2 shrink-0 z-10 self-end md:self-auto pt-2 md:pt-0">
             <button
               type="button"
-              onClick={() => {
-                if (onClearInitialCitizen) onClearInitialCitizen();
-              }}
-              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              onClick={handleResetForm}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+              title="ফরমের সকল তথ্য পরিষ্কার করুন"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>রিসেট / নতুন ফরম</span>
@@ -392,7 +490,12 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
                 type="button"
                 onClick={() => {
                   setSelectedTypeKey(type.key);
-                  setSimpleFields(initialCitizen?.holdingNo ? { holdingNo: initialCitizen.holdingNo } : {});
+                  setSimpleFields(prev => {
+                    const updated = { ...prev };
+                    if (holdingNo) updated.holdingNo = holdingNo;
+                    if (initialCitizen?.holdingNo) updated.holdingNo = initialCitizen.holdingNo;
+                    return updated;
+                  });
                   setTablesData({});
                 }}
                 className={`p-3 rounded-xl text-left border transition cursor-pointer flex items-center justify-between ${
@@ -560,6 +663,22 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
               onChange={(e) => setNid(e.target.value)}
               placeholder="১০, ১৩ বা ১৭ ডিজিট"
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:border-emerald-600 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              হোল্ডিং নম্বর (বাসাবাড়ি/বাড়ির হোল্ডিং)
+            </label>
+            <input
+              type="text"
+              value={holdingNo}
+              onChange={(e) => {
+                setHoldingNo(e.target.value);
+                setSimpleFields((prev) => ({ ...prev, holdingNo: e.target.value }));
+              }}
+              placeholder="যেমন: এইচ-১০৪"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:border-emerald-600 focus:outline-none font-bold text-slate-900"
             />
           </div>
 
