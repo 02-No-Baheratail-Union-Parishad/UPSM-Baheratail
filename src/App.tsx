@@ -19,6 +19,7 @@ import { AiCitizenAssistant } from './components/AiCitizenAssistant';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
+import { applySecurityMetaTags } from './utils/securityHeaders';
 import { Sparkles, Bot, Mic, MessageSquare, WifiOff, HardDrive } from 'lucide-react';
 
 export default function App() {
@@ -28,6 +29,11 @@ export default function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
+
+  // Apply Security CSP Meta Tags on Initialization
+  useEffect(() => {
+    applySecurityMetaTags();
+  }, []);
 
   // Monitor Network Connectivity for PWA Offline Mode
   useEffect(() => {
