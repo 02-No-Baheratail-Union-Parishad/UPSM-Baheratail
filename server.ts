@@ -302,11 +302,73 @@ function convertToBengaliDigits(numStr: string | number): string {
   return numStr.toString().replace(/[0-9]/g, w => map[w] || w);
 }
 
+/**
+ * Security: Recursive Input Sanitization Layer
+ * Strips script tags, inline event handlers, javascript: URIs, and escapes angle brackets
+ * to prevent XSS and HTML/Script injection attacks across all form payloads and API routes.
+ */
+function sanitizeString(str: string): string {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/\bon\w+\s*=/gi, "")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function sanitizeInput(data: any): any {
+  if (typeof data === "string") {
+    // Preserve base64 image strings (e.g. NID image scans)
+    if (data.startsWith("data:image/") && data.includes(";base64,")) {
+      return data;
+    }
+    return sanitizeString(data);
+  }
+  if (Array.isArray(data)) {
+    return data.map(sanitizeInput);
+  }
+  if (data !== null && typeof data === "object") {
+    const sanitized: Record<string, any> = {};
+    for (const key of Object.keys(data)) {
+      sanitized[key] = sanitizeInput(data[key]);
+    }
+    return sanitized;
+  }
+  return data;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // 1. Security Header Middleware: Content Security Policy (CSP) & Security Headers
+  app.use((_req, res, next) => {
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-ancestors 'self' *;"
+    );
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  });
+
   app.use(express.json({ limit: "20mb" }));
+
+  // 2. Security Middleware: Input Sanitization Layer
+  app.use((req, _res, next) => {
+    if (req.body) {
+      req.body = sanitizeInput(req.body);
+    }
+    if (req.query) {
+      req.query = sanitizeInput(req.query);
+    }
+    if (req.params) {
+      req.params = sanitizeInput(req.params);
+    }
+    next();
+  });
 
   // API Routes
   app.get("/api/health", (_req, res) => {

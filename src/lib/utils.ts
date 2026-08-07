@@ -270,3 +270,17 @@ export function convertEnglishDateToBanglaFormatted(
   // Otherwise, fallback to replacing digits with Bangla numerals
   return toBengaliNumeral(dateStr);
 }
+
+/**
+ * Client-side input sanitization helper to strip XSS vectors, script tags,
+ * inline event handlers, and escape dangerous HTML brackets.
+ */
+export function sanitizeString(input: string | undefined | null): string {
+  if (!input || typeof input !== "string") return "";
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/\bon\w+\s*=/gi, "")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
