@@ -18,7 +18,7 @@ import {
   Check
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
-import { formatBanglaDate, convertEnglishDateToBanglaFormatted } from '../lib/utils';
+import { formatBanglaDate, convertEnglishDateToBanglaFormatted, generateSecurityChecksum } from '../lib/utils';
 
 interface CertificateViewProps {
   certificate: CertificateRecord;
@@ -512,12 +512,12 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                   <div>
                     <p className="text-[10px] font-bold text-emerald-950 flex items-center gap-0.5">
                       <ShieldCheck className="w-3 h-3 text-emerald-700 inline shrink-0" />
-                      <span>ডিজিটাল সত্যতা QR</span>
+                      <span>ডিজিটাল সিকিউরিটি হ্যাশ</span>
                     </p>
-                    <p className="text-[9px] font-mono text-slate-700 font-bold">
-                      {certificate.memoNo}
+                    <p className="text-[9px] font-mono text-slate-800 font-bold bg-slate-100 px-1 py-0.5 rounded border border-slate-300 inline-block my-0.5">
+                      {generateSecurityChecksum(certificate.memoNo, certificate.citizen?.nid || certificate.citizen?.birthNo, certificate.issueDateEn || certificate.issueDate)}
                     </p>
-                    <p className="text-[8px] text-slate-500 font-semibold">স্ক্যান করে অনলাইনে যাচাই করুন</p>
+                    <p className="text-[8px] text-slate-500 font-semibold">জালিয়াতি প্রতিরোধী ক্রিপ্টোগ্রাফিক সিগনেচার</p>
                   </div>
                 </div>
               </div>

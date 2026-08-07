@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { searchCertificateInFirebase } from '../firebase';
 import { CertificateRecord, UnionParishadConfig } from '../types';
-import { formatBanglaDate } from '../lib/utils';
+import { formatBanglaDate, generateSecurityChecksum } from '../lib/utils';
 import { CertificateView } from './CertificateView';
 import { BulkQrVerifier } from './BulkQrVerifier';
 
@@ -186,7 +186,7 @@ export const VerificationPortal: React.FC<VerificationPortalProps> = ({ config }
                   </div>
 
                   {/* Citizen Details Quick Summary Box */}
-                  <div className="bg-white p-5 rounded-2xl shadow border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div className="bg-white p-5 rounded-2xl shadow border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-emerald-700 shrink-0" />
                       <div>
@@ -209,6 +209,20 @@ export const VerificationPortal: React.FC<VerificationPortalProps> = ({ config }
                         <p className="text-slate-500">ঠিকানা ও ওয়ার্ড:</p>
                         <p className="font-bold text-slate-900 text-sm">
                           গ্রাম: {verificationData.certificate.citizen.village}, ওয়ার্ড নং {verificationData.certificate.citizen.wardNo}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <div>
+                        <p className="text-slate-500">সিকিউরিটি হ্যাশ সিগনেচার:</p>
+                        <p className="font-mono font-bold text-emerald-900 text-xs bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block">
+                          {generateSecurityChecksum(
+                            verificationData.certificate.memoNo,
+                            verificationData.certificate.citizen.nid || verificationData.certificate.citizen.birthNo,
+                            verificationData.certificate.issueDateEn || verificationData.certificate.issueDate
+                          )}
                         </p>
                       </div>
                     </div>
