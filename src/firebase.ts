@@ -227,13 +227,27 @@ export interface FirestoreCollectionExportResult {
  */
 export async function exportFirestoreCollectionsToStorage(
   selectedCollections: string[],
-  notes: string = 'Developer Firestore Export'
+  notes: string = 'Developer Firestore Export',
+  onProgress?: (progress: { stage: string; percent: number; currentCol?: string }) => void
 ): Promise<FirestoreCollectionExportResult> {
   const exportData: Record<string, any[]> = {};
   const collectionCounts: Record<string, number> = {};
   let totalDocs = 0;
 
-  for (const colName of selectedCollections) {
+  const totalCols = selectedCollections.length;
+
+  for (let i = 0; i < totalCols; i++) {
+    const colName = selectedCollections[i];
+    const fetchPercent = Math.round(((i + 0.5) / totalCols) * 70);
+    
+    if (onProgress) {
+      onProgress({
+        stage: `ফায়ারস্টোর কালেকশন '${colName}' ডাউনলোড করা হচ্ছে... (${i + 1}/${totalCols})`,
+        percent: fetchPercent,
+        currentCol: colName
+      });
+    }
+
     try {
       const colRef = collection(db, colName);
       const snap = await getDocs(colRef);
@@ -249,6 +263,21 @@ export async function exportFirestoreCollectionsToStorage(
       exportData[colName] = [];
       collectionCounts[colName] = 0;
     }
+
+    if (onProgress) {
+      onProgress({
+        stage: `লেকশন '${colName}' এর ${collectionCounts[colName]} টি রেকর্ড প্রাপ্ত হয়েছে (${i + 1}/${totalCols})`,
+        percent: Math.round(((i + 1) / totalCols) * 70),
+        currentCol: colName
+      });
+    }
+  }
+
+  if (onProgress) {
+    onProgress({
+      stage: `JSON অবজেক্ট কম্প্রেশন ও স্ট্রাকচার তৈরি হচ্ছে...`,
+      percent: 80
+    });
   }
 
   const timestamp = new Date().toISOString();
@@ -274,6 +303,13 @@ export async function exportFirestoreCollectionsToStorage(
   let downloadUrl: string | undefined = undefined;
   let storagePath: string | undefined = undefined;
 
+  if (onProgress) {
+    onProgress({
+      stage: `Firebase Cloud Storage-এ ব্যাকআপ ফাইল (${sizeKb} KB) আপলোড করা হচ্ছে...`,
+      percent: 90
+    });
+  }
+
   // Attempt Firebase Storage Upload
   try {
     const storageRef = ref(storage, `backups/firestore_exports/${filename}`);
@@ -284,6 +320,13 @@ export async function exportFirestoreCollectionsToStorage(
     storagePath = storageRef.fullPath;
   } catch (storageErr) {
     console.warn('Firebase Storage upload notice (fallback to local JSON download and Firestore log):', storageErr);
+  }
+
+  if (onProgress) {
+    onProgress({
+      stage: `Firestore ব্যাকআপ লগ ডকুমেন্ট সংরক্ষণ করা হচ্ছে...`,
+      percent: 96
+    });
   }
 
   // Record export snapshot in Firestore 'backups' collection
@@ -302,6 +345,13 @@ export async function exportFirestoreCollectionsToStorage(
     }, { merge: true });
   } catch (err) {
     console.warn('Notice saving backup log to Firestore:', err);
+  }
+
+  if (onProgress) {
+    onProgress({
+      stage: `ফায়ারস্টোর ডাটাবেস এক্সপোর্ট প্রক্রিয়া সফলভাবে সম্পন্ন হয়েছে!`,
+      percent: 100
+    });
   }
 
   return {

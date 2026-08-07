@@ -122,6 +122,11 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   const [developerExportNotes, setDeveloperExportNotes] = useState('ডেভেলপার রোল: ফায়ারস্টোর কালেকশন ব্যাকআপ এক্সপোর্ট');
   const [isExportingFirestoreDev, setIsExportingFirestoreDev] = useState(false);
   const [firestoreDevExportResult, setFirestoreDevExportResult] = useState<FirestoreCollectionExportResult | null>(null);
+  const [devExportProgress, setDevExportProgress] = useState<{
+    stage: string;
+    percent: number;
+    currentCol?: string;
+  } | null>(null);
 
   const handleToggleDevCollection = (colName: string) => {
     setDeveloperSelectedCollections(prev => 
@@ -136,16 +141,21 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
     }
     setIsExportingFirestoreDev(true);
     setFirestoreDevExportResult(null);
+    setDevExportProgress({ stage: 'প্রক্রিয়া শুরু হচ্ছে...', percent: 5 });
 
     try {
       const result = await exportFirestoreCollectionsToStorage(
         developerSelectedCollections,
-        developerExportNotes
+        developerExportNotes,
+        (progress) => {
+          setDevExportProgress(progress);
+        }
       );
       setFirestoreDevExportResult(result);
       fetchBackupsList();
     } catch (err: any) {
       alert('ফায়ারস্টোর এক্সপোর্ট এক্সিকিউশনে ত্রুটি: ' + (err.message || String(err)));
+      setDevExportProgress(null);
     } finally {
       setIsExportingFirestoreDev(false);
     }
@@ -1227,6 +1237,43 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                 </button>
               </div>
             </div>
+
+            {/* Export Progress Bar & Real-time Status Notification */}
+            {isExportingFirestoreDev && devExportProgress && (
+              <div className="bg-slate-900/90 p-4 rounded-xl border border-amber-400/50 space-y-3 animate-fade-in shadow-inner">
+                <div className="flex items-center justify-between text-xs font-extrabold">
+                  <span className="text-amber-300 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                    <span>এক্সপোর্ট প্রোগ্রেস:</span>
+                    <span className="text-white font-mono bg-amber-400/20 px-2 py-0.5 rounded border border-amber-400/30">
+                      {devExportProgress.stage}
+                    </span>
+                  </span>
+                  <span className="text-amber-400 font-mono text-sm font-black">
+                    {devExportProgress.percent}%
+                  </span>
+                </div>
+
+                {/* Progress Bar Track */}
+                <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700 p-0.5 relative">
+                  <div
+                    className="bg-gradient-to-r from-amber-400 via-teal-400 to-emerald-400 h-full rounded-full transition-all duration-300 shadow-md relative"
+                    style={{ width: `${Math.max(5, devExportProgress.percent)}%` }}
+                  >
+                    <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                  <span>
+                    {devExportProgress.currentCol ? `বর্তমান কালেকশন: ${devExportProgress.currentCol}` : 'প্রসেসিং...'}
+                  </span>
+                  <span>
+                    {devExportProgress.percent < 70 ? 'মেমরি হতে ফেচিং...' : devExportProgress.percent < 90 ? 'ক্লাউড স্টোরেজে আপলোডিং...' : 'লগ হিস্ট্রি রাইটিং...'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Export Result Display */}
             {firestoreDevExportResult && (
