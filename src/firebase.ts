@@ -365,3 +365,116 @@ export async function exportFirestoreCollectionsToStorage(
     jsonData: payload
   };
 }
+
+export interface FirestoreBackupRecord {
+  id: string;
+  filename: string;
+  timestamp: string;
+  sizeKb: number;
+  recordsCount: number;
+  downloadUrl?: string | null;
+  storagePath?: string | null;
+  notes?: string;
+  collections?: Record<string, number>;
+  status?: string;
+  backupData?: any;
+  source?: 'firebase_storage' | 'server_snapshot';
+}
+
+/**
+ * Fetch all backup records logged in Firestore 'backups' collection, resolving Storage URLs if needed
+ */
+export async function fetchFirestoreBackupsFromFirebase(): Promise<FirestoreBackupRecord[]> {
+  const list: FirestoreBackupRecord[] = [];
+  try {
+    const colRef = collection(db, 'backups');
+    const snap = await getDocs(colRef);
+    
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data();
+      let downloadUrl = data.downloadUrl || null;
+      
+      // If downloadUrl is missing but storagePath exists, try resolving download URL from Firebase Storage
+      if (!downloadUrl && data.storagePath) {
+        try {
+          const storageRef = ref(storage, data.storagePath);
+          downloadUrl = await getDownloadURL(storageRef);
+        } catch (e) {
+          console.warn('Could not resolve download URL for storage path:', data.storagePath);
+        }
+      }
+
+      list.push({
+        id: docSnap.id,
+        filename: data.filename || `Backup_${docSnap.id}.json`,
+        timestamp: data.timestamp || new Date().toISOString(),
+        sizeKb: data.sizeKb || 0,
+        recordsCount: data.recordsCount || 0,
+        downloadUrl,
+        storagePath: data.storagePath || null,
+        notes: data.notes || '',
+        collections: data.collections || undefined,
+        status: data.status || 'completed',
+        backupData: data.backupData || undefined,
+        source: 'firebase_storage'
+      });
+    }
+
+    // Sort by timestamp descending
+    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  } catch (err) {
+    console.warn('Notice fetching Firestore backup records:', err);
+  }
+  return list;
+}
+
+/**
+ * Restore a full database backup JSON object into Firestore collections using batch writes
+ */
+export async function restoreFullBackupToFirestore(backupData: any): Promise<{ totalRestored: number; collectionsRestored: string[] }> {
+  let totalRestored = 0;
+  const collectionsRestored: string[] = [];
+
+  if (!backupData || typeof backupData !== 'object') {
+    throw new Error('অবৈধ বা খালি ব্যাকআপ ডাটা।');
+  }
+
+  // Scenario 1: Multi-collection export format (collectionsData)
+  if (backupData.collectionsData && typeof backupData.collectionsData === 'object') {
+    for (const [colName, docs] of Object.entries(backupData.collectionsData)) {
+      if (!Array.isArray(docs) || docs.length === 0) continue;
+      
+      collectionsRestored.push(colName);
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = docs.slice(i, i + BATCH_SIZE);
+
+        for (const item of chunk) {
+          const docId = item._docId || item.id || item.memoNo?.replace(/[^a-zA-Z0-9.-]/g, '_') || `doc_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+          const cleanItem = { ...item };
+          delete cleanItem._docId;
+
+          const docRef = doc(db, colName, String(docId));
+          batch.set(docRef, JSON.parse(JSON.stringify(cleanItem)), { merge: true });
+        }
+
+        await batch.commit();
+        totalRestored += chunk.length;
+      }
+    }
+  } 
+  // Scenario 2: Legacy or Certificates array format
+  else {
+    const certsToRestore = backupData.certificates || backupData.masterDatabase?.certificates || backupData.sheetData?.certificates || (Array.isArray(backupData) ? backupData : []);
+    
+    if (Array.isArray(certsToRestore) && certsToRestore.length > 0) {
+      collectionsRestored.push('certificates');
+      const res = await batchRestoreCertificatesToFirebase(certsToRestore);
+      totalRestored = res.count;
+    }
+  }
+
+  return { totalRestored, collectionsRestored };
+}
+

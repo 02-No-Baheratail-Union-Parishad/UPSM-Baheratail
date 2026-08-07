@@ -42,6 +42,8 @@ import {
   saveConfigToFirebase, 
   batchRestoreCertificatesToFirebase, 
   exportFirestoreCollectionsToStorage, 
+  fetchFirestoreBackupsFromFirebase,
+  restoreFullBackupToFirestore,
   FirestoreCollectionExportResult 
 } from '../firebase';
 import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember } from '../types';
@@ -391,14 +393,48 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
     }
   };
 
-  // Fetch Backups
+  // State for Backup List Search & Active Restore
+  const [restoringBackupId, setRestoringBackupId] = useState<string | null>(null);
+  const [backupSearchTerm, setBackupSearchTerm] = useState('');
+
+  // Fetch Unified Backups (Firebase Cloud Storage + Server Snapshots)
   const fetchBackupsList = async () => {
     try {
-      const res = await fetch('/api/admin/backups');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.backups)) {
-        setBackupsList(data.backups);
+      const [serverRes, firestoreBackups] = await Promise.all([
+        fetch('/api/admin/backups').then(r => r.json()).catch(() => ({ success: false, backups: [] })),
+        fetchFirestoreBackupsFromFirebase().catch(() => [])
+      ]);
+
+      const combined: any[] = [];
+      const seenKeys = new Set<string>();
+
+      // First add Firestore / Firebase Storage backups
+      if (Array.isArray(firestoreBackups)) {
+        for (const fb of firestoreBackups) {
+          const key = fb.id || fb.filename;
+          seenKeys.add(key);
+          if (fb.filename) seenKeys.add(fb.filename);
+          combined.push(fb);
+        }
       }
+
+      // Add Server Snapshots if not already present
+      if (serverRes.success && Array.isArray(serverRes.backups)) {
+        for (const sb of serverRes.backups) {
+          if (!seenKeys.has(sb.id) && !seenKeys.has(sb.filename)) {
+            seenKeys.add(sb.id);
+            if (sb.filename) seenKeys.add(sb.filename);
+            combined.push({
+              ...sb,
+              source: 'server_snapshot'
+            });
+          }
+        }
+      }
+
+      // Sort by timestamp descending
+      combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setBackupsList(combined);
     } catch (err) {
       console.warn('Error fetching backups list:', err);
     }
@@ -440,28 +476,107 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
     }
   };
 
-  const handleRestoreBackup = async (backupId?: string, customJson?: any) => {
-    if (!window.confirm('আপনি কি নিশ্চিত যে এই ব্যাকআপ স্ন্যাপশট ডাটাবেসে রিস্টোর করতে চান? বর্তমান ডাটাবেস আপডেট হইবে।')) {
+  const handleRestoreBackup = async (backupItemOrId?: any, customJson?: any) => {
+    let backupItem: any = null;
+    if (typeof backupItemOrId === 'string') {
+      backupItem = backupsList.find(b => b.id === backupItemOrId) || { id: backupItemOrId, backupData: customJson };
+    } else if (backupItemOrId && typeof backupItemOrId === 'object') {
+      backupItem = backupItemOrId;
+    }
+
+    const filename = backupItem?.filename || 'Database Snapshot';
+    if (!window.confirm(`আপনি কি নিশ্চিত যে '${filename}' ব্যাকআপ ডাটাবেসে রিস্টোর করতে চান? বর্তমান ডাটাবেস আপডেট হইবে।`)) {
       return;
     }
+
+    const bkpId = backupItem?.id || `rest_${Date.now()}`;
+    setRestoringBackupId(bkpId);
     setIsRestoring(true);
     setBackupMessage(null);
+
     try {
+      let payload = customJson || backupItem?.backupData;
+
+      // If payload is missing but downloadUrl exists (from Firebase Cloud Storage), fetch the JSON file content
+      if (!payload && backupItem?.downloadUrl) {
+        try {
+          const res = await fetch(backupItem.downloadUrl);
+          payload = await res.json();
+        } catch (fetchErr) {
+          console.warn('Error downloading backup JSON from Firebase Cloud Storage URL:', fetchErr);
+        }
+      }
+
+      // 1. Restore to Firestore collections via batch write
+      let fsMsg = '';
+      if (payload) {
+        try {
+          const fsRes = await restoreFullBackupToFirestore(payload);
+          const colList = fsRes.collectionsRestored.length > 0 ? ` [কালেকশন: ${fsRes.collectionsRestored.join(', ')}]` : '';
+          fsMsg = ` (Firestore-এ ${fsRes.totalRestored} টি রেকর্ড রিস্টোর করা হয়েছে${colList})`;
+        } catch (fsErr: any) {
+          console.warn('Firestore restore warning:', fsErr);
+        }
+      }
+
+      // 2. Sync with Express backend server
       const res = await fetch('/api/admin/restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ backupId, backupData: customJson })
+        body: JSON.stringify({ backupId: bkpId, backupData: payload })
       });
       const data = await res.json();
-      if (data.success) {
-        setBackupMessage({ text: data.message || 'ডাটাবেস সফলভাবে রিস্টোর করা হইয়াছে!', type: 'success' });
+
+      if (data.success || fsMsg) {
+        setBackupMessage({
+          text: (data.message || 'ডাটাবেস সফলভাবে রিস্টোর করা হইয়াছে!') + fsMsg,
+          type: 'success'
+        });
       } else {
-        setBackupMessage({ text: data.message || 'রিস্টোর করা সম্ভব হয় নাই।', type: 'error' });
+        setBackupMessage({ text: data.message || 'রিস্টোর সম্পন্ন করা সম্ভব হয় নাই।', type: 'error' });
       }
     } catch (err: any) {
-      setBackupMessage({ text: 'রিস্টোর ত্রুটি: ' + err.message, type: 'error' });
+      console.error('Restore execution error:', err);
+      setBackupMessage({ text: 'রিস্টোর প্রসেস ত্রুটি: ' + (err.message || String(err)), type: 'error' });
     } finally {
       setIsRestoring(false);
+      setRestoringBackupId(null);
+    }
+  };
+
+  const handleDownloadBackupFile = async (bkp: any) => {
+    try {
+      // Direct Firebase Cloud Storage download URL
+      if (bkp.downloadUrl) {
+        const a = document.createElement('a');
+        a.href = bkp.downloadUrl;
+        a.download = bkp.filename || 'Firestore_Backup.json';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      // Local or inline backup JSON data
+      if (bkp.backupData) {
+        const jsonStr = JSON.stringify(bkp.backupData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = bkp.filename || 'Database_Backup.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Fallback: request from server
+      window.open('/api/admin/project-clone/export', '_blank');
+    } catch (err: any) {
+      alert('ডাউনলোড ত্রুটি: ' + err.message);
     }
   };
 
@@ -1574,32 +1689,49 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
 
           {/* Backup History Table */}
           <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h4 className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
-                <FolderArchive className="w-5 h-5 text-emerald-700" />
-                <span>সংরক্ষিত স্ন্যাপশট ব্যাকআপ হিস্টোরি ও ড্রাইভ আর্কাইভ লগ</span>
-              </h4>
-              <button
-                onClick={fetchBackupsList}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition flex items-center gap-1 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
-                <span>রিফ্রেশ</span>
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+              <div>
+                <h4 className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
+                  <FolderArchive className="w-5 h-5 text-emerald-700" />
+                  <span>সংরক্ষিত ডাটাবেস ব্যাকআপ হিস্টোরি (Firebase Cloud Storage & Snapshots)</span>
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                  ফায়ারবেস ক্লাউড স্টোরেজ ও সার্ভার স্ন্যাপশট ব্যাকআপ ডাউনলোড বা এক ক্লিকে রিস্টোর করুন।
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="ফাইল নাম বা নোটস খুঁজুন..."
+                  value={backupSearchTerm}
+                  onChange={(e) => setBackupSearchTerm(e.target.value)}
+                  className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none w-48 sm:w-64"
+                />
+                <button
+                  type="button"
+                  onClick={fetchBackupsList}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>রিফ্রেশ</span>
+                </button>
+              </div>
             </div>
 
             {backupsList.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 text-xs font-medium bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                কোনো সংরক্ষিত ব্যাকআপ স্ন্যাপশট পাওয়া যায় নাই। নতুন স্ন্যাপশট তৈরি করতে উপরের বাটনে ক্লিক করুন।
+              <div className="p-8 text-center text-slate-500 text-xs font-medium bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2">
+                <p>কোনো সংরক্ষিত ব্যাকআপ স্ন্যাপশট পাওয়া যায় নাই।</p>
+                <p className="text-[11px] text-slate-400">নতুন ফায়ারস্টোর এক্সপোর্ট বা ড্রাইভে স্ন্যাপশট তৈরি করতে উপরে দেখুন।</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                      <th className="p-3">তারিখ ও সময়</th>
-                      <th className="p-3">ফাইল নাম</th>
-                      <th className="p-3">ড্রাইভ আর্কাইভ ফোল্ডার</th>
+                      <th className="p-3">তারিখ ও সোর্স</th>
+                      <th className="p-3">ফাইল নাম ও কালেকশন তথ্য</th>
+                      <th className="p-3">স্টোরেজ লোকেশন</th>
                       <th className="p-3 text-center">রেকর্ড সংখ্যা</th>
                       <th className="p-3 text-center">সাইজ</th>
                       <th className="p-3 text-center">স্ট্যাটাস</th>
@@ -1607,58 +1739,129 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-semibold text-slate-800">
-                    {backupsList.map((bkp) => (
-                      <tr key={bkp.id} className="hover:bg-slate-50/80 transition">
-                        <td className="p-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
-                          {new Date(bkp.timestamp).toLocaleString('bn-BD')}
-                        </td>
-                        <td className="p-3 font-mono font-bold text-emerald-900 flex items-center gap-1.5 whitespace-nowrap">
-                          <FileJson className="w-4 h-4 text-emerald-700 shrink-0" />
-                          <span>{bkp.filename}</span>
-                        </td>
-                        <td className="p-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                          {bkp.archiveFolderId ? `${bkp.archiveFolderId.slice(0, 16)}...` : 'N/A'}
-                        </td>
-                        <td className="p-3 text-center font-bold text-slate-900">
-                          {bkp.recordsCount} টি
-                        </td>
-                        <td className="p-3 text-center font-mono text-slate-600">
-                          {bkp.sizeKb || 12} KB
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>সম্পন্ন</span>
-                          </span>
-                        </td>
-                        <td className="p-3 text-right whitespace-nowrap space-x-2">
-                          <button
-                            onClick={() => handleRestoreBackup(bkp.id)}
-                            disabled={isRestoring}
-                            className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[11px] rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <RotateCcw className="w-3 h-3 text-amber-700" />
-                            <span>রিস্টোর</span>
-                          </button>
+                    {backupsList
+                      .filter(b => {
+                        if (!backupSearchTerm.trim()) return true;
+                        const q = backupSearchTerm.toLowerCase();
+                        return (
+                          (b.filename && b.filename.toLowerCase().includes(q)) ||
+                          (b.notes && b.notes.toLowerCase().includes(q)) ||
+                          (b.storagePath && b.storagePath.toLowerCase().includes(q)) ||
+                          (b.archiveFolderId && b.archiveFolderId.toLowerCase().includes(q))
+                        );
+                      })
+                      .map((bkp) => {
+                        const isCloudStorage = !!(bkp.downloadUrl || bkp.storagePath || bkp.source === 'firebase_storage');
+                        const isRestoringThis = isRestoring && restoringBackupId === bkp.id;
+                        const sizeDisplay = bkp.sizeKb >= 1024 
+                          ? `${(bkp.sizeKb / 1024).toFixed(2)} MB` 
+                          : `${bkp.sizeKb || 12} KB`;
 
-                          <button
-                            onClick={() => {
-                              const jsonStr = JSON.stringify(bkp.backupData || { certificates: [] }, null, 2);
-                              const blob = new Blob([jsonStr], { type: 'application/json' });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = bkp.filename;
-                              a.click();
-                            }}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <Download className="w-3 h-3 text-emerald-700" />
-                            <span>ডাউনলোড</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                        return (
+                          <tr key={bkp.id} className="hover:bg-slate-50/80 transition">
+                            <td className="p-3 whitespace-nowrap">
+                              <div className="font-mono text-[11px] text-slate-700">
+                                {new Date(bkp.timestamp).toLocaleString('bn-BD')}
+                              </div>
+                              <div className="mt-1">
+                                {isCloudStorage ? (
+                                  <span className="px-2 py-0.5 bg-sky-100 text-sky-800 text-[10px] font-bold rounded-md inline-flex items-center gap-1 border border-sky-200">
+                                    <Cloud className="w-3 h-3 text-sky-600" />
+                                    <span>Firebase Cloud Storage</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md inline-flex items-center gap-1 border border-emerald-200">
+                                    <Server className="w-3 h-3 text-emerald-600" />
+                                    <span>Server Snapshot</span>
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="p-3 max-w-xs">
+                              <div className="font-mono font-bold text-emerald-950 flex items-center gap-1.5 truncate">
+                                <FileJson className="w-4 h-4 text-emerald-700 shrink-0" />
+                                <span className="truncate" title={bkp.filename}>{bkp.filename}</span>
+                              </div>
+                              {bkp.notes && (
+                                <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5" title={bkp.notes}>
+                                  {bkp.notes}
+                                </p>
+                              )}
+                              {bkp.collections && typeof bkp.collections === 'object' && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {Object.entries(bkp.collections).map(([cName, cCount]) => (
+                                    <span key={cName} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-mono text-[10px] rounded border border-slate-200">
+                                      {cName}: {cCount}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="p-3 font-mono text-[11px] text-slate-600 whitespace-nowrap max-w-[180px] truncate">
+                              {bkp.storagePath ? (
+                                <span className="text-sky-900 bg-sky-50 px-2 py-1 rounded border border-sky-100 truncate block" title={bkp.storagePath}>
+                                  {bkp.storagePath}
+                                </span>
+                              ) : bkp.archiveFolderId ? (
+                                <span className="text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200 truncate block" title={bkp.archiveFolderId}>
+                                  Drive: {bkp.archiveFolderId.slice(0, 14)}...
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">Local Cache</span>
+                              )}
+                            </td>
+
+                            <td className="p-3 text-center font-bold text-slate-900 whitespace-nowrap">
+                              {bkp.recordsCount || 0} টি
+                            </td>
+
+                            <td className="p-3 text-center font-mono text-slate-700 whitespace-nowrap">
+                              {sizeDisplay}
+                            </td>
+
+                            <td className="p-3 text-center whitespace-nowrap">
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>সম্পন্ন</span>
+                              </span>
+                            </td>
+
+                            <td className="p-3 text-right whitespace-nowrap space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadBackupFile(bkp)}
+                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] rounded-lg transition inline-flex items-center gap-1 cursor-pointer border border-slate-300 active:scale-95"
+                                title="ডাউনলোড"
+                              >
+                                <Download className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>ডাউনলোড</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreBackup(bkp)}
+                                disabled={isRestoring}
+                                className="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-[11px] rounded-lg transition inline-flex items-center gap-1 cursor-pointer border border-amber-300 disabled:opacity-50 active:scale-95"
+                                title="ডাটাবেসে রিস্টোর করুন"
+                              >
+                                {isRestoringThis ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 text-amber-700 animate-spin" />
+                                    <span>রিস্টোরিং...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                                    <span>রিস্টোর</span>
+                                  </>
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
