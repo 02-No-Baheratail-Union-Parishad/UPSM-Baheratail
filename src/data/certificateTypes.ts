@@ -60,8 +60,8 @@ export const CERTIFICATE_TYPES: CertificateTypeConfig[] = [
     tables: [
       {
         key: 'warish_list',
-        title: 'ওয়ারিশগণের তালিকা',
-        headers: ['ক্রমিক নং', 'নাম', 'জন্ম তারিখ', 'সম্পর্ক', 'মন্তব্য']
+        title: 'ওয়ারিশগণের তালিকা (উত্তরাধিকার)',
+        headers: ['ক্রমিক নং', 'নাম', 'সম্পর্ক', 'বয়স', 'জাতীয় পরিচয়পত্র নং']
       }
     ]
   },
@@ -283,6 +283,13 @@ export const CERTIFICATE_TYPES: CertificateTypeConfig[] = [
     simpleFields: [
       { key: 'incorrectInfo', label: 'এনআইডির বর্তমান ভুল তথ্য', required: true },
       { key: 'correctInfo', label: 'সঠিক তথ্য (যা হবে)', required: true }
+    ],
+    tables: [
+      {
+        key: 'name_correction_list',
+        title: 'নাম / তথ্য বানান সংশোধন টেবিল',
+        headers: ['ক্রমিক নং', 'বিবরণ', 'ভুল তথ্য', 'সঠিক তথ্য']
+      }
     ]
   },
   {
@@ -293,6 +300,29 @@ export const CERTIFICATE_TYPES: CertificateTypeConfig[] = [
     simpleFields: [
       { key: 'birthCertNo', label: 'জন্ম নম্বর (১৭ ডিজিট)', required: true },
       { key: 'correctionDetails', label: 'সংশোধনের বিবরণ' }
+    ],
+    tables: [
+      {
+        key: 'birth_correction_list',
+        title: 'জন্ম সনদ তথ্য সংশোধন টেবিল',
+        headers: ['সংশোধনীয় বিষয়', 'ভুল তথ্য', 'সঠিক তথ্য']
+      }
+    ]
+  },
+  {
+    key: 'general_affidavit',
+    label: 'সাধারণ হলফনামা / অঙ্গীকারনামা',
+    category: 'সংশোধন ও দাপ্তরিক',
+    promptInstruction: 'উক্ত নাগরিক দাপ্তরিক প্রয়োজনে স্বীয় জ্ঞানে লিখিত বিবরণী ও সাধারণ হলফনামা প্রদান করিয়াছেন।',
+    simpleFields: [
+      { key: 'affidavitSubject', label: 'হলফনামার বিষয়', required: true, placeholder: 'যেমন: বয়স বা স্বত্বাধিকারী ঘোষণা' }
+    ],
+    tables: [
+      {
+        key: 'affidavit_list',
+        title: 'হলফনামা বিবরণী টেবিল',
+        headers: ['বিবরণ', 'তথ্যের ধরণ', 'মন্তব্য']
+      }
     ]
   },
   {

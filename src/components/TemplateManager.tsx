@@ -21,11 +21,59 @@ interface TemplateManagerProps {
 }
 
 export const TemplateManager: React.FC<TemplateManagerProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'placeholders' | 'code' | 'steps'>('placeholders');
+  const [activeTab, setActiveTab] = useState<'placeholders' | 'code' | 'steps' | 'dynamic_tables'>('placeholders');
   const [copiedTag, setCopiedTag] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [selectedDynamicCategory, setSelectedDynamicCategory] = useState<string>('birth_correction');
 
   if (!isOpen) return null;
+
+  const dynamicTemplatesData = {
+    templates: {
+      birth_correction: {
+        title: "জন্ম সনদ সংশোধন",
+        columns: ["সংশোধনীয় বিষয়", "ভুল তথ্য", "সঠিক তথ্য"]
+      },
+      name_correction: {
+        title: "নাম বানান সংশোধন",
+        columns: ["ক্রমিক নং", "বিবরণ", "ভুল তথ্য", "সঠিক তথ্য"]
+      },
+      general_affidavit: {
+        title: "সাধারণ হলফনামা",
+        columns: ["বিবরণ", "তথ্যের ধরণ", "মন্তব্য"]
+      },
+      warisan_certificate: {
+        title: "ওয়ারিশান সনদ",
+        columns: ["নাম", "সম্পর্ক", "বয়স", "জাতীয় পরিচয়পত্র নং"]
+      }
+    }
+  };
+
+  const dynamicRenderFunctionJs = `// এডমিন প্যানেলের সিলেক্ট বক্সের জন্য ফাংশন
+function renderDynamicTable(category) {
+    const data = ${JSON.stringify(dynamicTemplatesData, null, 2)};
+    const template = data.templates[category];
+    if (!template) return;
+    
+    let tableHTML = \`<h5 class="font-bold text-emerald-950 mb-2 text-sm">\${template.title}</h5>\`;
+    tableHTML += \`<table class="table table-bordered w-full text-xs text-left border border-slate-300"><thead class="bg-emerald-800 text-white font-bold"><tr>\`;
+    
+    // কলাম হেডার তৈরি
+    template.columns.forEach(col => {
+        tableHTML += \`<th class="p-2 border border-emerald-700">\${col}</th>\`;
+    });
+    
+    tableHTML += \`</tr></thead><tbody><tr>\`;
+    
+    // ইনপুট ফিল্ড তৈরি
+    template.columns.forEach(() => {
+        tableHTML += \`<td class="p-1.5 border border-slate-300"><input type="text" class="form-control w-full px-2 py-1 bg-slate-50 border border-slate-300 rounded text-xs" placeholder="তথ্য লিখুন"></td>\`;
+    });
+    
+    tableHTML += \`</tr></tbody></table>\`;
+    
+    document.getElementById('dynamicTableContainer').innerHTML = tableHTML;
+}`;
 
   const placeholders = [
     { tag: '{{name}}', alias: '{{নাম}}', desc: 'আবেদনকারীর পূর্ণ নাম (Bangla / English)', example: 'মোঃ আব্দুর রহিম', required: true },
@@ -208,6 +256,19 @@ function generateCertificateDoc(citizenData) {
             <BookOpen className="w-4 h-4 text-emerald-700" />
             <span>৩. ইনস্টলেশন ও অটোমেশন ধাপসমূহ</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('dynamic_tables')}
+            className={`px-4 py-2.5 font-extrabold text-xs rounded-t-xl transition flex items-center gap-2 cursor-pointer border-t border-x ${
+              activeTab === 'dynamic_tables'
+                ? 'bg-white text-emerald-950 border-slate-200 shadow-sm'
+                : 'bg-transparent text-slate-600 hover:text-slate-900 border-transparent'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-emerald-700" />
+            <span>৪. ডায়নামিক সনদ টেবিল টেমপ্লেট</span>
+          </button>
         </div>
 
         {/* Content Body */}
@@ -338,6 +399,156 @@ function generateCertificateDoc(citizenData) {
                 <p className="text-slate-700 leading-relaxed">
                   ওয়েব অ্যাপের প্রস্তুতকৃত ইউআরএলটি ইউনিয়নের অ্যাডমিন সেটিংস প্যানেলে কনফিগার করলেই প্রতিটি সনদ তৈরির সময় স্বয়ংক্রিয়ভাবে Google Doc কপি হয়ে PDF লিঙ্ক তৈরি হবে।
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: DYNAMIC CERTIFICATE TABLES */}
+          {activeTab === 'dynamic_tables' && (
+            <div className="space-y-6">
+              {/* Category Selector & Live HTML Preview */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div>
+                    <h4 className="font-extrabold text-emerald-950 text-sm flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-700" />
+                      <span>লাইভ ডায়নামিক টেবিল রেন্ডারার প্রেভিউ (renderDynamicTable)</span>
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      সিলেক্ট বক্স থেকে যেকোনো ক্যাটাগরি বেছে নিয়ে টেবিলের লাইভ কলাম স্ট্রাকচার পরীক্ষা করুন:
+                    </p>
+                  </div>
+
+                  <div className="w-full sm:w-auto">
+                    <select
+                      value={selectedDynamicCategory}
+                      onChange={(e) => setSelectedDynamicCategory(e.target.value)}
+                      className="w-full sm:w-64 px-3 py-2 bg-emerald-900 text-white font-extrabold text-xs rounded-xl border border-emerald-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                    >
+                      <option value="birth_correction">১. birth_correction (জন্ম সনদ সংশোধন)</option>
+                      <option value="name_correction">২. name_correction (নাম বানান সংশোধন)</option>
+                      <option value="general_affidavit">৩. general_affidavit (সাধারণ হলফনামা)</option>
+                      <option value="warisan_certificate">৪. warisan_certificate (ওয়ারিশান সনদ)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Rendered Live Table Output Container */}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 font-mono">
+                      #dynamicTableContainer
+                    </span>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">
+                      Live HTML Output
+                    </span>
+                  </div>
+
+                  {(() => {
+                    const template = (dynamicTemplatesData.templates as any)[selectedDynamicCategory];
+                    if (!template) return null;
+                    return (
+                      <div className="space-y-2">
+                        <h5 className="font-bold text-emerald-950 text-sm">{template.title}</h5>
+                        <div className="overflow-x-auto rounded-lg border border-slate-300">
+                          <table className="w-full text-xs text-left">
+                            <thead className="bg-emerald-800 text-white font-bold">
+                              <tr>
+                                {template.columns.map((col: string, idx: number) => (
+                                  <th key={idx} className="p-2.5 border-r border-emerald-700 last:border-r-0 whitespace-nowrap">
+                                    {col}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 bg-white">
+                              <tr>
+                                {template.columns.map((col: string, idx: number) => (
+                                  <td key={idx} className="p-2 border-r border-slate-200 last:border-r-0">
+                                    <input
+                                      type="text"
+                                      placeholder={`${col} লিখুন...`}
+                                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs focus:bg-white focus:border-emerald-600 focus:outline-none"
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* JSON Data & Code Blocks Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. JSON Configuration Structure */}
+                <div className="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="font-bold text-xs text-amber-300 flex items-center gap-1.5">
+                      <FileCode className="w-4 h-4" />
+                      <span>১. JSON Configuration Structure</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCode(JSON.stringify(dynamicTemplatesData, null, 2), 'JSON')}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[11px] font-bold rounded border border-slate-700 transition cursor-pointer flex items-center gap-1"
+                    >
+                      {copiedCode === 'JSON' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedCode === 'JSON' ? 'কপি হয়েছে' : 'JSON কপি'}</span>
+                    </button>
+                  </div>
+                  <pre className="text-emerald-300 text-xs font-mono overflow-x-auto max-h-64 leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    {JSON.stringify(dynamicTemplatesData, null, 2)}
+                  </pre>
+                </div>
+
+                {/* 2. Admin Panel Render Function */}
+                <div className="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="font-bold text-xs text-amber-300 flex items-center gap-1.5">
+                      <Code className="w-4 h-4" />
+                      <span>২. renderDynamicTable(category) Function</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCode(dynamicRenderFunctionJs, 'JS')}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[11px] font-bold rounded border border-slate-700 transition cursor-pointer flex items-center gap-1"
+                    >
+                      {copiedCode === 'JS' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedCode === 'JS' ? 'কপি হয়েছে' : 'JS কপি'}</span>
+                    </button>
+                  </div>
+                  <pre className="text-amber-200 text-xs font-mono overflow-x-auto max-h-64 leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    {dynamicRenderFunctionJs}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Documentation Guide & Future Scope */}
+              <div className="bg-emerald-950 text-white p-5 rounded-2xl border border-emerald-800 space-y-3">
+                <h4 className="font-black text-sm text-amber-300 border-b border-emerald-800 pb-2 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  <span>Certificate Dynamic System Implementation & Future Scope Guide</span>
+                </h4>
+                <div className="text-xs text-emerald-100 space-y-2 leading-relaxed">
+                  <p>
+                    <strong>১. JSON Structure:</strong> <code className="text-amber-200">templates</code> অবজেক্টের ভেতর যেকোনো নতুন ক্যাটাগরি আইডি (যেমন: <code className="text-amber-200">birth_correction</code>, <code className="text-amber-200">name_correction</code>, <code className="text-amber-200">general_affidavit</code>, <code className="text-amber-200">warisan_certificate</code>) যোগ করা মাত্রই সিস্টেমে সরাসরি কার্যকর হবে।
+                  </p>
+                  <p>
+                    <strong>২. Column Control:</strong> <code className="text-amber-200">columns</code> অ্যারেতে নতুন কলামের নাম লিখলেই সেটি অটোমেটিক এডমিন প্যানেল এবং সনদ জেনারেশন ফর্মে ইনপুট ফিল্ড হিসেবে ডাইনামিক্যালি তৈরি হয়ে যাবে।
+                  </p>
+                  <p>
+                    <strong>৩. Rendering:</strong> <code className="text-amber-200">renderDynamicTable(category)</code> ফাংশনটি কল করলেই সিলেক্টেড ক্যাটাগরি অনুযায়ী UI তাৎক্ষণিকভাবে আপডেট হয়ে যাবে।
+                  </p>
+                  <div className="pt-2 border-t border-emerald-800/80 text-[11px] text-emerald-300 flex items-center gap-4 flex-wrap">
+                    <span className="font-extrabold text-amber-300">Future Scope Support:</span>
+                    <span>• কলামে ডাইনামিক ড্রপডাউন যুক্ত করা</span>
+                    <span>• টেবিলের সারি (Row) ডিলিট বা নতুন যোগ করার বাটন রাখা</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
