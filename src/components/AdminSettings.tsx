@@ -36,7 +36,8 @@ import {
   Copy,
   ExternalLink,
   Send,
-  Terminal
+  Terminal,
+  FileText
 } from 'lucide-react';
 import { 
   saveConfigToFirebase, 
@@ -50,6 +51,8 @@ import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, Webho
 import { CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
 import { AppsScriptModal } from './AppsScriptModal';
+import { TemplateManager } from './TemplateManager';
+import { BackupManager } from './BackupManager';
 import { PendingApprovals } from './PendingApprovals';
 
 interface AdminSettingsProps {
@@ -62,6 +65,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isAppsScriptOpen, setIsAppsScriptOpen] = useState(false);
+  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types' | 'backup' | 'maintenance' | 'api_webhook'>('pending');
   
   // API Key & Webhook Integration State
@@ -790,13 +795,25 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAppsScriptOpen(true)}
-          className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-2 cursor-pointer shrink-0"
-        >
-          <Code className="w-4 h-4 text-amber-300" />
-          <span>Apps Script কোড দেখুন</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsTemplateManagerOpen(true)}
+            className="px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-slate-950" />
+            <span>গুগল ডক টেমপ্লেট গাইড</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAppsScriptOpen(true)}
+            className="px-3.5 py-2 bg-emerald-900 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <Code className="w-4 h-4 text-amber-300" />
+            <span>Apps Script কোড</span>
+          </button>
+        </div>
       </div>
 
       {/* Admin Tab Chooser */}
@@ -1642,9 +1659,18 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                 <div className="pt-2 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
+                    onClick={() => setIsBackupManagerOpen(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <Cloud className="w-4 h-4 text-slate-950" />
+                    <span>🔥 Firestore এক্সপোর্ট ও ক্লাউড ব্যাকআপ ম্যানেজার</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={handleTriggerBackup}
                     disabled={isBackingUp}
-                    className="px-6 py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                    className="px-5 py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
                   >
                     {isBackingUp ? (
                       <>
@@ -1654,7 +1680,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                     ) : (
                       <>
                         <FolderArchive className="w-4 h-4 text-amber-300" />
-                        <span>ড্রাইভ 'Archive' ফোল্ডারে স্ন্যাপশট তৈরি করুন</span>
+                        <span>ড্রাইভ 'Archive' ফোল্ডারে স্ন্যাপশট</span>
                       </>
                     )}
                   </button>
@@ -1665,7 +1691,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                     className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 transition flex items-center gap-2 cursor-pointer"
                   >
                     <Download className="w-4 h-4 text-emerald-700" />
-                    <span>CSV ডাটাবেস ডাউনলোড</span>
+                    <span>CSV ডাউনলোড</span>
                   </a>
                 </div>
               </div>
@@ -3461,6 +3487,18 @@ print("Response JSON:", res.json())
           </div>
         </div>
       )}
+      {/* Template Manager & Google Doc Mapping Modal */}
+      <TemplateManager
+        isOpen={isTemplateManagerOpen}
+        onClose={() => setIsTemplateManagerOpen(false)}
+      />
+
+      {/* Firestore Cloud Backup Manager Modal */}
+      <BackupManager
+        isOpen={isBackupManagerOpen}
+        onClose={() => setIsBackupManagerOpen(false)}
+        onExportSuccess={() => fetchBackupsList()}
+      />
     </div>
   );
 };
