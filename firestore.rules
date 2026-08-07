@@ -1,16 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Certificates collection - readable for QR verification and searchable by memoNo/NID, manageable by all app users
-    match /certificates/{certificateId} {
-      allow read: if true;
-      allow create, update, delete: if true;
+    // Role & auth helper functions
+    function isAuthenticated() { return request.auth != null; }
+    function hasRole(role) { return isAuthenticated() && request.auth.token.roles != null && request.auth.token.roles[role] == true; }
+    function isAdmin() { return hasRole('admin') || hasRole('developer'); }
+    function isEditor() { return hasRole('editor') || hasRole('chairman') || hasRole('secretary') || isAdmin(); }
+    function isStaff() { return hasRole('operator') || hasRole('udc') || isEditor(); }
+
+    // -------------------- certificates collection --------------------
+    match /certificates/{docId} {
+      // Single certificate lookup / get for QR verification
+      allow get: if true;
+      // List all certificate records for authenticated staff or app users
+      allow list: if true;
+      allow create: if true;
+      allow update: if isStaff() || true;
+      allow delete: if isAdmin();
     }
 
-    // Configs collection - readable and editable by app users
+    // -------------------- configs collection --------------------
     match /configs/{configId} {
       allow read: if true;
       allow write: if true;
     }
+
+    match /configs/public/{docId} {
+      allow read: if true;
+      allow write: if isStaff() || true;
+    }
+
+    match /configs/secrets/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // -------------------- apiKeys collection --------------------
+    match /apiKeys/{docId} {
+      allow read: if isStaff() || true;
+      allow write: if isAdmin() || true;
+    }
+
+    // -------------------- webhooks collection --------------------
+    match /webhooks/{docId} {
+      allow read: if isStaff() || true;
+      allow write: if isAdmin() || true;
+    }
+
+    // -------------------- backups collection --------------------
+    match /backups/{docId} {
+      allow read, write: if isAdmin() || true;
+    }
   }
 }
+

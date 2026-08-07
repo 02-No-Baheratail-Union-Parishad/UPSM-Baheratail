@@ -159,13 +159,11 @@ export async function saveConfigToFirebase(config: UnionParishadConfig): Promise
 export async function fetchConfigFromFirebase(): Promise<UnionParishadConfig | null> {
   try {
     const docRef = doc(db, CONFIGS_COLLECTION, MASTER_CONFIG_DOC);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return snap.data() as UnionParishadConfig;
-    }
-    return null;
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+    const fetchDoc = getDoc(docRef).then((snap) => (snap.exists() ? (snap.data() as UnionParishadConfig) : null));
+    return await Promise.race([fetchDoc, timeout]);
   } catch (error) {
-    console.error('Error fetching config from Firebase:', error);
+    console.warn('Notice: Firestore config fetch unavailable (using default configuration):', error);
     return null;
   }
 }
