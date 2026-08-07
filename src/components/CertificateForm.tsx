@@ -36,6 +36,7 @@ import { WarishTableBuilder } from './WarishTableBuilder';
 
 import { saveCertificateToFirebase } from '../firebase';
 import { sanitizeInput } from '../utils/security';
+import { useCertificateValidation, validateCertificateFormData } from '../utils/validation';
 
 interface CertificateFormProps {
   config: UnionParishadConfig;
@@ -82,6 +83,9 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   const [tablesData, setTablesData] = useState<Record<string, string[][]>>({});
   const [customNote, setCustomNote] = useState('');
   const [highThinking, setHighThinking] = useState(false);
+
+  // Form Validation Hook
+  const { fieldErrors, validateField } = useCertificateValidation();
 
   // Active Auto-Filled Citizen Record (for visual banner)
   const [autoFilledProfile, setAutoFilledProfile] = useState<CitizenAccountRecord | null>(initialCitizen || null);
@@ -291,75 +295,23 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
-    // Convert Bengali digits to English digits for length checks
-    const toEnDigits = (str: string) =>
-      str.replace(/[০-৯]/g, (d) => '০১২৩৪৫৬৭৮৯'.indexOf(d).toString());
+    // Schema and input validation using validation utility module
+    const validationResult = validateCertificateFormData({
+      name,
+      mother,
+      father,
+      spouseName,
+      village: getFinalVillage(),
+      nid,
+      birthNo,
+      mobile,
+      simpleFields,
+      requiredSimpleFields: selectedTypeObj.simpleFields
+    });
 
-    // 1. Name check
-    if (!name.trim()) {
-      setErrorMessage('⚠️ ত্রুটি: আবেদনকারীর পূর্ণ নাম প্রদান করা আবশ্যক।');
+    if (!validationResult.isValid && validationResult.firstError) {
+      setErrorMessage(`⚠️ ${validationResult.firstError}`);
       return;
-    }
-
-    // 2. Mother name check
-    if (!mother.trim()) {
-      setErrorMessage('⚠️ ত্রুটি: আবেদনকারীর মাতার নাম প্রদান করা আবশ্যক।');
-      return;
-    }
-
-    // 3. Father / Spouse check
-    if (!father.trim() && !spouseName.trim()) {
-      setErrorMessage('⚠️ ত্রুটি: পিতার নাম অথবা স্বামী/স্ত্রীর নাম—অন্তত একটি প্রদান করুন।');
-      return;
-    }
-
-    // 4. Village check
-    if (!getFinalVillage()) {
-      setErrorMessage('⚠️ ত্রুটি: গ্রাম / এলাকার নাম প্রদান করুন।');
-      return;
-    }
-
-    // 5. NID Number validation (if provided)
-    if (nid.trim()) {
-      const cleanNid = toEnDigits(nid.trim()).replace(/\D/g, '');
-      if (![10, 13, 17].includes(cleanNid.length)) {
-        setErrorMessage(
-          `⚠️ এনআইডি (NID) নম্বর অকার্যকর! জাতীয় পরিচয়পত্র নম্বর ১০, ১৩ অথবা ১৭ সংখ্যার হওয়া আবশ্যক (বর্তমানে ${cleanNid.length} ডিজিট)।`
-        );
-        return;
-      }
-    }
-
-    // 6. Birth Registration Number validation (if provided)
-    if (birthNo.trim()) {
-      const cleanBirth = toEnDigits(birthNo.trim()).replace(/\D/g, '');
-      if (cleanBirth.length !== 17) {
-        setErrorMessage(
-          `⚠️ জন্ম নিবন্ধন নম্বর অকার্যকর! জন্ম নিবন্ধন নম্বর অবশ্যই ১৭ সংখ্যার হতে হবে (বর্তমানে ${cleanBirth.length} ডিজিট)।`
-        );
-        return;
-      }
-    }
-
-    // 7. Mobile Number validation (if provided)
-    if (mobile.trim()) {
-      const cleanMobile = toEnDigits(mobile.trim()).replace(/\D/g, '');
-      if (cleanMobile.length !== 11 || !cleanMobile.startsWith('01')) {
-        setErrorMessage(
-          '⚠️ মোবাইল নম্বর অকার্যকর! বাংলাদেশি মোবাইল নম্বর ০১ দিয়ে শুরু এবং ১১ ডিজিটের হওয়া আবশ্যক (যেমন: 01711223344)।'
-        );
-        return;
-      }
-    }
-
-    // 8. Required Simple Fields check for chosen certificate type
-    if (selectedTypeObj.simpleFields) {
-      for (const field of selectedTypeObj.simpleFields) {
-        if (field.required && (!simpleFields[field.key] || !simpleFields[field.key].trim())) {
-          setErrorMessage(`⚠️ ত্রুটি: "${field.label}" ফিল্ডটি পূরণ করা আবশ্যক।`);
-          return;
-        }
-      }
     }
 
     setIsSubmitting(true);
@@ -741,10 +693,20 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
             <input
               type="text"
               value={nid || birthNo}
-              onChange={(e) => setNid(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNid(val);
+                validateField('nid', val);
+              }}
+              onBlur={(e) => validateField('nid', e.target.value)}
               placeholder="১০, ১৩ বা ১৭ ডিজিট"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:border-emerald-600 focus:outline-none"
+              className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-xs focus:bg-white focus:outline-none ${
+                fieldErrors.nid ? 'border-rose-500 focus:border-rose-600' : 'border-slate-300 focus:border-emerald-600'
+              }`}
             />
+            {fieldErrors.nid && (
+              <p className="text-[11px] font-semibold text-rose-600 mt-1">{fieldErrors.nid}</p>
+            )}
           </div>
 
           <div>
@@ -785,10 +747,20 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
             <input
               type="text"
               value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setMobile(val);
+                validateField('mobile', val);
+              }}
+              onBlur={(e) => validateField('mobile', e.target.value)}
               placeholder="যেমন: 01712345678"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:border-emerald-600 focus:outline-none"
+              className={`w-full px-3 py-2 bg-slate-50 border rounded-lg text-xs focus:bg-white focus:outline-none ${
+                fieldErrors.mobile ? 'border-rose-500 focus:border-rose-600' : 'border-slate-300 focus:border-emerald-600'
+              }`}
             />
+            {fieldErrors.mobile && (
+              <p className="text-[11px] font-semibold text-rose-600 mt-1">{fieldErrors.mobile}</p>
+            )}
           </div>
 
           <div>
