@@ -27,9 +27,16 @@ import {
   Calendar,
   X,
   Database,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Sliders,
+  Edit3,
+  Save,
+  RotateCcw,
+  CheckSquare,
+  Square,
+  UserCog
 } from 'lucide-react';
-import { UnionParishadConfig, AuditLogRecord, AdminUserRecord, CertificateRecord } from '../types';
+import { UnionParishadConfig, AuditLogRecord, AdminUserRecord, CertificateRecord, AdminPermissions } from '../types';
 import { GoogleSheetsSyncModal } from './GoogleSheetsSyncModal';
 import { 
   auth, 
@@ -43,6 +50,63 @@ import {
   formatFirebaseAuthError
 } from '../firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<string, AdminPermissions> = {
+  super_admin: {
+    canApproveCertificates: true,
+    canIssueCertificates: true,
+    canManageAdmins: true,
+    canEditConfig: true,
+    canExportData: true,
+    canDeleteLogs: true,
+  },
+  chairman: {
+    canApproveCertificates: true,
+    canIssueCertificates: true,
+    canManageAdmins: true,
+    canEditConfig: true,
+    canExportData: true,
+    canDeleteLogs: false,
+  },
+  secretary: {
+    canApproveCertificates: false,
+    canIssueCertificates: true,
+    canManageAdmins: false,
+    canEditConfig: false,
+    canExportData: true,
+    canDeleteLogs: false,
+  },
+  member: {
+    canApproveCertificates: false,
+    canIssueCertificates: true,
+    canManageAdmins: false,
+    canEditConfig: false,
+    canExportData: false,
+    canDeleteLogs: false,
+  },
+  developer: {
+    canApproveCertificates: true,
+    canIssueCertificates: true,
+    canManageAdmins: true,
+    canEditConfig: true,
+    canExportData: true,
+    canDeleteLogs: true,
+  },
+};
+
+export function getPermissionsForAdmin(adm: AdminUserRecord): AdminPermissions {
+  if (adm.permissions) {
+    return {
+      canApproveCertificates: adm.permissions.canApproveCertificates ?? true,
+      canIssueCertificates: adm.permissions.canIssueCertificates ?? true,
+      canManageAdmins: adm.permissions.canManageAdmins ?? (adm.role === 'super_admin' || adm.role === 'developer'),
+      canEditConfig: adm.permissions.canEditConfig ?? (adm.role === 'super_admin' || adm.role === 'chairman' || adm.role === 'developer'),
+      canExportData: adm.permissions.canExportData ?? true,
+      canDeleteLogs: adm.permissions.canDeleteLogs ?? (adm.role === 'super_admin' || adm.role === 'developer'),
+    };
+  }
+  return DEFAULT_ROLE_PERMISSIONS[adm.role] || DEFAULT_ROLE_PERMISSIONS.member;
+}
 
 interface AdminDashboardProps {
   config: UnionParishadConfig;
@@ -58,7 +122,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Active subtab in dashboard
-  const [activeView, setActiveView] = useState<'admins' | 'logs' | 'stats'>('admins');
+  const [activeView, setActiveView] = useState<'admins' | 'roles' | 'logs'>('admins');
+
+  // Role & Permission Management State
+  const [editingAdminEmail, setEditingAdminEmail] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<AdminUserRecord['role']>('member');
+  const [editingPermissions, setEditingPermissions] = useState<AdminPermissions>({
+    canApproveCertificates: false,
+    canIssueCertificates: true,
+    canManageAdmins: false,
+    canEditConfig: false,
+    canExportData: false,
+    canDeleteLogs: false
+  });
+  const [roleSearchQuery, setRoleSearchQuery] = useState<string>('');
+  const [roleWardFilter, setRoleWardFilter] = useState<string>('ALL');
+  const [roleRoleFilter, setRoleRoleFilter] = useState<string>('ALL');
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Multi-admin form state
   const [newEmail, setNewEmail] = useState('');
@@ -253,6 +333,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
         designation: newDesignation.trim(),
         wardNo: newWard,
         role: newRole,
+        permissions: DEFAULT_ROLE_PERMISSIONS[newRole] || DEFAULT_ROLE_PERMISSIONS.member,
         addedAt: new Date().toISOString(),
         status: 'active'
       };
@@ -303,6 +384,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
       loadLogs();
     } catch (err: any) {
       alert('এডমিন মুছে ফেলতে ব্যর্থ: ' + err.message);
+    }
+  };
+
+  // Update Role & Permissions for a user
+  const handleSavePermissionsForUser = async (targetAdmin: AdminUserRecord) => {
+    setIsSavingAdmin(true);
+    try {
+      const updatedAdmin: AdminUserRecord = {
+        ...targetAdmin,
+        role: editingRole,
+        permissions: editingPermissions
+      };
+
+      await saveAdminUserToFirebase(updatedAdmin);
+
+      await addAuditLogToFirebase({
+        action: 'UPDATE_CONFIG',
+        actionTitle: 'ইউপি কর্মকর্তা/সদস্যের রোল ও পারমিশন আপডেট',
+        details: `${targetAdmin.name} (${targetAdmin.email})-এর পারমিশন রোল পরিমার্জন করা হইয়াছে [নতুন রোল: ${editingRole}]।`,
+        performedByEmail: currentUser?.email || 'super_admin',
+        performedByName: currentUser?.displayName || 'সুপার এডমিন',
+        performedByRole: adminRecord?.role || 'super_admin'
+      });
+
+      const updatedList = await fetchAdminUsersFromFirebase();
+      setAdminsList(updatedList);
+      setEditingAdminEmail(null);
+      setSuccessToast(`${targetAdmin.name}-এর পারমিশন রোল ফায়ারবেস ক্লাউডে সফলভাবে সংরক্ষিত হয়েছে!`);
+      setTimeout(() => setSuccessToast(null), 4000);
+      loadLogs();
+    } catch (err: any) {
+      alert('পারমিশন আপডেট ব্যর্থ হয়েছে: ' + err.message);
+    } finally {
+      setIsSavingAdmin(false);
     }
   };
 
@@ -537,7 +652,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
           }`}
         >
           <Users className="w-4 h-4 text-amber-300" />
-          <span>১. একাধিক এডমিন অ্যাকাউন্টস ({adminsList.length})</span>
+          <span>১. ইউপি এডমিন ডিরেক্টরি ({adminsList.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveView('roles')}
+          className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeView === 'roles'
+              ? 'bg-emerald-900 text-amber-300 shadow-md ring-2 ring-amber-400/50'
+              : 'text-slate-700 hover:bg-slate-300/80'
+          }`}
+        >
+          <UserCog className="w-4 h-4 text-amber-300" />
+          <span>২. ডায়নামিক রোল ও পারমিশন কন্ট্রোল</span>
         </button>
 
         <button
@@ -549,7 +676,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
           }`}
         >
           <Activity className="w-4 h-4 text-amber-300" />
-          <span>২. সিস্টেম পরিবর্তন সিকিউর অডিট লগ ({filteredLogs.length})</span>
+          <span>৩. সিকিউর অডিট লগ ({filteredLogs.length})</span>
         </button>
       </div>
 
@@ -760,7 +887,395 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
         </div>
       )}
 
-      {/* VIEW 2: SECURE SYSTEM MODIFICATION AUDIT LOGS */}
+      {/* VIEW 2: DYNAMIC ROLE & PERMISSION MANAGEMENT */}
+      {activeView === 'roles' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white p-6 rounded-3xl shadow-lg border border-emerald-800/80 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <UserCog className="w-6 h-6 text-amber-300" />
+                  <h3 className="font-extrabold text-lg text-white">
+                    ইউপি ডিজিটাল রোল ও পারমিশন গভর্নেন্স কন্ট্রোল (Role & Permissions Matrix)
+                  </h3>
+                  <span className="px-2.5 py-0.5 bg-amber-400 text-emerald-950 font-black text-[10px] rounded-full uppercase">
+                    Firestore Realtime Sync
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  সুপার এডমিন ও চেয়ারম্যানের এক্সেসে ইউপি সদস্য, সচিব ও কর্মকর্তাদের ক্ষমতা ও দায়িত্ব রিয়েল-টাইমে ডায়নামিকালি পরিমার্জন করুন।
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    const updated = await fetchAdminUsersFromFirebase();
+                    setAdminsList(updated);
+                    setSuccessToast('ফায়ারবেস থেকে ডায়নামিক রোল ডিরেক্টরি রিলোড করা হয়েছে!');
+                    setTimeout(() => setSuccessToast(null), 3000);
+                  }}
+                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 text-xs font-bold rounded-xl border border-emerald-600 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-300" />
+                  <span>লাইভ সিঙ্ক</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Success Toast */}
+            {successToast && (
+              <div className="p-3 bg-amber-400 text-emerald-950 font-extrabold text-xs rounded-xl flex items-center gap-2 shadow-md">
+                <CheckCircle2 className="w-4 h-4 text-emerald-950 shrink-0" />
+                <span>{successToast}</span>
+              </div>
+            )}
+          </div>
+
+          {/* 5 Archetype Role Cards Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black rounded-md">Super Admin</span>
+              <h4 className="font-extrabold text-xs text-slate-900 mt-1">সুপার এডমিন</h4>
+              <p className="text-[11px] text-slate-500">পূর্ণ মাস্টার ক্ষমতা (এডমিন যোগ, রোল পরিবর্তন, মাস্টার কনফিগারেশন)</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-black rounded-md">Chairman</span>
+              <h4 className="font-extrabold text-xs text-slate-900 mt-1">ইউপি চেয়ারম্যান</h4>
+              <p className="text-[11px] text-slate-500">সনদপত্র চূড়ান্ত অনুমোদন, ডিজিটাল স্বাক্ষর, ফাইনাল সার্টিফিকেট প্রদান</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 text-[10px] font-black rounded-md">Secretary</span>
+              <h4 className="font-extrabold text-xs text-slate-900 mt-1">ইউপি সচিব</h4>
+              <p className="text-[11px] text-slate-500">আবেদন রিসিভ, নাগরিক ডাটা ভেরিফিকেশন, রেজিস্টার ও প্রিন্ট ইস্যু</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-900 text-[10px] font-black rounded-md">Member</span>
+              <h4 className="font-extrabold text-xs text-slate-900 mt-1">ইউপি সদস্য (ওয়ার্ড ১-৯)</h4>
+              <p className="text-[11px] text-slate-500">স্ব-স্ব ওয়ার্ডের নাগরিকদের সনদের প্রাথমিক সুপারিশ ও তথ্য নিশ্চিতকরণ</p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-900 text-[10px] font-black rounded-md">Developer</span>
+              <h4 className="font-extrabold text-xs text-slate-900 mt-1">আইটি ডেভেলপার</h4>
+              <p className="text-[11px] text-slate-500">এপিআই, ওয়েব হুক, ক্লাউড ব্যাকআপ, ফায়ারবেস ও টেকনিক্যাল ম্যানেজমেন্ট</p>
+            </div>
+          </div>
+
+          {/* User Search & Ward Filter Bar */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={roleSearchQuery}
+                onChange={(e) => setRoleSearchQuery(e.target.value)}
+                placeholder="নাম, ইমেইল বা পদবী দিয়ে খুঁজুন..."
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-emerald-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+              <select
+                value={roleWardFilter}
+                onChange={(e) => setRoleWardFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:border-emerald-600 focus:outline-none"
+              >
+                <option value="ALL">সকল ওয়ার্ড</option>
+                <option value="ওয়ার্ড ১">ওয়ার্ড ১</option>
+                <option value="ওয়ার্ড ২">ওয়ার্ড ২</option>
+                <option value="ওয়ার্ড ৩">ওয়ার্ড ৩</option>
+                <option value="ওয়ার্ড ৪">ওয়ার্ড ৪</option>
+                <option value="ওয়ার্ড ৫">ওয়ার্ড ৫</option>
+                <option value="ওয়ার্ড ৬">ওয়ার্ড ৬</option>
+                <option value="ওয়ার্ড ৭">ওয়ার্ড ৭</option>
+                <option value="ওয়ার্ড ৮">ওয়ার্ড ৮</option>
+                <option value="ওয়ার্ড ৯">ওয়ার্ড ৯</option>
+                <option value="সকল ওয়ার্ড">সকল ওয়ার্ড (সার্বিক)</option>
+              </select>
+
+              <select
+                value={roleRoleFilter}
+                onChange={(e) => setRoleRoleFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:border-emerald-600 focus:outline-none"
+              >
+                <option value="ALL">সকল রোল</option>
+                <option value="super_admin">সুপার এডমিন</option>
+                <option value="chairman">চেয়ারম্যান</option>
+                <option value="secretary">সচিব</option>
+                <option value="member">ইউপি সদস্য</option>
+                <option value="developer">আইটি ডেভেলপার</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Members Permission Cards List */}
+          <div className="space-y-4">
+            {adminsList
+              .filter(adm => {
+                const matchSearch = 
+                  adm.name.toLowerCase().includes(roleSearchQuery.toLowerCase()) ||
+                  adm.email.toLowerCase().includes(roleSearchQuery.toLowerCase()) ||
+                  adm.designation.toLowerCase().includes(roleSearchQuery.toLowerCase());
+                const matchWard = roleWardFilter === 'ALL' || adm.wardNo === roleWardFilter;
+                const matchRole = roleRoleFilter === 'ALL' || adm.role === roleRoleFilter;
+                return matchSearch && matchWard && matchRole;
+              })
+              .map((adm) => {
+                const isEditingThis = editingAdminEmail === adm.email;
+                const currentPerms = isEditingThis ? editingPermissions : getPermissionsForAdmin(adm);
+                const currentRole = isEditingThis ? editingRole : adm.role;
+
+                return (
+                  <div
+                    key={adm.email}
+                    className={`bg-white p-5 rounded-3xl border transition-all duration-200 shadow-sm space-y-4 ${
+                      isEditingThis ? 'ring-2 ring-emerald-500 border-emerald-400 bg-emerald-50/20' : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-900 text-amber-300 font-extrabold flex items-center justify-center text-xl shadow-md shrink-0">
+                          {adm.name ? adm.name[0] : 'U'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-extrabold text-slate-900 text-sm">{adm.name}</h4>
+                            <span className="px-2.5 py-0.5 bg-amber-100 text-emerald-950 font-black text-[10px] rounded-lg border border-amber-300">
+                              {adm.designation}
+                            </span>
+                            {adm.wardNo && (
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold text-[10px] rounded-md border border-slate-300">
+                                {adm.wardNo}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium">{adm.email}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[10px] font-bold text-slate-400">বর্তমান রোল</p>
+                          <span className="text-xs font-black text-emerald-900 uppercase">{currentRole}</span>
+                        </div>
+
+                        {!isEditingThis ? (
+                          <button
+                            onClick={() => {
+                              setEditingAdminEmail(adm.email);
+                              setEditingRole(adm.role);
+                              setEditingPermissions(getPermissionsForAdmin(adm));
+                            }}
+                            className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-xs font-extrabold rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Sliders className="w-4 h-4 text-amber-300" />
+                            <span>পারমিশন টিউন করুন (Edit)</span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingAdminEmail(null);
+                              }}
+                              className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                            >
+                              বাতিল
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await handleSavePermissionsForUser(adm);
+                              }}
+                              disabled={isSavingAdmin}
+                              className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              <Save className="w-4 h-4 text-amber-300" />
+                              <span>{isSavingAdmin ? 'সেভ হচ্ছে...' : 'ফায়ারবেসে সেভ করুন'}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Permission Editor / Matrix Controls */}
+                    <div className="space-y-3">
+                      {isEditingThis && (
+                        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-slate-800">রোল পরিবর্তন করুন:</label>
+                            <select
+                              value={editingRole}
+                              onChange={(e) => {
+                                const newR = e.target.value as AdminUserRecord['role'];
+                                setEditingRole(newR);
+                                setEditingPermissions(DEFAULT_ROLE_PERMISSIONS[newR] || DEFAULT_ROLE_PERMISSIONS.member);
+                              }}
+                              className="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-emerald-900 focus:border-emerald-600 focus:outline-none"
+                            >
+                              <option value="super_admin">সুপার এডমিন (Super Admin)</option>
+                              <option value="chairman">চেয়ারম্যান (Chairman)</option>
+                              <option value="secretary">সচিব (Secretary)</option>
+                              <option value="member">ইউপি সদস্য (Member)</option>
+                              <option value="developer">আইটি ডেভেলপার (Developer)</option>
+                            </select>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setEditingPermissions(DEFAULT_ROLE_PERMISSIONS[editingRole] || DEFAULT_ROLE_PERMISSIONS.member);
+                            }}
+                            className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-emerald-950 text-xs font-bold rounded-lg border border-amber-300 transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 text-emerald-900" />
+                            <span>রোল অনুযায়ী ডিফল্ট পারমিশন সেট করুন</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Toggles Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                        <label
+                          className={`p-3 rounded-2xl border transition flex items-start gap-2.5 cursor-pointer ${
+                            currentPerms.canApproveCertificates ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}
+                          onClick={() => {
+                            if (!isEditingThis) return;
+                            setEditingPermissions(prev => ({ ...prev, canApproveCertificates: !prev.canApproveCertificates }));
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!isEditingThis}
+                            checked={currentPerms.canApproveCertificates}
+                            onChange={() => {}}
+                            className="mt-0.5 accent-emerald-800 rounded"
+                          />
+                          <div>
+                            <span className="block text-xs font-extrabold">সনদ অনুমোদন</span>
+                            <span className="text-[9px] text-slate-500">Approve Certificates</span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`p-3 rounded-2xl border transition flex items-start gap-2.5 cursor-pointer ${
+                            currentPerms.canIssueCertificates ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}
+                          onClick={() => {
+                            if (!isEditingThis) return;
+                            setEditingPermissions(prev => ({ ...prev, canIssueCertificates: !prev.canIssueCertificates }));
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!isEditingThis}
+                            checked={currentPerms.canIssueCertificates}
+                            onChange={() => {}}
+                            className="mt-0.5 accent-emerald-800 rounded"
+                          />
+                          <div>
+                            <span className="block text-xs font-extrabold">সনদপত্র ইস্যু</span>
+                            <span className="text-[9px] text-slate-500">Direct Issue</span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`p-3 rounded-2xl border transition flex items-start gap-2.5 cursor-pointer ${
+                            currentPerms.canManageAdmins ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}
+                          onClick={() => {
+                            if (!isEditingThis) return;
+                            setEditingPermissions(prev => ({ ...prev, canManageAdmins: !prev.canManageAdmins }));
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!isEditingThis}
+                            checked={currentPerms.canManageAdmins}
+                            onChange={() => {}}
+                            className="mt-0.5 accent-emerald-800 rounded"
+                          />
+                          <div>
+                            <span className="block text-xs font-extrabold">এডমিন কন্ট্রোল</span>
+                            <span className="text-[9px] text-slate-500">Manage Admins</span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`p-3 rounded-2xl border transition flex items-start gap-2.5 cursor-pointer ${
+                            currentPerms.canEditConfig ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}
+                          onClick={() => {
+                            if (!isEditingThis) return;
+                            setEditingPermissions(prev => ({ ...prev, canEditConfig: !prev.canEditConfig }));
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!isEditingThis}
+                            checked={currentPerms.canEditConfig}
+                            onChange={() => {}}
+                            className="mt-0.5 accent-emerald-800 rounded"
+                          />
+                          <div>
+                            <span className="block text-xs font-extrabold">মাস্টার সেটআপ</span>
+                            <span className="text-[9px] text-slate-500">Edit UP Config</span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`p-3 rounded-2xl border transition flex items-start gap-2.5 cursor-pointer ${
+                            currentPerms.canExportData ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}
+                          onClick={() => {
+                            if (!isEditingThis) return;
+                            setEditingPermissions(prev => ({ ...prev, canExportData: !prev.canExportData }));
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!isEditingThis}
+                            checked={currentPerms.canExportData}
+                            onChange={() => {}}
+                            className="mt-0.5 accent-emerald-800 rounded"
+                          />
+                          <div>
+                            <span className="block text-xs font-extrabold">ডাটা এক্সপোর্ট</span>
+                            <span className="text-[9px] text-slate-500">Export CSV / Sheets</span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`p-3 rounded-2xl border transition flex items-start gap-2.5 cursor-pointer ${
+                            currentPerms.canDeleteLogs ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}
+                          onClick={() => {
+                            if (!isEditingThis) return;
+                            setEditingPermissions(prev => ({ ...prev, canDeleteLogs: !prev.canDeleteLogs }));
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!isEditingThis}
+                            checked={currentPerms.canDeleteLogs}
+                            onChange={() => {}}
+                            className="mt-0.5 accent-emerald-800 rounded"
+                          />
+                          <div>
+                            <span className="block text-xs font-extrabold">অডিট লগ ডিলেশন</span>
+                            <span className="text-[9px] text-slate-500">Audit Clearance</span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: SECURE SYSTEM MODIFICATION AUDIT LOGS */}
       {activeView === 'logs' && (
         <div className="space-y-6">
           {/* Controls Bar & Filters */}

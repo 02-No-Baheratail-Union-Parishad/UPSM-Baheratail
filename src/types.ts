@@ -252,6 +252,15 @@ export interface AuditLogRecord {
   checksum?: string;
 }
 
+export interface AdminPermissions {
+  canApproveCertificates: boolean;
+  canIssueCertificates: boolean;
+  canManageAdmins: boolean;
+  canEditConfig: boolean;
+  canExportData: boolean;
+  canDeleteLogs: boolean;
+}
+
 export interface AdminUserRecord {
   uid?: string;
   email: string;
@@ -263,6 +272,7 @@ export interface AdminUserRecord {
   lastLoginAt?: string;
   status: 'active' | 'suspended';
   wardNo?: string;
+  permissions?: AdminPermissions;
 }
 
 export interface BackupSnapshot {

@@ -27,7 +27,8 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
-import { CertificateRecord, UnionParishadConfig } from './types';
+import { CertificateRecord, UnionParishadConfig, AdminPermissions } from './types';
+export type { AdminPermissions };
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -530,6 +531,8 @@ export interface AdminUserRecord {
   addedAt: string;
   lastLoginAt?: string;
   status: 'active' | 'suspended';
+  wardNo?: string;
+  permissions?: AdminPermissions;
 }
 
 const ADMINS_COLLECTION = 'admins';
