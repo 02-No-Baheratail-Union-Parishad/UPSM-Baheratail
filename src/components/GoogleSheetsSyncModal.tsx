@@ -15,7 +15,7 @@ import {
   Table
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
-import { signInWithGooglePopupForWorkspace, getGoogleAccessToken } from '../firebase';
+import { signInWithGooglePopupForWorkspace, getGoogleAccessToken, formatFirebaseAuthError } from '../firebase';
 import { syncLogsToGoogleSpreadsheet, createGoogleSpreadsheet } from '../lib/googleSheets';
 
 interface GoogleSheetsSyncModalProps {
@@ -64,8 +64,12 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
       setUserEmail(user.email);
       setStatusMessage(`Google একাউন্ট (${user.email || 'অ্যাডমিন'}) দিয়ে সফলভাবে কানেক্টেড!`);
     } catch (err: any) {
-      console.error('Google Sign In Error:', err);
-      setErrorMessage(err.message || 'Google দিয়ে সাইন ইন ব্যর্থ হয়েছে।');
+      if (err?.code === 'auth/popup-closed-by-user' || err?.message?.includes('popup-closed-by-user')) {
+        setErrorMessage('সাইন-ইন উইন্ডো বন্ধ করা হয়েছে। স্প্রেডশিট সিঙ্কের জন্য গুগল সাইন-ইন সম্পন্ন করুন।');
+      } else {
+        console.error('Google Sign In Error:', err);
+        setErrorMessage(formatFirebaseAuthError(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -80,10 +84,18 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
       let activeToken = accessToken || getGoogleAccessToken();
       if (!activeToken) {
         // Attempt sign in if not authenticated yet
-        const { accessToken: token, user } = await signInWithGooglePopupForWorkspace();
-        activeToken = token;
-        setAccessToken(token);
-        setUserEmail(user.email);
+        try {
+          const { accessToken: token, user } = await signInWithGooglePopupForWorkspace();
+          activeToken = token;
+          setAccessToken(token);
+          setUserEmail(user.email);
+        } catch (authErr: any) {
+          if (authErr?.code === 'auth/popup-closed-by-user' || authErr?.message?.includes('popup-closed-by-user')) {
+            setErrorMessage('সাইন-ইন পপআপ বন্ধ করার কারণে সিঙ্ক শুরু করা হয়নি।');
+            return;
+          }
+          throw authErr;
+        }
       }
 
       let targetId = sheetIdToUse || customSheetId;

@@ -39,7 +39,8 @@ import {
   saveAdminUserToFirebase, 
   deleteAdminUserFromFirebase,
   fetchAuditLogsFromFirebase,
-  addAuditLogToFirebase
+  addAuditLogToFirebase,
+  formatFirebaseAuthError
 } from '../firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 
@@ -201,8 +202,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
       });
       loadLogs();
     } catch (err: any) {
-      console.error('Sign in error:', err);
-      setAuthError(err.message || 'গুগল সাইন ইন করতে ব্যর্থ হইয়াছে।');
+      if (err?.code === 'auth/popup-closed-by-user' || err?.message?.includes('popup-closed-by-user')) {
+        setAuthError('সাইন-ইন পপআপ উইন্ডোটি বন্ধ করা হয়েছে।');
+      } else {
+        console.error('Sign in error:', err);
+        setAuthError(formatFirebaseAuthError(err));
+      }
     } finally {
       setIsLoadingAuth(false);
     }

@@ -21,6 +21,7 @@ import {
   signInWithGooglePopup, 
   logoutUserFromFirebase, 
   fetchAdminUsersFromFirebase, 
+  formatFirebaseAuthError,
   AdminUserRecord 
 } from '../firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -107,8 +108,12 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
         setAdminRecord(matchedAdmin);
       }
     } catch (err: any) {
-      console.error('Google Sign-in error:', err);
-      setAuthError(err.message || 'গুগল সাইন-ইন সম্পন্ন করতে ব্যর্থ হইয়াছে।');
+      if (err?.code === 'auth/popup-closed-by-user' || err?.message?.includes('popup-closed-by-user')) {
+        setAuthError('সাইন-ইন পপআপ উইন্ডোটি বন্ধ করা হয়েছে।');
+      } else {
+        console.error('Google Sign-in error:', err);
+        setAuthError(formatFirebaseAuthError(err));
+      }
     } finally {
       setIsLoading(false);
     }

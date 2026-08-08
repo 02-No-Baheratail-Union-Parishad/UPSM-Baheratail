@@ -603,6 +603,23 @@ export async function deleteAdminUserFromFirebase(email: string): Promise<void> 
   await deleteDoc(docRef);
 }
 
+export function formatFirebaseAuthError(err: any): string {
+  if (!err) return 'অজানা ত্রুটি দেখা দিয়েছে।';
+  if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup-closed-by-user')) {
+    return 'সাইন-ইন পপআপ উইন্ডোটি বন্ধ করা হয়েছে।';
+  }
+  if (err.code === 'auth/popup-blocked' || err.message?.includes('popup-blocked')) {
+    return 'ব্রাউজার পপআপ ব্লক করেছে। অনুগ্রহ করে পপআপ ডায়ালগ অনুমোদন করুন।';
+  }
+  if (err.code === 'auth/cancelled-popup-request' || err.message?.includes('cancelled-popup-request')) {
+    return 'পূর্বে স্থগিত পপআপ অনুরোধটি বাতিল করা হয়েছে।';
+  }
+  if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+    return 'এই ডোমেইনটি Firebase Auth Authorized Domains তালিকায় অনুমোদিত নয়।';
+  }
+  return err.message || 'গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন করা সম্ভব হয়নি।';
+}
+
 export async function signInWithGooglePopup(): Promise<FirebaseUser> {
   const result = await signInWithPopup(auth, googleProvider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
