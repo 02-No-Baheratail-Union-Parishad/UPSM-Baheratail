@@ -25,6 +25,7 @@ import {
 import { WARDS, KNOWN_VILLAGES } from '../data/villages';
 import { CitizenAccountRecord, UnionParishadConfig, NidScanResult } from '../types';
 import { sanitizeObject } from '../utils/security';
+import { validateNid, validateBirthNo, validatePhone } from '../utils/validation';
 import { fetchCertificatesFromFirebase } from '../firebase';
 import { NidScannerModal } from './NidScannerModal';
 
@@ -260,6 +261,30 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
     if (!newCitizen.name || !newCitizen.mother || !newCitizen.village) {
       alert('অনুগ্রহ করে নাগরিকের নাম, মাতার নাম এবং গ্রাম তথ্য প্রদান করুন।');
       return;
+    }
+
+    if (newCitizen.nid) {
+      const nidVal = validateNid(newCitizen.nid);
+      if (!nidVal.isValid) {
+        alert(nidVal.message);
+        return;
+      }
+    }
+
+    if (newCitizen.birthNo) {
+      const birthVal = validateBirthNo(newCitizen.birthNo);
+      if (!birthVal.isValid) {
+        alert(birthVal.message);
+        return;
+      }
+    }
+
+    if (newCitizen.mobile) {
+      const phoneVal = validatePhone(newCitizen.mobile);
+      if (!phoneVal.isValid) {
+        alert(phoneVal.message);
+        return;
+      }
     }
 
     const createdRecord: CitizenAccountRecord = sanitizeObject({

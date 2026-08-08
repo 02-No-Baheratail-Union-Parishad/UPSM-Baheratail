@@ -235,7 +235,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   }, [activeTab]);
 
   const handleGenerateApiKey = async () => {
-    if (!newKeyName.trim()) {
+    const cleanName = sanitizeInput(newKeyName.trim(), 200);
+    if (!cleanName) {
       alert('অনুগ্রহ করে API Key-এর একটি নাম বা সার্ভিস বর্ণনা প্রদান করুন (যেমন: ব্যাংক যাচাইকরণ সার্ভিস)।');
       return;
     }
@@ -244,7 +245,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
       const res = await fetch('/api/admin/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newKeyName, permissions: newKeyPerm })
+        body: JSON.stringify({ name: cleanName, permissions: newKeyPerm })
       });
       const data = await res.json();
       if (data.success) {
@@ -279,19 +280,23 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   };
 
   const handleAddWebhook = async () => {
-    if (!newWebhookUrl.trim() || !newWebhookUrl.startsWith('http')) {
+    const cleanUrl = newWebhookUrl.trim();
+    if (!cleanUrl || !cleanUrl.startsWith('http')) {
       alert('অনুগ্রহ করে একটি বৈধ Webhook URL প্রদান করুন (http:// বা https://)।');
       return;
     }
+    const cleanName = sanitizeInput(newWebhookName.trim() || 'নতুন ওয়েবহুক এন্ডপয়েন্ট', 200);
+    const cleanSecret = sanitizeInput(newWebhookSecret.trim(), 200);
+
     setIsSavingWebhook(true);
     try {
       const res = await fetch('/api/admin/webhooks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newWebhookName || 'নতুন ওয়েবহুক এন্ডপয়েন্ট',
-          url: newWebhookUrl,
-          secret: newWebhookSecret,
+          name: cleanName,
+          url: cleanUrl,
+          secret: cleanSecret,
           events: newWebhookEvents,
           enabled: true
         })

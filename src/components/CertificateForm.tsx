@@ -33,6 +33,7 @@ import {
 } from '../types';
 import { NidScannerModal } from './NidScannerModal';
 import { WarishTableBuilder } from './WarishTableBuilder';
+import { FormProgressIndicator } from './FormProgressIndicator';
 
 import { saveCertificateToFirebase } from '../firebase';
 import { sanitizeInput } from '../utils/security';
@@ -394,8 +395,52 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
     }
   };
 
+  // Section Completion Calculations for Form Progress Indicator
+  const personalCompleted = Boolean(
+    name.trim().length > 0 && 
+    mother.trim().length > 0 && 
+    getFinalVillage().length > 0 && 
+    wardNo.length > 0
+  );
+
+  const detailsCompleted = Boolean(
+    selectedTypeKey &&
+    (!selectedTypeObj.simpleFields || 
+      selectedTypeObj.simpleFields
+        .filter((f) => f.required)
+        .every((f) => (simpleFields[f.label] || '').trim().length > 0))
+  );
+
+  const declarationCompleted = Boolean(
+    paymentMethod === 'Cash' || (paymentMethod !== 'Cash' && trxId.trim().length >= 3)
+  );
+
+  const handleStepClick = (stepId: 'personal' | 'details' | 'declaration') => {
+    let targetEl: HTMLElement | null = null;
+    if (stepId === 'personal') {
+      targetEl = document.getElementById('section-personal-info');
+    } else if (stepId === 'details') {
+      targetEl = document.getElementById('section-details');
+    } else if (stepId === 'declaration') {
+      targetEl = document.getElementById('section-declaration');
+    }
+
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Top Visual Section Progress Tracker Indicator */}
+      <FormProgressIndicator
+        personalCompleted={personalCompleted}
+        detailsCompleted={detailsCompleted}
+        declarationCompleted={declarationCompleted}
+        onStepClick={handleStepClick}
+        selectedTypeLabel={selectedTypeObj.label}
+      />
+
       {/* Active Auto-Filled Citizen Profile Banner */}
       {(autoFilledProfile || initialCitizen) && (
         <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl border-2 border-amber-400/90 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in relative overflow-hidden">
@@ -463,7 +508,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
       )}
 
       {/* Step 1: Certificate Type Chooser */}
-      <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-5 space-y-4">
+      <div id="section-details" className="bg-white rounded-2xl shadow-md border border-slate-200 p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <div>
             <h2 className="text-lg font-bold text-emerald-950 flex items-center gap-2">
@@ -612,7 +657,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
 
       {/* Step 3: Main Citizen Intake Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-6">
-        <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+        <div id="section-personal-info" className="border-b border-slate-200 pb-3 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-emerald-950 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-emerald-800 text-white text-xs flex items-center justify-center font-bold">
@@ -918,7 +963,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
         </div>
 
         {/* Bangladeshi MFS Mobile Banking Payment Gateway Section */}
-        <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
+        <div id="section-declaration" className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-extrabold text-amber-300 flex items-center gap-2">
