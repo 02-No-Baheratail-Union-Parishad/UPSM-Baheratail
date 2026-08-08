@@ -45,6 +45,10 @@ import {
   exportFirestoreCollectionsToStorage, 
   fetchFirestoreBackupsFromFirebase,
   restoreFullBackupToFirestore,
+  fetchAdminUsersFromFirebase,
+  saveAdminUserToFirebase,
+  deleteAdminUserFromFirebase,
+  AdminUserRecord,
   FirestoreCollectionExportResult 
 } from '../firebase';
 import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember } from '../types';
@@ -68,8 +72,15 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   const [isAppsScriptOpen, setIsAppsScriptOpen] = useState(false);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pending' | 'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types' | 'backup' | 'maintenance' | 'api_webhook'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types' | 'backup' | 'maintenance' | 'api_webhook' | 'multi_admin' | 'council_members'>('pending');
   
+  // Multi-Admin Management State
+  const [adminsDirectory, setAdminsDirectory] = useState<AdminUserRecord[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminDesignation, setNewAdminDesignation] = useState('ইউপি সদস্য / অফিসার');
+  const [newAdminRole, setNewAdminRole] = useState<'super_admin' | 'chairman' | 'secretary' | 'member' | 'developer'>('member');
+  const [isSavingAdminUser, setIsSavingAdminUser] = useState(false);
   // API Key & Webhook Integration State
   const [apiKeysList, setApiKeysList] = useState<ApiKeyRecord[]>([]);
   const [webhooksList, setWebhooksList] = useState<WebhookConfig[]>([]);
@@ -231,8 +242,53 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
       fetchBackupsList();
     } else if (activeTab === 'api_webhook') {
       fetchApiAndWebhookData();
+    } else if (activeTab === 'multi_admin') {
+      fetchAdminUsersFromFirebase().then(setAdminsDirectory).catch(console.warn);
     }
   }, [activeTab]);
+
+  const handleAddAdminUser = async () => {
+    if (!newAdminEmail.trim() || !newAdminEmail.includes('@')) {
+      alert('অনুগ্রহ করে একটি বৈধ ইমেইল প্রদান করুন।');
+      return;
+    }
+    if (!newAdminName.trim()) {
+      alert('অনুগ্রহ করে এডমিন ইউজারের নাম লিখুন।');
+      return;
+    }
+    setIsSavingAdminUser(true);
+    try {
+      const record: AdminUserRecord = {
+        email: newAdminEmail.trim().toLowerCase(),
+        name: newAdminName.trim(),
+        designation: newAdminDesignation.trim(),
+        role: newAdminRole,
+        addedAt: new Date().toISOString(),
+        status: 'active'
+      };
+      await saveAdminUserToFirebase(record);
+      const updated = await fetchAdminUsersFromFirebase();
+      setAdminsDirectory(updated);
+      setNewAdminEmail('');
+      setNewAdminName('');
+      alert('নতুন এডমিন ইউজার সফলভাবে ফায়ারবেস ডাটাবেসে যুক্ত করা হইয়াছে!');
+    } catch (err: any) {
+      alert('এডমিন যুক্ত করতে ব্যর্থ: ' + err.message);
+    } finally {
+      setIsSavingAdminUser(false);
+    }
+  };
+
+  const handleDeleteAdminUser = async (email: string) => {
+    if (!window.confirm(`আপনি কি নিশ্চিত যে '${email}' এডমিন অনুমতি বাতিল করতে চান?`)) return;
+    try {
+      await deleteAdminUserFromFirebase(email);
+      const updated = await fetchAdminUsersFromFirebase();
+      setAdminsDirectory(updated);
+    } catch (err: any) {
+      alert('এডমিন বাতিল ব্যর্থ: ' + err.message);
+    }
+  };
 
   const handleGenerateApiKey = async () => {
     const cleanName = sanitizeInput(newKeyName.trim(), 200);
@@ -956,6 +1012,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
         >
           <Users className="w-4 h-4 text-amber-300" />
           <span>১০. পরিষদ সদস্য ও কর্মকর্তা ব্যবস্থাপনা (২৭ জন)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('multi_admin')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === 'multi_admin'
+              ? 'bg-emerald-900 text-amber-300 shadow-md ring-2 ring-amber-400/50'
+              : 'text-slate-700 hover:bg-slate-300/80'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-amber-300" />
+          <span>১১. একাধিক এডমিন ও গুগল লগইন (Firebase Auth / OAuth 2.0)</span>
         </button>
       </div>
 
@@ -3494,6 +3563,192 @@ print("Response JSON:", res.json())
           </div>
         </div>
       )}
+      {/* TAB 11: Multi-Admin & Firebase OAuth 2.0 Auth Management */}
+      {activeTab === 'multi_admin' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 text-white p-6 rounded-2xl shadow-xl border border-emerald-800 relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full text-xs font-extrabold">
+                  <ShieldCheck className="w-4 h-4 text-amber-300" />
+                  <span>Google Firebase Authentication & OAuth 2.0 RBAC</span>
+                </div>
+                <h3 className="text-xl font-black text-white">
+                  একাধিক এডমিন প্যানেল ও গুগল সাইন-ইন ব্যবস্থাপনা
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                  ইউনিয়ন পরিষদের চেয়ারম্যান, সচিব, ইউপি সদস্য ও আইটি সিস্টেম এডমিনগণের গুগল অ্যাকাউন্ট দ্বারা লগইন করার অনুমতি পরিচালনা করুন।
+                </p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 shrink-0 text-xs space-y-2">
+                <div className="flex items-center justify-between gap-4 text-emerald-100">
+                  <span className="font-bold">মোট অনুমোদিত এডমিন:</span>
+                  <span className="font-black text-amber-300 text-sm bg-emerald-950 px-2.5 py-0.5 rounded-full border border-amber-400/30">
+                    {adminsDirectory.length} জন
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-emerald-100">
+                  <span className="font-bold">অথেন্টিকেশন মেথড:</span>
+                  <span className="font-extrabold text-emerald-300">Google OAuth 2.0 (Pop-up)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Add New Admin User Form */}
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+              <User className="w-5 h-5 text-emerald-800" />
+              <h4 className="font-extrabold text-slate-900 text-base">
+                নতুন এডমিন যোগ করুন (Add New Admin Account)
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  গুগল ইমেইল এড্রেস *
+                </label>
+                <input
+                  type="email"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  placeholder="admin@gmail.com"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-emerald-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  এডমিন নাম *
+                </label>
+                <input
+                  type="text"
+                  value={newAdminName}
+                  onChange={(e) => setNewAdminName(e.target.value)}
+                  placeholder="যেমন: মোঃ জহিরুল ইসলাম"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-emerald-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  পদবী ও দায়িত্ব
+                </label>
+                <input
+                  type="text"
+                  value={newAdminDesignation}
+                  onChange={(e) => setNewAdminDesignation(e.target.value)}
+                  placeholder="যেমন: ইউপি সচিব / চেয়ারম্যান / সিস্টেম এডমিন"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-emerald-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  পারমিশন রোল (Access Role)
+                </label>
+                <select
+                  value={newAdminRole}
+                  onChange={(e) => setNewAdminRole(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:border-emerald-600 focus:outline-none"
+                >
+                  <option value="super_admin">সুপার এডমিন (Super Admin)</option>
+                  <option value="chairman">চেয়ারম্যান (Chairman)</option>
+                  <option value="secretary">সচিব (Secretary)</option>
+                  <option value="member">ইউপি সদস্য / অফিসার (Member)</option>
+                  <option value="developer">আইটি ডেভেলপার (Developer)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={handleAddAdminUser}
+                disabled={isSavingAdminUser}
+                className="px-6 py-2.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSavingAdminUser ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                    <span>সংরক্ষণ হইতেছে...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                    <span>+ ফায়ারবেস এডমিন ডিরেক্টরিতে যোগ করুন</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Admin Directory Table / Cards */}
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-800" />
+                <h4 className="font-extrabold text-slate-900 text-base">
+                  সক্রিয় এডমিন তালিকা (Active Firebase Authorized Directory)
+                </h4>
+              </div>
+              <button
+                onClick={() => fetchAdminUsersFromFirebase().then(setAdminsDirectory)}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-800" />
+                <span>রিফ্রেশ</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {adminsDirectory.map((adm, idx) => (
+                <div 
+                  key={idx} 
+                  className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-start justify-between gap-3 hover:border-emerald-400 transition shadow-sm"
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-300 font-black flex items-center justify-center shrink-0 shadow-md text-base">
+                      {adm.name ? adm.name[0] : 'A'}
+                    </div>
+
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h5 className="font-black text-slate-900 text-sm truncate">
+                          {adm.name}
+                        </h5>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 bg-amber-100 text-emerald-950 border border-amber-300 rounded-md">
+                          {adm.role}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 font-medium truncate">
+                        {adm.email}
+                      </p>
+                      
+                      <p className="text-[11px] text-emerald-800 font-bold">
+                        পদবী: {adm.designation}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteAdminUser(adm.email)}
+                    className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl border border-rose-200 transition cursor-pointer shrink-0"
+                    title="এডমিন অনুমতি বাতিল করুন"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Template Manager & Google Doc Mapping Modal */}
       <TemplateManager
         isOpen={isTemplateManagerOpen}

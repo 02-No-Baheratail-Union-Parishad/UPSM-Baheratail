@@ -1,6 +1,15 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getFirestore, 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { 
+  getFirestore,
+  initializeFirestore,
   collection, 
   doc, 
   getDoc, 
@@ -13,7 +22,8 @@ import {
   deleteDoc,
   onSnapshot,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  getDocFromServer
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -22,13 +32,33 @@ import { CertificateRecord, UnionParishadConfig } from './types';
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore with specific database ID if present
-export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firebase Auth
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+
+// Initialize Firestore with specific database ID if present and enable autoDetectLongPolling for sandboxed container stability
+const dbId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+  ? firebaseConfig.firestoreDatabaseId
+  : undefined;
+
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+}, dbId);
 
 // Initialize Firebase Storage
 export const storage = getStorage(app);
+
+// Test Firestore connection on boot
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn("Notice: Firestore is running in offline mode.");
+    }
+  }
+}
+testConnection();
 
 const CERTIFICATES_COLLECTION = 'certificates';
 const CONFIGS_COLLECTION = 'configs';
@@ -476,5 +506,97 @@ export async function restoreFullBackupToFirestore(backupData: any): Promise<{ t
   }
 
   return { totalRestored, collectionsRestored };
+}
+
+export interface AdminUserRecord {
+  uid?: string;
+  email: string;
+  name: string;
+  role: 'super_admin' | 'chairman' | 'secretary' | 'member' | 'developer';
+  designation: string;
+  photoUrl?: string;
+  addedAt: string;
+  lastLoginAt?: string;
+  status: 'active' | 'suspended';
+}
+
+const ADMINS_COLLECTION = 'admins';
+
+export const DEFAULT_ADMINS_LIST: AdminUserRecord[] = [
+  {
+    email: 'inbox600900@gmail.com',
+    name: 'MD JUBAER HOSSEN',
+    role: 'developer',
+    designation: 'প্রধান আইটি ডেভেলপার ও সিস্টেম এডমিন',
+    addedAt: '2026-01-01T00:00:00.000Z',
+    status: 'active'
+  },
+  {
+    email: 'baheratailunion@gmail.com',
+    name: '০২নং বহেড়াতৈল ইউনিয়ন পরিষদ এডমিন',
+    role: 'super_admin',
+    designation: 'অফিসিয়াল ইউপি এডমিন অ্যাকাউন্ট',
+    addedAt: '2026-01-01T00:00:00.000Z',
+    status: 'active'
+  },
+  {
+    email: 'chairman@gmail.com',
+    name: 'চেয়ারম্যান কার্যালয়',
+    role: 'chairman',
+    designation: 'ইউপি চেয়ারম্যান',
+    addedAt: '2026-01-01T00:00:00.000Z',
+    status: 'active'
+  },
+  {
+    email: 'secretary@gmail.com',
+    name: 'সচিব কার্যালয়',
+    role: 'secretary',
+    designation: 'প্রশাসনিক কর্মকর্তা / সচিব',
+    addedAt: '2026-01-01T00:00:00.000Z',
+    status: 'active'
+  }
+];
+
+export async function fetchAdminUsersFromFirebase(): Promise<AdminUserRecord[]> {
+  try {
+    const colRef = collection(db, ADMINS_COLLECTION);
+    const snap = await getDocs(colRef);
+    if (snap.empty) {
+      for (const adm of DEFAULT_ADMINS_LIST) {
+        const docId = adm.email.replace(/[^a-zA-Z0-9]/g, '_');
+        await setDoc(doc(db, ADMINS_COLLECTION, docId), adm, { merge: true });
+      }
+      return DEFAULT_ADMINS_LIST;
+    }
+    const list: AdminUserRecord[] = [];
+    snap.forEach(docSnap => {
+      list.push(docSnap.data() as AdminUserRecord);
+    });
+    return list;
+  } catch (err) {
+    console.warn('Notice fetching admin users from Firebase:', err);
+    return DEFAULT_ADMINS_LIST;
+  }
+}
+
+export async function saveAdminUserToFirebase(admin: AdminUserRecord): Promise<void> {
+  const docId = admin.email.replace(/[^a-zA-Z0-9]/g, '_');
+  const docRef = doc(db, ADMINS_COLLECTION, docId);
+  await setDoc(docRef, admin, { merge: true });
+}
+
+export async function deleteAdminUserFromFirebase(email: string): Promise<void> {
+  const docId = email.replace(/[^a-zA-Z0-9]/g, '_');
+  const docRef = doc(db, ADMINS_COLLECTION, docId);
+  await deleteDoc(docRef);
+}
+
+export async function signInWithGooglePopup(): Promise<FirebaseUser> {
+  const result = await signInWithPopup(auth, googleProvider);
+  return result.user;
+}
+
+export async function logoutUserFromFirebase(): Promise<void> {
+  await signOut(auth);
 }
 

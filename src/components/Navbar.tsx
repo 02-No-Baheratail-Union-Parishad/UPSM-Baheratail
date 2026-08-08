@@ -6,13 +6,20 @@ import {
   Globe,
   Menu,
   Sun,
-  Moon
+  Moon,
+  ShieldCheck,
+  UserCheck,
+  Lock
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
   fetchPendingCertificatesCountFromFirebase, 
-  subscribePendingCertificatesCount 
+  subscribePendingCertificatesCount,
+  auth,
+  AdminUserRecord
 } from '../firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { AdminAuthModal } from './AdminAuthModal';
 
 interface NavbarProps {
   activeTab: string;
@@ -24,6 +31,16 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config, pendingCount: propPendingCount, onToggleMobileSidebar }) => {
   const [pendingCount, setPendingCount] = useState<number>(propPendingCount ?? 0);
+  const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState<boolean>(false);
+  const [currentAdminUser, setCurrentAdminUser] = useState<FirebaseUser | null>(null);
+  const [adminRecord, setAdminRecord] = useState<AdminUserRecord | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentAdminUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Dark Mode Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -226,6 +243,36 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             </span>
           </button>
 
+          {/* Multi-Admin Google Firebase Auth Button */}
+          <button
+            onClick={() => setIsAdminAuthModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-200 text-emerald-950 text-xs font-black rounded-lg shadow-md transition-all duration-200 cursor-pointer active:scale-95 border border-amber-500/80 shrink-0"
+            title="গুগল অথেন্টিকেশন ও এডমিন প্যানেল সাইন ইন"
+          >
+            {currentAdminUser ? (
+              <>
+                {currentAdminUser.photoURL ? (
+                  <img 
+                    src={currentAdminUser.photoURL} 
+                    alt="Admin Avatar" 
+                    className="w-5 h-5 rounded-full border border-emerald-900 object-cover"
+                  />
+                ) : (
+                  <UserCheck className="w-4 h-4 text-emerald-950" />
+                )}
+                <span className="truncate max-w-[110px]">
+                  {currentAdminUser.displayName || currentAdminUser.email?.split('@')[0] || 'এডমিন'}
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-4 h-4 text-emerald-950" />
+                <span>{lang === 'bn' ? 'এডমিন লগইন (Auth)' : 'Admin Auth Login'}</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('create')}
             className="flex items-center gap-2 px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-sm font-semibold rounded-lg shadow transition-all duration-200 cursor-pointer active:scale-95"
@@ -235,6 +282,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           </button>
         </div>
       </div>
+
+      {/* Admin Auth Modal Triggered via Navbar Button */}
+      <AdminAuthModal 
+        isOpen={isAdminAuthModalOpen} 
+        onClose={() => setIsAdminAuthModalOpen(false)}
+        onAdminAuthenticated={(user) => setAdminRecord(user)}
+      />
     </header>
   );
 };
