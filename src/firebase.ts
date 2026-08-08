@@ -600,6 +600,41 @@ export async function saveAdminUserToFirebase(admin: AdminUserRecord): Promise<v
   await setDoc(docRef, admin, { merge: true });
 }
 
+export function subscribeToAdminUsersFromFirebase(callback: (admins: AdminUserRecord[]) => void): () => void {
+  const colRef = collection(db, ADMINS_COLLECTION);
+  return onSnapshot(colRef, (snap) => {
+    if (snap.empty) {
+      callback(DEFAULT_ADMINS_LIST);
+      return;
+    }
+    const list: AdminUserRecord[] = [];
+    snap.forEach(docSnap => {
+      list.push(docSnap.data() as AdminUserRecord);
+    });
+    callback(list);
+  }, (err) => {
+    console.warn('Real-time admin users snapshot warning:', err);
+  });
+}
+
+export async function saveRolePermissionsMatrixToFirebase(matrix: Record<string, AdminPermissions>): Promise<void> {
+  const docRef = doc(db, CONFIGS_COLLECTION, 'role_permissions_matrix');
+  await setDoc(docRef, { matrix, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+export function subscribeToRolePermissionsMatrix(callback: (matrix: Record<string, AdminPermissions> | null) => void): () => void {
+  const docRef = doc(db, CONFIGS_COLLECTION, 'role_permissions_matrix');
+  return onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists() && docSnap.data()?.matrix) {
+      callback(docSnap.data().matrix as Record<string, AdminPermissions>);
+    } else {
+      callback(null);
+    }
+  }, (err) => {
+    console.warn('Role permissions matrix listener warning:', err);
+  });
+}
+
 export async function deleteAdminUserFromFirebase(email: string): Promise<void> {
   const docId = email.replace(/[^a-zA-Z0-9]/g, '_');
   const docRef = doc(db, ADMINS_COLLECTION, docId);

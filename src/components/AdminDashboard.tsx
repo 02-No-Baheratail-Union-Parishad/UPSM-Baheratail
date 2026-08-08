@@ -400,7 +400,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
       await saveAdminUserToFirebase(updatedAdmin);
 
       await addAuditLogToFirebase({
-        action: 'UPDATE_CONFIG',
+        action: 'ADMIN_ROLE_UPDATED',
         actionTitle: 'ইউপি কর্মকর্তা/সদস্যের রোল ও পারমিশন আপডেট',
         details: `${targetAdmin.name} (${targetAdmin.email})-এর পারমিশন রোল পরিমার্জন করা হইয়াছে [নতুন রোল: ${editingRole}]।`,
         performedByEmail: currentUser?.email || 'super_admin',

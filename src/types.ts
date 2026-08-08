@@ -259,6 +259,10 @@ export interface AdminPermissions {
   canEditConfig: boolean;
   canExportData: boolean;
   canDeleteLogs: boolean;
+  canView?: boolean;
+  canEdit?: boolean;
+  canApprove?: boolean;
+  canDelete?: boolean;
 }
 
 export interface AdminUserRecord {

@@ -37,7 +37,14 @@ import {
   ExternalLink,
   Send,
   Terminal,
-  FileText
+  FileText,
+  UserCog,
+  Eye,
+  ShieldAlert,
+  Search,
+  Filter,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { 
   saveConfigToFirebase, 
@@ -48,10 +55,13 @@ import {
   fetchAdminUsersFromFirebase,
   saveAdminUserToFirebase,
   deleteAdminUserFromFirebase,
+  subscribeToAdminUsersFromFirebase,
+  saveRolePermissionsMatrixToFirebase,
+  subscribeToRolePermissionsMatrix,
   AdminUserRecord,
   FirestoreCollectionExportResult 
 } from '../firebase';
-import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember, CertificateRecord } from '../types';
+import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember, CertificateRecord, AdminPermissions } from '../types';
 import { sanitizeInput, sanitizeObject } from '../utils/security';
 import { CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
@@ -87,7 +97,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
         .catch(err => console.warn('Error fetching logs for sync:', err));
     }
   }, [isSheetsSyncOpen]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types' | 'backup' | 'maintenance' | 'api_webhook' | 'multi_admin' | 'council_members'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types' | 'backup' | 'maintenance' | 'api_webhook' | 'multi_admin' | 'council_members' | 'role_management'>('pending');
   
   // Multi-Admin Management State
   const [adminsDirectory, setAdminsDirectory] = useState<AdminUserRecord[]>([]);
@@ -96,6 +106,227 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   const [newAdminDesignation, setNewAdminDesignation] = useState('ইউপি সদস্য / অফিসার');
   const [newAdminRole, setNewAdminRole] = useState<'super_admin' | 'chairman' | 'secretary' | 'member' | 'developer'>('member');
   const [isSavingAdminUser, setIsSavingAdminUser] = useState(false);
+
+  // Role & Permissions Management Matrix State
+  const [roleMatrix, setRoleMatrix] = useState<Record<string, AdminPermissions>>({
+    chairman: {
+      canView: true,
+      canEdit: true,
+      canApprove: true,
+      canDelete: false,
+      canApproveCertificates: true,
+      canIssueCertificates: true,
+      canManageAdmins: true,
+      canEditConfig: true,
+      canExportData: true,
+      canDeleteLogs: false,
+    },
+    secretary: {
+      canView: true,
+      canEdit: true,
+      canApprove: false,
+      canDelete: false,
+      canApproveCertificates: false,
+      canIssueCertificates: true,
+      canManageAdmins: false,
+      canEditConfig: false,
+      canExportData: true,
+      canDeleteLogs: false,
+    },
+    member: {
+      canView: true,
+      canEdit: false,
+      canApprove: false,
+      canDelete: false,
+      canApproveCertificates: false,
+      canIssueCertificates: true,
+      canManageAdmins: false,
+      canEditConfig: false,
+      canExportData: false,
+      canDeleteLogs: false,
+    },
+    super_admin: {
+      canView: true,
+      canEdit: true,
+      canApprove: true,
+      canDelete: true,
+      canApproveCertificates: true,
+      canIssueCertificates: true,
+      canManageAdmins: true,
+      canEditConfig: true,
+      canExportData: true,
+      canDeleteLogs: true,
+    },
+    developer: {
+      canView: true,
+      canEdit: true,
+      canApprove: true,
+      canDelete: true,
+      canApproveCertificates: true,
+      canIssueCertificates: true,
+      canManageAdmins: true,
+      canEditConfig: true,
+      canExportData: true,
+      canDeleteLogs: true,
+    },
+  });
+
+  const [roleSearchFilter, setRoleSearchFilter] = useState('');
+  const [roleFilterRole, setRoleFilterRole] = useState<string>('all');
+  const [roleStatusToast, setRoleStatusToast] = useState<string | null>(null);
+
+  // Real-time synchronization for admin directory and role permissions matrix
+  useEffect(() => {
+    const unsubscribeAdmins = subscribeToAdminUsersFromFirebase((admins) => {
+      setAdminsDirectory(admins);
+    });
+
+    const unsubscribeMatrix = subscribeToRolePermissionsMatrix((remoteMatrix) => {
+      if (remoteMatrix) {
+        setRoleMatrix((prev) => ({ ...prev, ...remoteMatrix }));
+      }
+    });
+
+    return () => {
+      unsubscribeAdmins();
+      unsubscribeMatrix();
+    };
+  }, []);
+
+  const handleToggleRolePermission = async (roleKey: string, permKey: keyof AdminPermissions) => {
+    const currentVal = !!roleMatrix[roleKey]?.[permKey];
+    const newVal = !currentVal;
+
+    const updatedRolePerms: AdminPermissions = {
+      ...(roleMatrix[roleKey] || {
+        canApproveCertificates: false,
+        canIssueCertificates: true,
+        canManageAdmins: false,
+        canEditConfig: false,
+        canExportData: false,
+        canDeleteLogs: false,
+      }),
+      [permKey]: newVal,
+    };
+
+    if (permKey === 'canView') updatedRolePerms.canIssueCertificates = newVal;
+    if (permKey === 'canEdit') updatedRolePerms.canEditConfig = newVal;
+    if (permKey === 'canApprove') updatedRolePerms.canApproveCertificates = newVal;
+    if (permKey === 'canDelete') updatedRolePerms.canDeleteLogs = newVal;
+
+    const newMatrix = {
+      ...roleMatrix,
+      [roleKey]: updatedRolePerms,
+    };
+
+    setRoleMatrix(newMatrix);
+
+    try {
+      await saveRolePermissionsMatrixToFirebase(newMatrix);
+
+      const usersToUpdate = adminsDirectory.filter((u) => u.role === roleKey);
+      for (const u of usersToUpdate) {
+        await saveAdminUserToFirebase({
+          ...u,
+          permissions: updatedRolePerms,
+        });
+      }
+
+      const roleLabels: Record<string, string> = {
+        chairman: 'চেয়ারম্যান',
+        secretary: 'সচিব',
+        member: 'ইউপি সদস্য',
+        super_admin: 'সুপার এডমিন',
+        developer: 'আইটি ডেভেলপার',
+      };
+
+      const permLabels: Record<string, string> = {
+        canView: 'ভিউ (View)',
+        canEdit: 'এডিট (Edit)',
+        canApprove: 'অনুমোদন (Approve)',
+        canDelete: 'ডিলিট (Delete)',
+        canManageAdmins: 'এডমিন কন্ট্রোল',
+        canExportData: 'ডাটা এক্সপোর্ট',
+      };
+
+      const pk = String(permKey);
+      setRoleStatusToast(
+        `✓ ${roleLabels[roleKey] || roleKey}-এর "${permLabels[pk] || pk}" পারমিশন ফায়ারবেসে রিয়েল-টাইমে সিঙ্ক করা হইয়াছে!`
+      );
+      setTimeout(() => setRoleStatusToast(null), 4000);
+    } catch (err) {
+      console.error('Error updating role permissions in Firebase:', err);
+      setRoleStatusToast('⚠️ পারমিশন ফায়ারবেসে সিঙ্ক করিতে ত্রুটি হইয়াছে।');
+      setTimeout(() => setRoleStatusToast(null), 4000);
+    }
+  };
+
+  const handleToggleUserPermission = async (email: string, permKey: keyof AdminPermissions) => {
+    const userIndex = adminsDirectory.findIndex((u) => u.email === email);
+    if (userIndex === -1) return;
+
+    const user = adminsDirectory[userIndex];
+    const currentPerms = user.permissions || roleMatrix[user.role] || {
+      canApproveCertificates: false,
+      canIssueCertificates: true,
+      canManageAdmins: false,
+      canEditConfig: false,
+      canExportData: false,
+      canDeleteLogs: false,
+    };
+
+    const currentVal = !!currentPerms[permKey];
+    const newVal = !currentVal;
+
+    const updatedUserPerms: AdminPermissions = {
+      ...currentPerms,
+      [permKey]: newVal,
+    };
+
+    if (permKey === 'canView') updatedUserPerms.canIssueCertificates = newVal;
+    if (permKey === 'canEdit') updatedUserPerms.canEditConfig = newVal;
+    if (permKey === 'canApprove') updatedUserPerms.canApproveCertificates = newVal;
+    if (permKey === 'canDelete') updatedUserPerms.canDeleteLogs = newVal;
+
+    const updatedUser: AdminUserRecord = {
+      ...user,
+      permissions: updatedUserPerms,
+    };
+
+    try {
+      await saveAdminUserToFirebase(updatedUser);
+      setRoleStatusToast(`✓ ${user.name}-এর পারমিশন ফায়ারবেস মেটাডাটা রিয়েল-টাইমে আপডেট হইয়াছে!`);
+      setTimeout(() => setRoleStatusToast(null), 4000);
+    } catch (err) {
+      console.error('Error saving user permissions:', err);
+      setRoleStatusToast('⚠️ ফায়ারবেস মেটাডাটা আপডেটে ত্রুটি।');
+      setTimeout(() => setRoleStatusToast(null), 4000);
+    }
+  };
+
+  const handleResetUserToRoleDefaults = async (user: AdminUserRecord) => {
+    const defaultPerms = roleMatrix[user.role] || {
+      canApproveCertificates: false,
+      canIssueCertificates: true,
+      canManageAdmins: false,
+      canEditConfig: false,
+      canExportData: false,
+      canDeleteLogs: false,
+    };
+
+    const updatedUser: AdminUserRecord = {
+      ...user,
+      permissions: defaultPerms,
+    };
+
+    try {
+      await saveAdminUserToFirebase(updatedUser);
+      setRoleStatusToast(`✓ ${user.name}-এর পারমিশন ডিফল্ট রোলে রিস্টোর হইয়াছে!`);
+      setTimeout(() => setRoleStatusToast(null), 4000);
+    } catch (err) {
+      console.error('Error resetting user permissions:', err);
+    }
+  };
   // API Key & Webhook Integration State
   const [apiKeysList, setApiKeysList] = useState<ApiKeyRecord[]>([]);
   const [webhooksList, setWebhooksList] = useState<WebhookConfig[]>([]);
@@ -1040,6 +1271,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
         >
           <ShieldCheck className="w-4 h-4 text-amber-300" />
           <span>১১. একাধিক এডমিন ও গুগল লগইন (Firebase Auth / OAuth 2.0)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('role_management')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === 'role_management'
+              ? 'bg-emerald-900 text-amber-300 shadow-md ring-2 ring-amber-400/50'
+              : 'text-slate-700 hover:bg-slate-300/80'
+          }`}
+        >
+          <UserCog className="w-4 h-4 text-amber-300" />
+          <span>১২. ডায়নামিক রোল ও পারমিশন কন্ট্রোল (Role Management Matrix)</span>
         </button>
       </div>
 
@@ -3785,6 +4029,364 @@ print("Response JSON:", res.json())
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 12: Role & Permission Management Matrix (Real-time Firebase RBAC) */}
+      {activeTab === 'role_management' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 text-white p-6 rounded-2xl shadow-xl border border-emerald-800 relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full text-xs font-extrabold">
+                  <UserCog className="w-4 h-4 text-amber-300" />
+                  <span>Google Firebase Real-Time Role & Permission Management</span>
+                </div>
+                <h3 className="text-xl font-black text-white">
+                  ডায়নামিক রোল ও পারমিশন কন্ট্রোল প্যানেল (Role Management)
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                  ইউনিয়ন পরিষদের চেয়ারম্যান, সচিব, ইউপি সদস্য (ওয়ার্ড ১-৯) ও কর্মকর্তাদের জন্য সুইচ-ভিত্তিক টেবিল ইন্টারফেসের মাধ্যমে রিয়েল-টাইমে ফায়ারবেস পারমিশন মেটাডাটা পরিচালনা করুন।
+                </p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 shrink-0 text-xs space-y-2">
+                <div className="flex items-center gap-2 text-emerald-300 font-extrabold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>Firebase Real-time Sync Active</span>
+                </div>
+                <p className="text-[11px] text-slate-300 font-medium">
+                  যেকোনো সুইচ পরিবর্তন মাত্রই ফায়ারবেস ডাটাবেসে আপডেট হয়।
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Toast Notification Alert */}
+          {roleStatusToast && (
+            <div className="bg-emerald-900 text-amber-300 p-4 rounded-xl border border-amber-400/50 shadow-lg flex items-center justify-between animate-in fade-in slide-in-from-top duration-300">
+              <div className="flex items-center gap-2 font-bold text-xs">
+                <CheckCircle2 className="w-5 h-5 text-amber-300 shrink-0" />
+                <span>{roleStatusToast}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRoleStatusToast(null)}
+                className="text-amber-200 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Matrix Table View: Toggling Role Permissions (Switch-based Interface) */}
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-2.5">
+                <Sliders className="w-5 h-5 text-emerald-800" />
+                <div>
+                  <h4 className="font-black text-slate-900 text-base">
+                    পদবী অনুযায়ী পারমিশন ম্যাট্রিক্স (Role Permission Switch Matrix)
+                  </h4>
+                  <p className="text-xs text-slate-500 font-medium">
+                    চেয়ারম্যান, সচিব ও ইউপি সদস্যদের গ্লোবাল পারমিশন সুইচ পরিবর্তন করুন
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  saveRolePermissionsMatrixToFirebase(roleMatrix);
+                  setRoleStatusToast('✓ রোল পারমিশন ম্যাট্রিক্স ফায়ারবেসে সিঙ্ক করা হইয়াছে।');
+                  setTimeout(() => setRoleStatusToast(null), 3000);
+                }}
+                className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-xs font-extrabold rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-300" />
+                <span>ফায়ারবেস সিঙ্ক স্টেট রিফ্রেশ</span>
+              </button>
+            </div>
+
+            {/* Switch-Based Permission Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider">
+                  <tr>
+                    <th className="py-3.5 px-4">পদবী ও রোল (Council Role)</th>
+                    <th className="py-3.5 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>ভিউ (View)</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+                        <span>এডিট (Edit)</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+                        <span>অনুমোদন (Approve)</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                        <span>ডিলিট (Delete)</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <UserCog className="w-3.5 h-3.5 text-purple-400" />
+                        <span>এডমিন কন্ট্রোল</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Download className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>ডাটা এক্সপোর্ট</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white font-medium text-slate-800">
+                  {[
+                    { key: 'chairman', name: 'ইউপি চেয়ারম্যান (Chairman)', icon: '👑', badgeColor: 'bg-amber-100 text-amber-900 border-amber-300' },
+                    { key: 'secretary', name: 'প্রশাসনিক কর্মকর্তা / সচিব (Secretary)', icon: '📜', badgeColor: 'bg-emerald-100 text-emerald-950 border-emerald-300' },
+                    { key: 'member', name: 'ইউপি সদস্য (Member - Ward 1-9)', icon: '🏛️', badgeColor: 'bg-sky-100 text-sky-950 border-sky-300' },
+                    { key: 'super_admin', name: 'সুপার এডমিন (Super Admin)', icon: '🛡️', badgeColor: 'bg-purple-100 text-purple-950 border-purple-300' },
+                    { key: 'developer', name: 'আইটি ডেভেলপার (IT Developer)', icon: '💻', badgeColor: 'bg-slate-100 text-slate-900 border-slate-300' },
+                  ].map((role) => {
+                    const perms = roleMatrix[role.key] || {
+                      canView: true,
+                      canEdit: false,
+                      canApprove: false,
+                      canDelete: false,
+                      canApproveCertificates: false,
+                      canIssueCertificates: true,
+                      canManageAdmins: false,
+                      canEditConfig: false,
+                      canExportData: false,
+                      canDeleteLogs: false,
+                    };
+
+                    const renderSwitch = (permKey: keyof AdminPermissions, isEnabled: boolean) => (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        onClick={() => handleToggleRolePermission(role.key, permKey)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        title={`${role.name} - ${permKey} toggle`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            isEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    );
+
+                    return (
+                      <tr key={role.key} className="hover:bg-slate-50/80 transition">
+                        <td className="py-4 px-4 font-bold">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{role.icon}</span>
+                            <div>
+                              <p className="font-black text-slate-900 text-xs">{role.name}</p>
+                              <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full border mt-0.5 ${role.badgeColor}`}>
+                                Role: {role.key}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-3 text-center">
+                          <div className="flex items-center justify-center">
+                            {renderSwitch('canView', !!(perms.canView ?? perms.canIssueCertificates))}
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-3 text-center">
+                          <div className="flex items-center justify-center">
+                            {renderSwitch('canEdit', !!(perms.canEdit ?? perms.canEditConfig))}
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-3 text-center">
+                          <div className="flex items-center justify-center">
+                            {renderSwitch('canApprove', !!(perms.canApprove ?? perms.canApproveCertificates))}
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-3 text-center">
+                          <div className="flex items-center justify-center">
+                            {renderSwitch('canDelete', !!(perms.canDelete ?? perms.canDeleteLogs))}
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-3 text-center">
+                          <div className="flex items-center justify-center">
+                            {renderSwitch('canManageAdmins', !!perms.canManageAdmins)}
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-3 text-center">
+                          <div className="flex items-center justify-center">
+                            {renderSwitch('canExportData', !!perms.canExportData)}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Individual Member/Admin Permissions Overrides */}
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-2.5">
+                <Users className="w-5 h-5 text-emerald-800" />
+                <div>
+                  <h4 className="font-black text-slate-900 text-base">
+                    পরিষদ সদস্য ও এডমিনদের জন্য স্বতন্ত্র পারমিশন কন্ট্রোল (Individual Account Controls)
+                  </h4>
+                  <p className="text-xs text-slate-500 font-medium">
+                    নির্দিষ্ট কোনো পরিষদ সদস্যের পারমিশন আলাদাভাবে সুইচ টগল করে ফায়ারবেসে রিয়েল-টাইমে আপডেট করুন
+                  </p>
+                </div>
+              </div>
+
+              {/* Search & Filter */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={roleSearchFilter}
+                    onChange={(e) => setRoleSearchFilter(e.target.value)}
+                    placeholder="নাম, ইমেইল বা ওয়ার্ড খুঁজুন..."
+                    className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-emerald-600 focus:outline-none w-48"
+                  />
+                </div>
+
+                <select
+                  value={roleFilterRole}
+                  onChange={(e) => setRoleFilterRole(e.target.value)}
+                  className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:border-emerald-600 focus:outline-none"
+                >
+                  <option value="all">সকল পদবী</option>
+                  <option value="chairman">চেয়ারম্যান</option>
+                  <option value="secretary">সচিব</option>
+                  <option value="member">ইউপি সদস্য</option>
+                  <option value="super_admin">সুপার এডমিন</option>
+                  <option value="developer">আইটি ডেভেলপার</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Individual Accounts List */}
+            <div className="space-y-3">
+              {adminsDirectory
+                .filter((adm) => {
+                  const matchSearch =
+                    adm.name.toLowerCase().includes(roleSearchFilter.toLowerCase()) ||
+                    adm.email.toLowerCase().includes(roleSearchFilter.toLowerCase()) ||
+                    adm.designation.toLowerCase().includes(roleSearchFilter.toLowerCase());
+                  const matchRole = roleFilterRole === 'all' || adm.role === roleFilterRole;
+                  return matchSearch && matchRole;
+                })
+                .map((user, idx) => {
+                  const uPerms = user.permissions || roleMatrix[user.role] || {
+                    canView: true,
+                    canEdit: false,
+                    canApprove: false,
+                    canDelete: false,
+                    canApproveCertificates: false,
+                    canIssueCertificates: true,
+                    canManageAdmins: false,
+                    canEditConfig: false,
+                    canExportData: false,
+                    canDeleteLogs: false,
+                  };
+
+                  const renderUserSwitch = (permKey: keyof AdminPermissions, labelText: string, isEnabled: boolean) => (
+                    <div className="flex items-center gap-1.5 bg-slate-100/80 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                      <span className="text-[11px] font-bold text-slate-700">{labelText}:</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        onClick={() => handleToggleUserPermission(user.email, permKey)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            isEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  );
+
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-emerald-400 transition"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-900 text-amber-300 font-black flex items-center justify-center shrink-0 shadow text-base">
+                          {user.name ? user.name[0] : 'U'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h5 className="font-extrabold text-slate-900 text-xs">{user.name}</h5>
+                            <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-950 border border-emerald-300 rounded-md">
+                              {user.role}
+                            </span>
+                            {user.wardNo && (
+                              <span className="text-[10px] font-extrabold px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md">
+                                ওয়ার্ড নং {user.wardNo}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium">{user.email}</p>
+                          <p className="text-[11px] text-emerald-800 font-bold">{user.designation}</p>
+                        </div>
+                      </div>
+
+                      {/* Switched Permissions Toggles */}
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        {renderUserSwitch('canView', 'ভিউ', !!(uPerms.canView ?? uPerms.canIssueCertificates))}
+                        {renderUserSwitch('canEdit', 'এডিট', !!(uPerms.canEdit ?? uPerms.canEditConfig))}
+                        {renderUserSwitch('canApprove', 'অনুমোদন', !!(uPerms.canApprove ?? uPerms.canApproveCertificates))}
+                        {renderUserSwitch('canDelete', 'ডিলিট', !!(uPerms.canDelete ?? uPerms.canDeleteLogs))}
+
+                        <button
+                          type="button"
+                          onClick={() => handleResetUserToRoleDefaults(user)}
+                          className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-300 transition flex items-center gap-1 cursor-pointer"
+                          title="ডিফল্ট রোলে রিস্টোর করুন"
+                        >
+                          <RotateCcw className="w-3 h-3 text-slate-600" />
+                          <span>রিস্টোর</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
