@@ -51,7 +51,7 @@ import {
   AdminUserRecord,
   FirestoreCollectionExportResult 
 } from '../firebase';
-import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember } from '../types';
+import { UnionParishadConfig, BackupSnapshot, ApiKeyRecord, WebhookConfig, WebhookLogRecord, CouncilMember, CertificateRecord } from '../types';
 import { sanitizeInput, sanitizeObject } from '../utils/security';
 import { CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { DEFAULT_COUNCIL_MEMBERS, getSyncedCouncilMembers } from '../data/councilMembers';
@@ -59,6 +59,8 @@ import { AppsScriptModal } from './AppsScriptModal';
 import { TemplateManager } from './TemplateManager';
 import { BackupManager } from './BackupManager';
 import { PendingApprovals } from './PendingApprovals';
+import { GoogleSheetsSyncModal } from './GoogleSheetsSyncModal';
+import { FileSpreadsheet } from 'lucide-react';
 
 interface AdminSettingsProps {
   config: UnionParishadConfig;
@@ -72,6 +74,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
   const [isAppsScriptOpen, setIsAppsScriptOpen] = useState(false);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false);
+  const [isSheetsSyncOpen, setIsSheetsSyncOpen] = useState(false);
+  const [certsForSync, setCertsForSync] = useState<CertificateRecord[]>([]);
+
+  useEffect(() => {
+    if (isSheetsSyncOpen) {
+      fetch('/api/admin/logs')
+        .then(res => res.json())
+        .then(data => {
+          if (data.logs) setCertsForSync(data.logs);
+        })
+        .catch(err => console.warn('Error fetching logs for sync:', err));
+    }
+  }, [isSheetsSyncOpen]);
   const [activeTab, setActiveTab] = useState<'pending' | 'general' | 'print' | 'workspace' | 'r2' | 'ai' | 'types' | 'backup' | 'maintenance' | 'api_webhook' | 'multi_admin' | 'council_members'>('pending');
   
   // Multi-Admin Management State
@@ -2605,6 +2620,32 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                 />
               </div>
             </div>
+
+            {/* Google Sheets API Direct Export Launch Bar */}
+            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-800 text-amber-300 rounded-xl">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-emerald-950">
+                    Google Sheets API সরাসরি এক্সপোর্ট ও সিঙ্ক
+                  </h4>
+                  <p className="text-[11px] text-emerald-800">
+                    সকল নাগরিক অ্যাপ্লিকেশন রেজিস্টার ডাটা সরাসরি Google Sheets-এ এক্সপোর্ট ও লাইভ সিঙ্ক করুন।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsSheetsSyncOpen(true)}
+                className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-amber-300" />
+                <span>Google Sheets সিঙ্ক উইজার্ড খুলুন</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -3760,6 +3801,14 @@ print("Response JSON:", res.json())
         isOpen={isBackupManagerOpen}
         onClose={() => setIsBackupManagerOpen(false)}
         onExportSuccess={() => fetchBackupsList()}
+      />
+
+      {/* Google Sheets Sync Modal */}
+      <GoogleSheetsSyncModal
+        isOpen={isSheetsSyncOpen}
+        onClose={() => setIsSheetsSyncOpen(false)}
+        logs={certsForSync}
+        config={config}
       />
     </div>
   );

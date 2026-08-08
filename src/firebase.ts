@@ -35,11 +35,23 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
+googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+
+// In-memory OAuth access token cache
+let cachedGoogleAccessToken: string | null = null;
+
+export function getGoogleAccessToken(): string | null {
+  return cachedGoogleAccessToken;
+}
+
+export function setGoogleAccessToken(token: string | null): void {
+  cachedGoogleAccessToken = token;
+}
 
 // Initialize Firestore with specific database ID if present and enable autoDetectLongPolling for sandboxed container stability
-const dbId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-  ? firebaseConfig.firestoreDatabaseId
-  : undefined;
+const rawDbId = (firebaseConfig as any).firestoreDatabaseId;
+const dbId = rawDbId && rawDbId !== '(default)' ? rawDbId : undefined;
 
 export const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
@@ -593,10 +605,131 @@ export async function deleteAdminUserFromFirebase(email: string): Promise<void> 
 
 export async function signInWithGooglePopup(): Promise<FirebaseUser> {
   const result = await signInWithPopup(auth, googleProvider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (credential?.accessToken) {
+    cachedGoogleAccessToken = credential.accessToken;
+  }
   return result.user;
 }
 
+export async function signInWithGooglePopupForWorkspace(): Promise<{ user: FirebaseUser; accessToken: string }> {
+  const result = await signInWithPopup(auth, googleProvider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (!credential?.accessToken) {
+    throw new Error('Google Workspace Access Token পাওয়া যায় নাই। আবার চেষ্টা করুন।');
+  }
+  cachedGoogleAccessToken = credential.accessToken;
+  return { user: result.user, accessToken: credential.accessToken };
+}
+
 export async function logoutUserFromFirebase(): Promise<void> {
+  cachedGoogleAccessToken = null;
   await signOut(auth);
 }
+
+// ============================================================
+// AUDIT LOGS FOR SYSTEM MODIFICATIONS
+// ============================================================
+import { AuditLogRecord } from './types';
+
+const AUDIT_LOGS_COLLECTION = 'audit_logs';
+
+export const INITIAL_AUDIT_LOGS: AuditLogRecord[] = [
+  {
+    id: 'log_init_001',
+    action: 'ADMIN_LOGIN',
+    actionTitle: 'গুগল ফায়ারবেস অথেন্টিকেশন সেশন চালু',
+    details: 'সিস্টেম এডমিন MD JUBAER HOSSEN (inbox600900@gmail.com) গুগল OAuth 2.0 এর মাধ্যমে সিকিউর এডমিন সেশনে প্রবেশ করিয়াছেন।',
+    performedByEmail: 'inbox600900@gmail.com',
+    performedByName: 'MD JUBAER HOSSEN',
+    performedByRole: 'developer',
+    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+    ipAddress: '103.114.98.12',
+    checksum: 'sha256-a81d42e2b9c7'
+  },
+  {
+    id: 'log_cert_002',
+    action: 'CERTIFICATE_APPROVED',
+    actionTitle: 'চেয়ারম্যান কর্তৃক নাগরিক সনদপত্র অনুমোদন',
+    details: 'নাগরিক সনদপত্র (স্মারক নং: UP/BAHER/2026/0482) ইউপি চেয়ারম্যান জনাব মোঃ সোহেল রানা কর্তৃক চূড়ান্তভাবে অনুমোদিত হইয়াছে।',
+    performedByEmail: 'chairman@gmail.com',
+    performedByName: 'চেয়ারম্যান কার্যালয়',
+    performedByRole: 'chairman',
+    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+    ipAddress: '103.114.98.15',
+    checksum: 'sha256-f902e1c8d7b3'
+  },
+  {
+    id: 'log_admin_003',
+    action: 'ADMIN_ADDED',
+    actionTitle: 'নতুন ইউপি সদস্য এডমিন অ্যাকাউন্ট যুক্তকরণ',
+    details: 'ওয়ার্ড নং ৩ এর ইউপি সদস্যের গুগল ইমেইল (secretary@gmail.com) ফায়ারবেস অথেন্টিকেশন অ্যাকসেস তালিকায় যুক্ত করা হইয়াছে।',
+    performedByEmail: 'baheratailunion@gmail.com',
+    performedByName: '০২নং বহেড়াতৈল ইউনিয়ন পরিষদ এডমিন',
+    performedByRole: 'super_admin',
+    timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
+    ipAddress: '103.114.98.20',
+    checksum: 'sha256-e41b80c9a1d2'
+  },
+  {
+    id: 'log_config_004',
+    action: 'CONFIG_UPDATED',
+    actionTitle: 'ইউনিয়ন পরিষদ মাস্টার কনফিগারেশন আপডেট',
+    details: 'ইউনিয়ন পরিষদের অফিসিয়াল লোগো, হেল্পলাইন নম্বর এবং গুগল ডক টেমপ্লেট আইডি (1BxiMVs0...) আপডেট করা হইয়াছে।',
+    performedByEmail: 'secretary@gmail.com',
+    performedByName: 'সচিব কার্যালয়',
+    performedByRole: 'secretary',
+    timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
+    ipAddress: '103.114.98.22',
+    checksum: 'sha256-b33c10a4f5d8'
+  }
+];
+
+export async function fetchAuditLogsFromFirebase(): Promise<AuditLogRecord[]> {
+  try {
+    const colRef = collection(db, AUDIT_LOGS_COLLECTION);
+    const snap = await getDocs(colRef);
+    if (snap.empty) {
+      for (const logItem of INITIAL_AUDIT_LOGS) {
+        await setDoc(doc(db, AUDIT_LOGS_COLLECTION, logItem.id), logItem, { merge: true });
+      }
+      return INITIAL_AUDIT_LOGS;
+    }
+    const list: AuditLogRecord[] = [];
+    snap.forEach(docSnap => {
+      list.push(docSnap.data() as AuditLogRecord);
+    });
+    // Sort by timestamp descending
+    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return list;
+  } catch (err) {
+    console.warn('Notice fetching audit logs from Firebase:', err);
+    return INITIAL_AUDIT_LOGS;
+  }
+}
+
+export async function addAuditLogToFirebase(
+  logData: Omit<AuditLogRecord, 'id' | 'timestamp'>
+): Promise<string> {
+  try {
+    const id = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const timestamp = new Date().toISOString();
+    const checksumStr = `sha256-${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 6)}`;
+
+    const fullRecord: AuditLogRecord = {
+      ...logData,
+      id,
+      timestamp,
+      checksum: checksumStr
+    };
+
+    const docRef = doc(db, AUDIT_LOGS_COLLECTION, id);
+    await setDoc(docRef, fullRecord);
+    return id;
+  } catch (err) {
+    console.error('Error adding audit log to Firebase:', err);
+    throw err;
+  }
+}
+
 

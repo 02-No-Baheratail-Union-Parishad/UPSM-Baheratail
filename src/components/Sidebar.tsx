@@ -174,13 +174,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: lang === 'bn' ? 'লাইভ' : 'Live' 
     },
     { 
+      id: 'admin_dashboard', 
+      label: lang === 'bn' ? '১১. এডমিন ড্যাশবোর্ড ও অডিট লগ' : '11. Admin Dashboard & Audit Logs', 
+      icon: ShieldCheck,
+      badge: lang === 'bn' ? 'অডিট ট্রেইল' : 'Audit Logs'
+    },
+    { 
       id: 'admin', 
-      label: lang === 'bn' ? '১১. এডমিন সেটআপ' : '11. Admin Setup', 
+      label: lang === 'bn' ? '১২. মাস্টার সেটআপ' : '12. Master Setup', 
       icon: Settings 
     },
     { 
       id: 'developer', 
-      label: lang === 'bn' ? '১২. ডেভেলপার ও ব্যাকআপ' : '12. Developer & Backup', 
+      label: lang === 'bn' ? '১৩. ডেভেলপার ও ব্যাকআপ' : '13. Developer & Backup', 
       icon: Code2, 
       badge: 'MCP Sync' 
     }

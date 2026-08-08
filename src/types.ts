@@ -238,6 +238,33 @@ export interface VerificationResult {
   message?: string;
 }
 
+export interface AuditLogRecord {
+  id: string;
+  action: 'CERTIFICATE_ISSUED' | 'CERTIFICATE_APPROVED' | 'CERTIFICATE_REJECTED' | 'ADMIN_ADDED' | 'ADMIN_REMOVED' | 'ADMIN_ROLE_UPDATED' | 'CONFIG_UPDATED' | 'TEMPLATE_CHANGED' | 'CITIZEN_RECORD_ADDED' | 'BACKUP_RESTORED' | 'SECURITY_KEY_GENERATED' | 'ADMIN_LOGIN' | 'OTHER';
+  actionTitle: string;
+  details: string;
+  performedByEmail: string;
+  performedByName: string;
+  performedByRole: string;
+  timestamp: string;
+  ipAddress?: string;
+  docId?: string;
+  checksum?: string;
+}
+
+export interface AdminUserRecord {
+  uid?: string;
+  email: string;
+  name: string;
+  role: 'super_admin' | 'chairman' | 'secretary' | 'member' | 'developer';
+  designation: string;
+  photoUrl?: string;
+  addedAt: string;
+  lastLoginAt?: string;
+  status: 'active' | 'suspended';
+  wardNo?: string;
+}
+
 export interface BackupSnapshot {
   id: string;
   filename: string;

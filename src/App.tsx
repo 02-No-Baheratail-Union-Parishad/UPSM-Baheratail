@@ -7,6 +7,7 @@ import { CertificateView } from './components/CertificateView';
 import { VerificationPortal } from './components/VerificationPortal';
 import { CitizenLogs } from './components/CitizenLogs';
 import { AdminSettings } from './components/AdminSettings';
+import { AdminDashboard } from './components/AdminDashboard';
 import { CitizenMasterRegister } from './components/CitizenMasterRegister';
 import { DeveloperProfile } from './components/DeveloperProfile';
 import { DevelopmentHeatmap } from './components/DevelopmentHeatmap';
@@ -201,6 +202,10 @@ export default function App() {
 
         {activeTab === 'developer' && (
           <DeveloperProfile config={config} onUpdateConfig={setConfig} />
+        )}
+
+        {activeTab === 'admin_dashboard' && (
+          <AdminDashboard config={config} onNavigateTab={handleNavigateTab} />
         )}
 
         {activeTab === 'admin' && (

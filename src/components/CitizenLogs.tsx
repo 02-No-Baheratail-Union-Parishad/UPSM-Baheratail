@@ -8,13 +8,15 @@ import {
   Eye, 
   RefreshCw, 
   Calendar, 
-  Building2 
+  Building2,
+  FileSpreadsheet
 } from 'lucide-react';
 import { fetchCertificatesFromFirebase } from '../firebase';
 import { CERTIFICATE_CATEGORIES, CERTIFICATE_TYPES } from '../data/certificateTypes';
 import { WARDS } from '../data/villages';
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { CertificateView } from './CertificateView';
+import { GoogleSheetsSyncModal } from './GoogleSheetsSyncModal';
 
 interface CitizenLogsProps {
   config: UnionParishadConfig;
@@ -28,6 +30,7 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
   const [selectedCertType, setSelectedCertType] = useState('সকল সনদের ধরন');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCert, setSelectedCert] = useState<CertificateRecord | null>(null);
+  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -124,11 +127,19 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
           </button>
 
           <button
+            onClick={() => setIsSheetsModalOpen(true)}
+            className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 cursor-pointer border border-emerald-700"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+            <span>Google Sheets-এ সিঙ্ক</span>
+          </button>
+
+          <button
             onClick={handleExportCsv}
-            className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 cursor-pointer"
           >
             <Download className="w-4 h-4 text-amber-300" />
-            <span>এক্সেল/CSV ডাউনলোড</span>
+            <span>CSV এক্সপোর্ট</span>
           </button>
         </div>
       </div>
@@ -255,6 +266,13 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
           </table>
         </div>
       </div>
+      {/* Google Sheets Sync Modal */}
+      <GoogleSheetsSyncModal
+        isOpen={isSheetsModalOpen}
+        onClose={() => setIsSheetsModalOpen(false)}
+        logs={logs}
+        config={config}
+      />
     </div>
   );
 };

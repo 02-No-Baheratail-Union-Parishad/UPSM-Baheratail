@@ -1118,6 +1118,132 @@ ${upConfig.defaultPromptPrefix}
     res.send(csv);
   });
 
+  // Google Sheets API Direct Export & Sync Endpoint
+  app.post("/api/admin/sheets-export", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const accessToken = req.body.accessToken || (authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null);
+
+      if (!accessToken) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Google Workspace Authorization token প্রদান করা হয়নি। Google দিয়ে সাইন ইন করুন।" 
+        });
+      }
+
+      let targetSpreadsheetId = req.body.spreadsheetId || upConfig.sheetId;
+      const createNew = req.body.createNew || !targetSpreadsheetId;
+      const recordsToSync: CertificateRecord[] = req.body.logs || certificateStore;
+
+      const headers = [
+        "তারিখ",
+        "স্মারক নম্বর",
+        "সনদের শ্রেণি/ক্যাটাগরি",
+        "সনদের ধরন",
+        "আবেদনকারীর নাম",
+        "পিতা / স্বামী",
+        "মাতা",
+        "গ্রাম",
+        "ওয়ার্ড নং",
+        "NID / জন্ম নিবন্ধন নং",
+        "মোবাইল নম্বর",
+        "ফি (টাকা)",
+        "স্ট্যাটাস",
+        "সিঙ্ক সময়"
+      ];
+
+      const syncTimeStr = new Date().toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" });
+
+      const dataRows = recordsToSync.map(log => [
+        log.issueDate || "",
+        log.memoNo || "",
+        log.category || "নাগরিকত্ব ও পরিচয়",
+        log.typeLabel || "",
+        log.citizen?.name || "",
+        log.citizen?.father || log.citizen?.spouseName || "",
+        log.citizen?.mother || "",
+        log.citizen?.village || "",
+        log.citizen?.wardNo ? `ওয়ার্ড ${log.citizen.wardNo}` : "",
+        log.citizen?.nid || log.citizen?.birthNo || "",
+        log.citizen?.mobile || "",
+        (log as any).fee || log.feeAmount ? `${(log as any).fee || log.feeAmount} ৳` : "৫০ ৳",
+        log.status === "revoked" ? "বাতিলকৃত" : log.status === "pending_approval" ? "অপেক্ষমান" : "ইস্যুকৃত",
+        syncTimeStr
+      ]);
+
+      // 1. Create a new Google Spreadsheet if needed
+      if (createNew || !targetSpreadsheetId) {
+        const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            properties: {
+              title: `${upConfig.upName || '০২নং বহেড়াতৈল ইউপি'} - নাগরিক আবেদন ও সনদপত্র রেজিস্টার (২০২৬)`
+            },
+            sheets: [
+              {
+                properties: {
+                  title: "Citizen_Logs",
+                  gridProperties: {
+                    frozenRowCount: 1,
+                    columnCount: 15
+                  }
+                }
+              }
+            ]
+          })
+        });
+
+        if (!createRes.ok) {
+          const errJson = await createRes.json().catch(() => ({}));
+          throw new Error(errJson.error?.message || `নতুন Google Sheet তৈরি ব্যর্থ (${createRes.status})`);
+        }
+
+        const createData = await createRes.json();
+        targetSpreadsheetId = createData.spreadsheetId;
+        upConfig.sheetId = targetSpreadsheetId;
+      }
+
+      // 2. Write headers + data rows to Sheet
+      const writeValues = [headers, ...dataRows];
+      const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${targetSpreadsheetId}/values/Citizen_Logs!A1?valueInputOption=USER_ENTERED`;
+
+      const updateRes = await fetch(updateUrl, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          range: "Citizen_Logs!A1",
+          majorDimension: "ROWS",
+          values: writeValues
+        })
+      });
+
+      if (!updateRes.ok) {
+        const errJson = await updateRes.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || `Google Sheet ডাটা রাইট ব্যর্থ (${updateRes.status})`);
+      }
+
+      const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/edit`;
+
+      res.json({
+        success: true,
+        spreadsheetId: targetSpreadsheetId,
+        spreadsheetUrl,
+        rowsSynced: recordsToSync.length,
+        message: `সফলভাবে ${recordsToSync.length} টি নাগরিক আবেদন রেজিস্টার তথ্য Google Sheet-এ সিঙ্ক করা হয়েছে!`
+      });
+    } catch (err: any) {
+      console.error("Google Sheets sync error:", err);
+      res.status(500).json({ success: false, message: "Google Sheets সিঙ্ক ত্রুটি: " + err.message });
+    }
+  });
+
   // Backup & Restore System Store
   const backupStore: any[] = [
     {
