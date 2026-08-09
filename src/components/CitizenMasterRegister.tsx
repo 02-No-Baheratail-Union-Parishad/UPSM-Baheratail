@@ -27,6 +27,7 @@ import { CitizenAccountRecord, UnionParishadConfig, NidScanResult } from '../typ
 import { sanitizeObject } from '../utils/security';
 import { validateNid, validateBirthNo, validatePhone } from '../utils/validation';
 import { fetchCertificatesFromFirebase } from '../firebase';
+import { sheetsSyncService } from '../services/sheetsSyncService';
 import { NidScannerModal } from './NidScannerModal';
 
 interface CitizenMasterRegisterProps {
@@ -307,8 +308,16 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
     });
 
     setCitizens([createdRecord, ...citizens]);
+    
+    // Enqueue to Google Sheets Real-time Background Sync Queue
+    try {
+      sheetsSyncService.enqueueCitizenSync(createdRecord, config);
+    } catch (sErr) {
+      console.warn('Google Sheets background citizen queue error:', sErr);
+    }
+
     setIsAddModalOpen(false);
-    alert('নাগরিক অ্যাকাউন্ট সফলভাবে মাস্টার রেজিস্টারে যোগ করা হয়েছে!');
+    alert('নাগরিক অ্যাকাউন্ট সফলভাবে মাস্টার রেজিস্টার ও গুগ্‌ল শিট সিঙ্ক কিউতে যোগ করা হয়েছে!');
   };
 
   return (

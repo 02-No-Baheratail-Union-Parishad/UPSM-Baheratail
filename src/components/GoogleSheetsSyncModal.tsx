@@ -20,6 +20,7 @@ import {
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { signInWithGooglePopupForWorkspace, getGoogleAccessToken, formatFirebaseAuthError } from '../firebase';
 import { syncLogsToGoogleSpreadsheet, createGoogleSpreadsheet, formatCertificateToSheetRow } from '../lib/googleSheets';
+import { sheetsSyncService, SyncServiceStatus } from '../services/sheetsSyncService';
 
 interface GoogleSheetsSyncModalProps {
   isOpen: boolean;
@@ -46,6 +47,14 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
   const [syncMode, setSyncMode] = useState<'appsscript' | 'oauth' | 'csv'>('appsscript');
   const [copied, setCopied] = useState<boolean>(false);
   const [showConfirmOverwrite, setShowConfirmOverwrite] = useState<boolean>(false);
+  const [queueStatus, setQueueStatus] = useState<SyncServiceStatus>(sheetsSyncService.getStatus());
+
+  useEffect(() => {
+    const unsubscribe = sheetsSyncService.subscribeToSyncStatus((status) => {
+      setQueueStatus(status);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const token = getGoogleAccessToken();
@@ -267,6 +276,54 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         </div>
 
         <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+
+          {/* Real-time Background Sync Queue Banner */}
+          <div className="p-4 bg-slate-900 text-white rounded-xl shadow-md border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+                <h4 className="text-xs font-bold text-emerald-300">রিয়েল-টাইম অফলাইন সিঙ্ক কিউ (Background Sync Queue)</h4>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                queueStatus.isOnline ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
+              }`}>
+                {queueStatus.isOnline ? '🌐 নেটওয়ার্ক সংযুক্ত (Online)' : '📡 অফলাইন (Offline)'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <div className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                <span className="text-[10px] text-slate-400 block font-semibold">অফলাইন পেন্ডিং কিউ</span>
+                <span className="text-base font-black text-amber-400">{queueStatus.pendingCount} টি আইটেম</span>
+              </div>
+              <div className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                <span className="text-[10px] text-slate-400 block font-semibold">সর্বশেষ সফল সিঙ্ক</span>
+                <span className="text-[11px] font-bold text-emerald-300 block truncate">{queueStatus.lastSyncTime || 'এখনো হয়নি'}</span>
+              </div>
+              <div className="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-slate-400 block font-semibold">স্ট্যাটাস</span>
+                <span className="text-[11px] font-bold text-slate-200 block truncate">
+                  {queueStatus.isSyncing ? '⏳ সিঙ্ক হচ্ছে...' : queueStatus.pendingCount > 0 ? '⚠️ ব্যাকগ্রাউন্ডে অপেক্ষমান' : '✓ সমলয় সম্পূর্ণ'}
+                </span>
+              </div>
+            </div>
+
+            {queueStatus.pendingCount > 0 && (
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800">
+                <p className="text-[10px] text-slate-300">
+                  ইন্টারনেট সচল হওয়া মাত্রই এই আইটেমগুলো স্বয়ংক্রিয়ভাবে গুগ্‌ল শিটে যুক্ত হবে।
+                </p>
+                <button
+                  onClick={() => sheetsSyncService.processSyncQueue(config)}
+                  disabled={queueStatus.isSyncing}
+                  className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[11px] rounded-lg shadow transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${queueStatus.isSyncing ? 'animate-spin' : ''}`} />
+                  <span>এখনই সিঙ্ক করুন</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Sync Method Selection Tabs */}
           <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">

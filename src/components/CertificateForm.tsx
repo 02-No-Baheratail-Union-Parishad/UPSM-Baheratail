@@ -37,6 +37,7 @@ import { FormProgressIndicator } from './FormProgressIndicator';
 import { BiometricAuthModal } from './BiometricAuthModal';
 
 import { saveCertificateToFirebase } from '../firebase';
+import { sheetsSyncService } from '../services/sheetsSyncService';
 import { sanitizeInput } from '../utils/security';
 import { useCertificateValidation, validateCertificateFormData } from '../utils/validation';
 
@@ -411,6 +412,14 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
         saveCertificateToFirebase(resData.certificate).catch(err => 
           console.warn('Firebase sync warning (certificate still saved locally):', err)
         );
+        
+        // Enqueue to Google Sheets Real-time Background Sync Queue
+        try {
+          sheetsSyncService.enqueueCertificateSync(resData.certificate, config);
+        } catch (sErr) {
+          console.warn('Google Sheets background queue error:', sErr);
+        }
+
         onCertificateGenerated(resData.certificate);
       } else {
         setErrorMessage(resData.message || 'সনদ তৈরিতে ত্রুটি ঘটিয়াছে।');
