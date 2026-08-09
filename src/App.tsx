@@ -17,6 +17,7 @@ import { CertificateTrendDashboard } from './components/CertificateTrendDashboar
 import { UnionMapViewer } from './components/UnionMapViewer';
 import { NoticeBoardTicker } from './components/NoticeBoardTicker';
 import { AiCitizenAssistant } from './components/AiCitizenAssistant';
+import { AdminGuard } from './components/AdminGuard';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
@@ -201,15 +202,21 @@ export default function App() {
         )}
 
         {activeTab === 'developer' && (
-          <DeveloperProfile config={config} onUpdateConfig={setConfig} />
+          <AdminGuard allowedRoles={['developer', 'super_admin']} title="ডেভেলপার প্যানেল সিকিউরিটি প্রোফাইল">
+            <DeveloperProfile config={config} onUpdateConfig={setConfig} />
+          </AdminGuard>
         )}
 
         {activeTab === 'admin_dashboard' && (
-          <AdminDashboard config={config} onNavigateTab={handleNavigateTab} />
+          <AdminGuard allowedRoles={['super_admin', 'chairman', 'secretary', 'developer', 'member']}>
+            <AdminDashboard config={config} onNavigateTab={handleNavigateTab} />
+          </AdminGuard>
         )}
 
         {activeTab === 'admin' && (
-          <AdminSettings config={config} onUpdateConfig={setConfig} />
+          <AdminGuard allowedRoles={['super_admin', 'chairman', 'secretary', 'developer']} title="এডমিন সেটিংস ও সিস্টেম কনফিগারেশন">
+            <AdminSettings config={config} onUpdateConfig={setConfig} />
+          </AdminGuard>
         )}
         </main>
 
