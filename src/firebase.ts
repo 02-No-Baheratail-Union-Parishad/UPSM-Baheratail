@@ -641,7 +641,8 @@ export function formatFirebaseAuthError(err: any): string {
     return 'পূর্বে স্থগিত পপআপ অনুরোধটি বাতিল করা হয়েছে।';
   }
   if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
-    return 'এই ডোমেইনটি Firebase Auth Authorized Domains তালিকায় অনুমোদিত নয়।';
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+    return `বর্তমান ডোমেইনটি (${hostname}) ফায়ারবেস অথেন্টিকেশন Authorized Domains তালিকায় অনুমোদিত নয়।`;
   }
   return err.message || 'গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন করা সম্ভব হয়নি।';
 }

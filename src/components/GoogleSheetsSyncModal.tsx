@@ -12,11 +12,14 @@ import {
   Database,
   ArrowRight,
   ShieldCheck,
-  Table
+  Table,
+  Zap,
+  Download,
+  Code
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { signInWithGooglePopupForWorkspace, getGoogleAccessToken, formatFirebaseAuthError } from '../firebase';
-import { syncLogsToGoogleSpreadsheet, createGoogleSpreadsheet } from '../lib/googleSheets';
+import { syncLogsToGoogleSpreadsheet, createGoogleSpreadsheet, formatCertificateToSheetRow } from '../lib/googleSheets';
 
 interface GoogleSheetsSyncModalProps {
   isOpen: boolean;
@@ -39,6 +42,8 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
   const [resultSheetUrl, setResultSheetUrl] = useState<string | null>(null);
   const [resultSheetId, setResultSheetId] = useState<string | null>(config.sheetId || '');
   const [customSheetId, setCustomSheetId] = useState<string>(config.sheetId || '');
+  const [webAppUrl, setWebAppUrl] = useState<string>(config.appsScriptUrl || '');
+  const [syncMode, setSyncMode] = useState<'appsscript' | 'oauth' | 'csv'>('appsscript');
   const [copied, setCopied] = useState<boolean>(false);
   const [showConfirmOverwrite, setShowConfirmOverwrite] = useState<boolean>(false);
 
@@ -51,7 +56,10 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
       setCustomSheetId(config.sheetId);
       setResultSheetId(config.sheetId);
     }
-  }, [isOpen, config.sheetId]);
+    if (config.appsScriptUrl) {
+      setWebAppUrl(config.appsScriptUrl);
+    }
+  }, [isOpen, config.sheetId, config.appsScriptUrl]);
 
   if (!isOpen) return null;
 
@@ -73,6 +81,63 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const executeAppsScriptSync = async () => {
+    if (!webAppUrl || !webAppUrl.startsWith('http')) {
+      setErrorMessage('অনুগ্রহ করে সঠিক Google Apps Script WebApp URL প্রদান করুন (যেমন: https://script.google.com/macros/s/.../exec)');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage(null);
+    setStatusMessage('গুগল অ্যাপস স্ক্রিপ্ট (WebApp)-এর সাথে সংযোগ স্থাপন ও সিঙ্ক করা হচ্ছে...');
+
+    try {
+      const res = await fetch('/api/admin/apps-script-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webAppUrl: webAppUrl.trim(),
+          sheetId: customSheetId || config.sheetId,
+          logs
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatusMessage(data.message || `সফলভাবে ${logs.length} টি নাগরিক আবেদন গুগল অ্যাপস স্ক্রিপ্টে সিঙ্ক হয়েছে!`);
+        if (data.spreadsheetUrl) {
+          setResultSheetUrl(data.spreadsheetUrl);
+        }
+      } else {
+        throw new Error(data.message || 'Apps Script WebApp সিঙ্ক সম্পন্ন করতে ব্যর্থ হয়েছে।');
+      }
+    } catch (err: any) {
+      console.error('Apps Script Sync Error:', err);
+      setErrorMessage(err.message || 'Google Apps Script সিঙ্ক ত্রুটি। WebApp-এর পারমিশন "Anyone" করা আছে কিনা চেক করুন।');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadCsv = () => {
+    let csvContent = "তারিখ,স্মারক নম্বর,ক্যাটাগরি,সনদের ধরন,আবেদনকারীর নাম,পিতা/স্বামী,মাতা,গ্রাম,ওয়ার্ড নং,NID/জন্ম নম্বর,মোবাইল,ফি,স্ট্যাটাস,সিঙ্ক সময়\n";
+    logs.forEach(log => {
+      const row = formatCertificateToSheetRow(log);
+      csvContent += row.map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Union_Citizen_Register_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setStatusMessage('✓ ১৪ টি ফিল্ডসহ সম্পূর্ণ নাগরিক আবেদন রেজিস্টার CSV ফাইল ডাউনলোড হয়েছে!');
   };
 
   const executeSyncToSpreadsheet = async (sheetIdToUse?: string, createNew: boolean = false) => {
@@ -186,10 +251,10 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-base flex items-center gap-2">
-                <span>Google Sheets-এ লাইভ অ্যাপ্লিকেশন ডাটা এক্সপোর্ট ও সিঙ্ক</span>
+                <span>Google Sheets & Apps Script কেন্দ্রিক ডাটা সিঙ্ক ম্যানেজার</span>
               </h3>
               <p className="text-xs text-emerald-200">
-                Google Sheets API ব্যবহার করে নাগরিক আবেদনের সম্পূর্ণ রেজিস্টার সরাসরি এক্সপোর্ট করুন
+                গুগল অ্যাপস স্ক্রিপ্ট (WebApp), গুগল ড্রাইভে স্প্রেডশিট বা ফাইল এক্সপোর্টের মাধ্যমে সরাসরি সিঙ্ক করুন
               </p>
             </div>
           </div>
@@ -201,44 +266,45 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
 
-          {/* User Auth Status Banner */}
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 font-bold border border-emerald-300">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-800">
-                  {accessToken ? (
-                    <span className="text-emerald-700 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4" /> Google Auth কানেক্টেড {userEmail ? `(${userEmail})` : ''}
-                    </span>
-                  ) : (
-                    <span className="text-amber-700">
-                      Google OAuth একাউন্ট যুক্ত করা প্রয়োজন
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  {accessToken 
-                    ? 'Google Sheets & Drive.file পারমিশন সক্রিয় রয়েছে।' 
-                    : 'প্রশাসনিক রিপোর্টিংয়ের জন্য আপনার Google একাউন্টের সাহায্যে স্প্রেডশিট সিঙ্ক করুন।'}
-                </p>
-              </div>
-            </div>
+          {/* Sync Method Selection Tabs */}
+          <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setSyncMode('appsscript')}
+              className={`py-2 px-3 text-xs font-black rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                syncMode === 'appsscript'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <span>Apps Script WebApp</span>
+            </button>
 
-            {!accessToken && (
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Sign in with Google</span>
-              </button>
-            )}
+            <button
+              onClick={() => setSyncMode('oauth')}
+              className={`py-2 px-3 text-xs font-black rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                syncMode === 'oauth'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Google OAuth (API)</span>
+            </button>
+
+            <button
+              onClick={() => setSyncMode('csv')}
+              className={`py-2 px-3 text-xs font-black rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                syncMode === 'csv'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5 text-amber-300" />
+              <span>CSV / Excel এক্সপোর্ট</span>
+            </button>
           </div>
 
           {/* Sync Stats Summary */}
@@ -248,8 +314,8 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
               <span className="text-xl font-black text-emerald-950 font-mono">{logs.length} টি</span>
             </div>
             <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-center">
-              <span className="text-[10px] text-blue-700 font-bold block uppercase tracking-wider">স্প্রেডশিট ফরম্যাট</span>
-              <span className="text-xs font-bold text-blue-950 block mt-1">Google Sheets (v4)</span>
+              <span className="text-[10px] text-blue-700 font-bold block uppercase tracking-wider">স্প্রেডশিট ডেটাবেস</span>
+              <span className="text-xs font-bold text-blue-950 block mt-1">Google Sheets (v4 / GAS)</span>
             </div>
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-center col-span-2 sm:col-span-1">
               <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wider">অটো হেডার কলাম</span>
@@ -257,24 +323,183 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
             </div>
           </div>
 
-          {/* Custom Sheet ID Input Section */}
-          <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <label className="block text-xs font-bold text-slate-800">
-              বিদ্যমান Google Spreadsheet ID (ঐচ্ছিক):
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="যেমন: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                value={customSheetId}
-                onChange={(e) => setCustomSheetId(e.target.value)}
-                className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:border-emerald-600 focus:outline-none"
-              />
+          {/* TAB 1: Apps Script WebApp Sync (Instant, No popup needed) */}
+          {syncMode === 'appsscript' && (
+            <div className="space-y-4 bg-emerald-50/60 p-4 rounded-xl border border-emerald-200">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-extrabold text-emerald-950">
+                    পদ্ধতি ১: Google Apps Script WebApp সিঙ্ক (কোনো সাইন-ইন পপআপ লাগে না)
+                  </h4>
+                  <p className="text-[11px] text-slate-600">
+                    আপনার Google Doc/Sheet-এর সাথে যুক্ত Apps Script WebApp URL ব্যবহার করে ১-ক্লিকে সিঙ্ক করুন
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Google Apps Script WebApp URL (exec):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="যেমন: https://script.google.com/macros/s/AKfycb.../exec"
+                    value={webAppUrl}
+                    onChange={(e) => setWebAppUrl(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:border-emerald-600 focus:outline-none"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Apps Script-এ Deploy &gt; New deployment &gt; Web app (Who has access: Anyone) হিসেবে পোস্টকৃত লিঙ্ক বসান।
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={executeAppsScriptSync}
+                  disabled={loading || !webAppUrl}
+                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                  ) : (
+                    <Zap className="w-4 h-4 text-amber-300" />
+                  )}
+                  <span>গুগল অ্যাপস স্ক্রিপ্ট (WebApp) সিঙ্ক চালনা করুন</span>
+                </button>
+              </div>
             </div>
-            <p className="text-[11px] text-slate-500">
-              ফাঁকা রাখলে আপনার Google Drive-এ স্বয়ংক্রিয়ভাবে একটি নতুন Google Sheet তৈরি করে ডাটা জমা করা হবে।
-            </p>
-          </div>
+          )}
+
+          {/* TAB 2: Google OAuth Direct API Sync */}
+          {syncMode === 'oauth' && (
+            <div className="space-y-4">
+              {/* User Auth Status Banner */}
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 font-bold border border-emerald-300 shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800">
+                      {accessToken ? (
+                        <span className="text-emerald-700 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" /> Google Auth কানেক্টেড {userEmail ? `(${userEmail})` : ''}
+                        </span>
+                      ) : (
+                        <span className="text-amber-700">
+                          Google OAuth একাউন্ট যুক্ত করা প্রয়োজন
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      {accessToken 
+                        ? 'Google Sheets & Drive.file পারমিশন সক্রিয় রয়েছে।' 
+                        : 'প্রশাসনিক রিপোর্টিংয়ের জন্য আপনার Google একাউন্টের সাহায্যে সরাসরি স্প্রেডশিট সিঙ্ক করুন।'}
+                    </p>
+                  </div>
+                </div>
+
+                {!accessToken && (
+                  <button
+                    onClick={handleGoogleSignIn}
+                    disabled={loading}
+                    className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign in with Google</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Custom Sheet ID Input Section */}
+              <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <label className="block text-xs font-bold text-slate-800">
+                  বিদ্যমান Google Spreadsheet ID (ঐচ্ছিক):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="যেমন: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                    value={customSheetId}
+                    onChange={(e) => setCustomSheetId(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:border-emerald-600 focus:outline-none"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  ফাঁকা রাখলে আপনার Google Drive-এ স্বয়ংক্রিয়ভাবে একটি নতুন Google Sheet তৈরি করে ডাটা জমা করা হবে।
+                </p>
+              </div>
+
+              {/* Action Buttons Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => handleStartSync(true)}
+                  disabled={loading}
+                  className="px-4 py-3 bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                  ) : (
+                    <FileSpreadsheet className="w-4 h-4 text-amber-300" />
+                  )}
+                  <span>১-ক্লিক নতুন Google Sheet তৈরি ও সিঙ্ক</span>
+                </button>
+
+                <button
+                  onClick={() => handleStartSync(false)}
+                  disabled={loading || !customSheetId}
+                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin text-emerald-300" />
+                  ) : (
+                    <Table className="w-4 h-4 text-emerald-300" />
+                  )}
+                  <span>বিদ্যমান Google Sheet-এ সিঙ্ক করুন</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: Direct CSV/Excel Export & Open in Drive */}
+          {syncMode === 'csv' && (
+            <div className="space-y-4 bg-amber-50/60 p-4 rounded-xl border border-amber-200">
+              <div className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-amber-700 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-extrabold text-amber-950">
+                    পদ্ধতি ৩: সরাসরি CSV / Excel ফাইল এক্সপোর্ট ও Google Sheets-এ খোলা
+                  </h4>
+                  <p className="text-[11px] text-slate-600">
+                    সকল নাগরিক আবেদনের তথ্য Excel / CSV ফরম্যাটে ইন্সট্যান্ট ডাউনলোড করে Google Drive বা Excel এ সরাসরি ব্যবহার করুন
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={handleDownloadCsv}
+                  className="px-4 py-3 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-white" />
+                  <span>সম্পূর্ণ নাগরিক রেজিস্টার CSV ডাউনলোড (১৪ ফিল্ড)</span>
+                </button>
+
+                <a
+                  href="https://sheets.new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-3 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4 text-amber-300" />
+                  <span>Google Sheets এ নতুন স্প্রেডশিট খুলুন ↗</span>
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* Status & Error Messages */}
           {statusMessage && (
@@ -285,9 +510,41 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
           )}
 
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-300 text-rose-800 text-xs rounded-xl flex items-center gap-2 font-semibold animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="p-4 bg-rose-50 border border-rose-300 text-rose-800 text-xs rounded-xl space-y-3 animate-in fade-in">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold">{errorMessage}</span>
+                  {(errorMessage.includes('unauthorized-domain') || errorMessage.includes('Authorized Domains')) && (
+                    <div className="mt-2 pt-2 border-t border-rose-200 text-[11px] font-normal text-rose-900 space-y-2">
+                      <p className="font-bold text-rose-900">
+                        কীভাবে সমাধান করবেন (Firebase Auth Authorized Domain):
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 text-slate-700">
+                        <li>Google Firebase Console (upms-baheratail) ওপেন করুন</li>
+                        <li>Authentication &gt; Settings &gt; Authorized domains পেজে যান</li>
+                        <li>'Add domain' বাটনে ক্লিক করে বর্তমান অ্যাপ ডোমেইনটি পেস্ট করুন:</li>
+                      </ol>
+
+                      <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-rose-300 font-mono text-[11px] text-slate-800">
+                        <span className="truncate flex-1 font-bold">{typeof window !== 'undefined' ? window.location.hostname : ''}</span>
+                        <button
+                          onClick={() => {
+                            if (typeof window !== 'undefined') {
+                              navigator.clipboard.writeText(window.location.hostname);
+                              setStatusMessage('✓ ডোমেইন কপি করা হয়েছে! Firebase Console-এ পেস্ট করে যোগ করুন।');
+                              setTimeout(() => setStatusMessage(null), 4000);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold rounded-lg transition cursor-pointer shrink-0"
+                        >
+                          ডোমেইন কপি
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -328,7 +585,7 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-900 flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Google Spreadsheet সফলভাবে জেনারেট ও সিঙ্ক হয়েছে!</span>
+                  <span>Google Spreadsheet / Apps Script সফলভাবে সিঙ্ক হয়েছে!</span>
                 </span>
                 <button
                   onClick={handleCopyUrl}
@@ -357,41 +614,12 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
             </div>
           )}
 
-          {/* Action Buttons Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={() => handleStartSync(true)}
-              disabled={loading}
-              className="px-4 py-3 bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {loading ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
-              ) : (
-                <FileSpreadsheet className="w-4 h-4 text-amber-300" />
-              )}
-              <span>১-ক্লিক নতুন Google Sheet তৈরি ও সিঙ্ক</span>
-            </button>
-
-            <button
-              onClick={() => handleStartSync(false)}
-              disabled={loading || !customSheetId}
-              className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {loading ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-emerald-300" />
-              ) : (
-                <Table className="w-4 h-4 text-emerald-300" />
-              )}
-              <span>বিদ্যমান Google Sheet-এ সিঙ্ক করুন</span>
-            </button>
-          </div>
-
         </div>
 
         {/* Footer */}
         <div className="bg-slate-100 p-4 border-t border-slate-200 flex items-center justify-between">
           <span className="text-[11px] text-slate-500">
-            {config.upName} • Google Workspace Integration Engine
+            {config.upName} • Google Workspace & Apps Script Integration Engine
           </span>
           <button
             onClick={onClose}
@@ -405,3 +633,4 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
     </div>
   );
 };
+

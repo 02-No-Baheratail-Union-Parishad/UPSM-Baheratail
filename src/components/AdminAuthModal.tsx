@@ -242,9 +242,52 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
           )}
 
           {authError && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl text-xs font-bold flex items-center gap-2 animate-shake">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-              <span>{authError}</span>
+            <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl text-xs font-bold space-y-3 animate-shake">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span>{authError}</span>
+                  {(authError.includes('unauthorized-domain') || authError.includes('Authorized Domains')) && (
+                    <div className="mt-2 pt-2 border-t border-rose-200 text-[11px] font-normal text-rose-900 space-y-2">
+                      <p className="font-bold text-rose-900">
+                        কীভাবে সমাধান করবেন:
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 text-slate-700">
+                        <li>Google Firebase Console-এ যান (upms-baheratail প্রজেক্ট)</li>
+                        <li>Authentication &gt; Settings &gt; Authorized domains ট্যাব খুলুন</li>
+                        <li>'Add domain' বাটনে ক্লিক করে নিচের ডোমেইনটি যুক্ত করুন:</li>
+                      </ol>
+                      
+                      <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-rose-300 font-mono text-[11px] text-slate-800">
+                        <span className="truncate flex-1 font-bold">{typeof window !== 'undefined' ? window.location.hostname : ''}</span>
+                        <button
+                          onClick={() => {
+                            if (typeof window !== 'undefined') {
+                              navigator.clipboard.writeText(window.location.hostname);
+                              setSuccessMsg('✓ ডোমেইন ক্লিপবোর্ডে কপি করা হয়েছে!');
+                              setTimeout(() => setSuccessMsg(null), 3000);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold rounded-lg transition cursor-pointer shrink-0"
+                        >
+                          ডোমেইন কপি
+                        </button>
+                      </div>
+
+                      <div className="pt-1 flex items-center justify-between">
+                        <span className="text-slate-500 text-[10px]">অথবা বিকল্প পিন / কুইক লগইন ব্যবহার করুন:</span>
+                        <button
+                          type="button"
+                          onClick={() => { setAuthMode('quick'); setAuthError(null); }}
+                          className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-emerald-950 text-[11px] font-extrabold rounded-lg shadow-sm transition cursor-pointer"
+                        >
+                          কুইক এডমিন লগইন
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

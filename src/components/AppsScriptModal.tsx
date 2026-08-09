@@ -108,6 +108,66 @@ function generateCertificate(citizenData) {
   }
 }
 
+// -------------------------------------------------------------
+// WebApp Sync POST Handler for Direct Google Sheets Synchronization
+// -------------------------------------------------------------
+function doPost(e) {
+  try {
+    const contents = JSON.parse(e.postData.contents);
+    const sheetId = contents.sheetId;
+    let ss;
+    if (sheetId && sheetId.length > 10) {
+      ss = SpreadsheetApp.openById(sheetId);
+    } else {
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    }
+    
+    let sheet = ss.getSheetByName("Citizen_Logs") || ss.getSheetByName("Certificates");
+    if (!sheet) {
+      sheet = ss.insertSheet("Citizen_Logs");
+      sheet.appendRow([
+        "তারিখ", "স্মারক নম্বর", "সনদের শ্রেণি", "সনদের ধরন", "আবেদনকারীর নাম",
+        "পিতা / স্বামী", "মাতা", "গ্রাম", "ওয়ার্ড নং", "NID / জন্ম নিবন্ধন নং",
+        "মোবাইল নম্বর", "ফি (টাকা)", "স্ট্যাটাস", "সিঙ্ক সময়"
+      ]);
+    }
+    
+    const logs = contents.logs || [];
+    const syncTime = new Date().toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" });
+    
+    logs.forEach(log => {
+      sheet.appendRow([
+        log.issueDate || "",
+        log.memoNo || "",
+        log.category || "নাগরিকত্ব ও পরিচয়",
+        log.typeLabel || log.type || "",
+        log.citizen?.name || log.name || "",
+        log.citizen?.father || log.citizen?.spouseName || log.father || "",
+        log.citizen?.mother || log.mother || "",
+        log.citizen?.village || log.village || "",
+        log.citizen?.wardNo ? "ওয়ার্ড " + log.citizen.wardNo : "",
+        log.citizen?.nid || log.citizen?.birthNo || log.nid || "",
+        log.citizen?.mobile || log.mobile || "",
+        log.fee || log.feeAmount || "৫০ ৳",
+        log.status === "revoked" ? "বাতিলকৃত" : log.status === "pending_approval" ? "অপেক্ষমান" : "ইস্যুকৃত",
+        syncTime
+      ]);
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: logs.length + " টি রেকর্ড সফলভাবে গুগল শিটে সিঙ্ক হয়েছে!",
+      spreadsheetId: ss.getId(),
+      spreadsheetUrl: ss.getUrl()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 function convertToBengaliNum(num) {
   if (!num) return '';
   const map = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
