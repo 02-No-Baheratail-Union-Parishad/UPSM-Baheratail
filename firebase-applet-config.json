@@ -6,6 +6,10 @@
   "storageBucket": "upms-baheratail.firebasestorage.app",
   "messagingSenderId": "674811492072",
   "measurementId": "G-0HBQCX60SH",
+  "vapidPrivateKey": "sjNJwTu0-_hN09wTUVc9AiegDW--CLCFsdp0wRZSqFg",
+  "webPushPrivateKey": "sjNJwTu0-_hN09wTUVc9AiegDW--CLCFsdp0wRZSqFg",
   "oAuthClientId": "771093371467-aqtqpr1vu10t06ug9g5i66osduoajrb6.apps.googleusercontent.com",
+  "clientEmail": "firebase-adminsdk-fbsvc@upms-baheratail.iam.gserviceaccount.com",
+  "serviceAccountUniqueId": "106296580418630990916",
   "recaptchaSiteKey": ""
 }

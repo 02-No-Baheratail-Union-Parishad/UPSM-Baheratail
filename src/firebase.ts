@@ -50,28 +50,16 @@ export function setGoogleAccessToken(token: string | null): void {
   cachedGoogleAccessToken = token;
 }
 
-// Initialize Firestore with specific database ID if present and enable autoDetectLongPolling for sandboxed container stability
+// Initialize Firestore with specific database ID if present and enable force long-polling for sandboxed container stability
 const rawDbId = (firebaseConfig as any).firestoreDatabaseId;
 const dbId = rawDbId && rawDbId !== '(default)' ? rawDbId : undefined;
 
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
 }, dbId);
 
 // Initialize Firebase Storage
 export const storage = getStorage(app);
-
-// Test Firestore connection on boot
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn("Notice: Firestore is running in offline mode.");
-    }
-  }
-}
-testConnection();
 
 const CERTIFICATES_COLLECTION = 'certificates';
 const CONFIGS_COLLECTION = 'configs';
