@@ -15,7 +15,12 @@ import {
   QrCode,
   ShieldCheck,
   CreditCard,
-  Check
+  Check,
+  Send,
+  Copy,
+  MessageSquare,
+  Phone,
+  X
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { formatBanglaDate, convertEnglishDateToBanglaFormatted, generateSecurityChecksum } from '../lib/utils';
@@ -39,6 +44,12 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const [isEditingText, setIsEditingText] = useState(false);
   const [editableBodyText, setEditableBodyText] = useState(certificate.bodyText);
 
+  // WhatsApp Messaging State
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState(certificate.citizen?.mobile || '');
+  const [customNote, setCustomNote] = useState('আপনার কাঙ্ক্ষিত সনদপত্রটি ইউনিয়ন পরিষদ থেকে সফলভাবে অনুমোদন করা হয়েছে।');
+  const [copiedText, setCopiedText] = useState(false);
+
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -52,6 +63,66 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://baheratailup.gov.bd';
   const realVerifyUrl = `${origin}/verify/${certificate.memoNo}`;
   const qrImageUrl = certificate.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(realVerifyUrl)}`;
+
+  // Convert Bangla digits to English
+  const convertBanglaToEnglishDigits = (str: string) => {
+    const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    return str.replace(/[০-৯]/g, (w) => banglaDigits.indexOf(w).toString());
+  };
+
+  // Format phone number for WhatsApp Web API (BD format: 8801XXXXXXXXX)
+  const formatBdPhoneNumber = (rawPhone: string) => {
+    const cleanDigits = convertBanglaToEnglishDigits(rawPhone).replace(/\D/g, '');
+    if (!cleanDigits) return '';
+    if (cleanDigits.startsWith('880')) return cleanDigits;
+    if (cleanDigits.startsWith('0')) return `880${cleanDigits.substring(1)}`;
+    if (cleanDigits.length === 10 && cleanDigits.startsWith('1')) return `880${cleanDigits}`;
+    return cleanDigits;
+  };
+
+  const formattedPhone = formatBdPhoneNumber(whatsappPhone);
+
+  // Build formatted WhatsApp Message text
+  const buildWhatsAppMessage = () => {
+    const citizenName = c?.name || 'নাগরিক';
+    const certType = certificate.typeLabel || certificate.category || 'প্রত্যয়নপত্র';
+    const upName = config.upName || '০২নং বহেড়াতৈল ইউনিয়ন পরিষদ';
+    const location = `${config.upazila || 'সখিপুর'}, ${config.district || 'টাঙ্গাইল'}`;
+
+    let msg = `সম্মানিত ${citizenName},\n`;
+    msg += `${upName} কর্তৃক আপনার "${certType}" সফলভাবে প্রস্তুত ও ডিজিটাল সার্ভারে সংরক্ষিত হয়েছে।\n\n`;
+    msg += `📋 সনদের বিবরণ:\n`;
+    msg += `• স্মারক নং: ${certificate.memoNo}\n`;
+    msg += `• ইস্যুর তারিখ: ${certificate.issueDate}\n`;
+    msg += `• আবেদনকারী: ${citizenName}\n`;
+    if (c?.father) msg += `• পিতা/স্বামী: ${c.father}\n`;
+    if (c?.village) msg += `• গ্রাম/ওয়ার্ড: ${c.village}${c.wardNo ? ` (ওয়ার্ড নং ${c.wardNo})` : ''}\n`;
+    msg += `\n🔗 অনলাইন যাচাই ও পিডিএফ ডাউনলোড লিঙ্ক:\n${realVerifyUrl}\n`;
+    
+    if (customNote.trim()) {
+      msg += `\n💬 বার্তার বিশেষ টিপ্পনী:\n${customNote.trim()}\n`;
+    }
+
+    msg += `\nধন্যবাদান্তে,\n${upName}\n${location}`;
+    return msg;
+  };
+
+  const handleSendWhatsApp = () => {
+    const message = buildWhatsAppMessage();
+    const phone = formattedPhone;
+    const waUrl = phone 
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyMessage = () => {
+    const message = buildWhatsAppMessage();
+    navigator.clipboard.writeText(message);
+    setCopiedText(true);
+    setTimeout(() => setCopiedText(false), 2000);
+  };
 
   return (
     <div className="space-y-6">
@@ -81,6 +152,16 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* WhatsApp Direct Send Button */}
+          <button
+            onClick={() => setIsWhatsAppModalOpen(true)}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1.5 cursor-pointer"
+            title="নাগরিকের হোয়াটসঅ্যাপে সনদের ডাউনলোড লিংক ও সারসংক্ষেপ পাঠান"
+          >
+            <Send className="w-3.5 h-3.5 text-emerald-200 animate-pulse" />
+            <span>হোয়াটসঅ্যাপে পাঠান</span>
+          </button>
+
           {/* Edit AI Text Toggle */}
           <button
             onClick={() => setIsEditingText(!isEditingText)}
@@ -565,6 +646,111 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
 
         </div>
       </div>
+
+      {/* WhatsApp Sharing Modal */}
+      {isWhatsAppModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:hidden animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden space-y-0 relative">
+            {/* Modal Header */}
+            <div className="bg-emerald-800 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center text-amber-300 font-bold">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-white">হোয়াটসঅ্যাপে সনদ প্রেরণ (WhatsApp Web API)</h3>
+                  <p className="text-[11px] text-emerald-100">নাগরিককে সরাসরি পিডিএফ লিংক ও বিস্তারিত মেসেজ পাঠান</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsWhatsAppModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 hover:text-white flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* Phone Input */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>নাগরিকের মোবাইল / হোয়াটসঅ্যাপ নম্বর:</span>
+                </label>
+                <input
+                  type="text"
+                  value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value)}
+                  placeholder="যেমন: 01712345678"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900"
+                />
+                {formattedPhone ? (
+                  <p className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span>আন্তর্জাতিক কোড সহ প্রস্তুত: +{formattedPhone}</span>
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-amber-700 font-medium">
+                    ⚠️ মোবাইল নম্বর না দিলে সাধারণ মেসেজ টেক্সট কপি বা হোয়াটসঅ্যাপ অ্যাপ খুলবে।
+                  </p>
+                )}
+              </div>
+
+              {/* Note Input */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>বিশেষ বার্তা (ঐচ্ছিক):</span>
+                </label>
+                <input
+                  type="text"
+                  value={customNote}
+                  onChange={(e) => setCustomNote(e.target.value)}
+                  placeholder="অতিরিক্ত কোনো নির্দেশ বা নোট লিখুন..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900"
+                />
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="space-y-1">
+                <span className="block text-[11px] font-bold text-slate-600">মেসেজের লাইভ প্রাক-প্রদর্শন (Preview):</span>
+                <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl font-mono text-[11px] text-slate-800 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto select-all shadow-inner">
+                  {buildWhatsAppMessage()}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer / Action Buttons */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                onClick={handleCopyMessage}
+                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {copiedText ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    <span className="text-emerald-700">কপি হয়েছে!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 text-slate-600" />
+                    <span>মেসেজ কপি করুন</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleSendWhatsApp}
+                className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-lg hover:shadow-emerald-900/20 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Send className="w-4 h-4 text-amber-300" />
+                <span>WhatsApp Web এ পাঠান</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
