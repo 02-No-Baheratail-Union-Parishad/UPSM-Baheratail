@@ -20,7 +20,8 @@ import {
   HelpCircle,
   ExternalLink,
   MapPin,
-  Megaphone
+  Megaphone,
+  Activity
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
@@ -174,19 +175,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: lang === 'bn' ? 'লাইভ' : 'Live' 
     },
     { 
+      id: 'audit_trail', 
+      label: lang === 'bn' ? '১১. অ্যাক্টিভিটি অডিট ট্রেইল' : '11. Activity Audit Trail', 
+      icon: Activity, 
+      badge: lang === 'bn' ? 'সুপার এডমিন' : 'Super Admin' 
+    },
+    { 
       id: 'admin_dashboard', 
-      label: lang === 'bn' ? '১১. এডমিন ড্যাশবোর্ড ও অডিট লগ' : '11. Admin Dashboard & Audit Logs', 
-      icon: ShieldCheck,
-      badge: lang === 'bn' ? 'অডিট ট্রেইল' : 'Audit Logs'
+      label: lang === 'bn' ? '১২. ইউজার ও পারমিশন রোল' : '12. Admin Users & Roles', 
+      icon: ShieldCheck 
     },
     { 
       id: 'admin', 
-      label: lang === 'bn' ? '১২. মাস্টার সেটআপ' : '12. Master Setup', 
+      label: lang === 'bn' ? '১৩. মাস্টার সেটআপ' : '13. Master Setup', 
       icon: Settings 
     },
     { 
       id: 'developer', 
-      label: lang === 'bn' ? '১৩. ডেভেলপার ও ব্যাকআপ' : '13. Developer & Backup', 
+      label: lang === 'bn' ? '১৪. ডেভেলপার ও ব্যাকআপ' : '14. Developer & Backup', 
       icon: Code2, 
       badge: 'MCP Sync' 
     }

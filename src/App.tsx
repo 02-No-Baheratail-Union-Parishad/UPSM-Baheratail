@@ -8,6 +8,7 @@ import { VerificationPortal } from './components/VerificationPortal';
 import { CitizenLogs } from './components/CitizenLogs';
 import { AdminSettings } from './components/AdminSettings';
 import { AdminDashboard } from './components/AdminDashboard';
+import { ActivityAuditTrail } from './components/ActivityAuditTrail';
 import { CitizenMasterRegister } from './components/CitizenMasterRegister';
 import { DeveloperProfile } from './components/DeveloperProfile';
 import { DevelopmentHeatmap } from './components/DevelopmentHeatmap';
@@ -204,6 +205,12 @@ export default function App() {
         {activeTab === 'developer' && (
           <AdminGuard allowedRoles={['developer', 'super_admin']} title="ডেভেলপার প্যানেল সিকিউরিটি প্রোফাইল">
             <DeveloperProfile config={config} onUpdateConfig={setConfig} />
+          </AdminGuard>
+        )}
+
+        {activeTab === 'audit_trail' && (
+          <AdminGuard allowedRoles={['super_admin', 'developer']} title="অ্যাক্টিভিটি অডিট ট্রেইল (Super Admin Only)">
+            <ActivityAuditTrail config={config} onNavigateTab={handleNavigateTab} />
           </AdminGuard>
         )}
 

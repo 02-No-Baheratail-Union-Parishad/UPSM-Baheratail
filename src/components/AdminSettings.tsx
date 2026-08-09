@@ -55,6 +55,7 @@ import {
   fetchAdminUsersFromFirebase,
   saveAdminUserToFirebase,
   deleteAdminUserFromFirebase,
+  addAuditLogToFirebase,
   subscribeToAdminUsersFromFirebase,
   saveRolePermissionsMatrixToFirebase,
   subscribeToRolePermissionsMatrix,
@@ -529,6 +530,14 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
     if (!window.confirm(`আপনি কি নিশ্চিত যে '${email}' এডমিন অনুমতি বাতিল করতে চান?`)) return;
     try {
       await deleteAdminUserFromFirebase(email);
+      await addAuditLogToFirebase({
+        action: 'ADMIN_REMOVED',
+        actionTitle: 'এডমিন অ্যাকসেস অ্যাকাউন্ট বাতিল',
+        details: `ফায়ারবেস ডিরেক্টরি হইতে ইউজার '${email}' এর এডমিন অ্যাকসেস অপসারণ করা হইয়াছে।`,
+        performedByEmail: localStorage.getItem('bup_active_admin_session') ? JSON.parse(localStorage.getItem('bup_active_admin_session')!).email : 'baheratailunion@gmail.com',
+        performedByName: localStorage.getItem('bup_active_admin_session') ? JSON.parse(localStorage.getItem('bup_active_admin_session')!).name : 'সুপার এডমিন',
+        performedByRole: localStorage.getItem('bup_active_admin_session') ? JSON.parse(localStorage.getItem('bup_active_admin_session')!).role : 'super_admin'
+      });
       const updated = await fetchAdminUsersFromFirebase();
       setAdminsDirectory(updated);
     } catch (err: any) {
@@ -1075,6 +1084,16 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
       saveConfigToFirebase(sanitizedConfig).catch(err =>
         console.warn('Firebase config sync warning:', err)
       );
+
+      // Log action to Activity Audit Trail
+      addAuditLogToFirebase({
+        action: 'CONFIG_UPDATED',
+        actionTitle: 'ইউনিয়ন পরিষদ মাস্টার সেটিংস আপডেট',
+        details: `ইউপি তথ্য (${sanitizedConfig.upName}), চেয়ারম্যান (${sanitizedConfig.chairmanName}), ও সেটিংস কনফিগারেশন রিয়েল-টাইমে ক্লাউডে আপডেট করা হইয়াছে।`,
+        performedByEmail: localStorage.getItem('bup_active_admin_session') ? JSON.parse(localStorage.getItem('bup_active_admin_session')!).email : 'baheratailunion@gmail.com',
+        performedByName: localStorage.getItem('bup_active_admin_session') ? JSON.parse(localStorage.getItem('bup_active_admin_session')!).name : 'সুপার এডমিন',
+        performedByRole: localStorage.getItem('bup_active_admin_session') ? JSON.parse(localStorage.getItem('bup_active_admin_session')!).role : 'super_admin'
+      }).catch(err => console.warn('Audit log write warning:', err));
 
       if (data.success && data.config) {
         onUpdateConfig(data.config);

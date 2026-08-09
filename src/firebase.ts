@@ -776,4 +776,28 @@ export async function addAuditLogToFirebase(
   }
 }
 
+export function subscribeToAuditLogsFromFirebase(callback: (logs: AuditLogRecord[]) => void): () => void {
+  const colRef = collection(db, AUDIT_LOGS_COLLECTION);
+  return onSnapshot(colRef, (snap) => {
+    if (snap.empty) {
+      callback(INITIAL_AUDIT_LOGS);
+      return;
+    }
+    const list: AuditLogRecord[] = [];
+    snap.forEach(docSnap => {
+      list.push(docSnap.data() as AuditLogRecord);
+    });
+    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    callback(list);
+  }, (err) => {
+    console.warn('Real-time audit logs snapshot warning:', err);
+  });
+}
+
+export async function deleteAuditLogFromFirebase(logId: string): Promise<void> {
+  const docRef = doc(db, AUDIT_LOGS_COLLECTION, logId);
+  await deleteDoc(docRef);
+}
+
+
 
