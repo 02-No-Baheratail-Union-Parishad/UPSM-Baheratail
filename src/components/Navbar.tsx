@@ -36,10 +36,35 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
   const [adminRecord, setAdminRecord] = useState<AdminUserRecord | null>(null);
 
   useEffect(() => {
+    const loadSavedSession = () => {
+      const saved = localStorage.getItem('bup_active_admin_session');
+      if (saved) {
+        try {
+          setAdminRecord(JSON.parse(saved));
+        } catch (e) {
+          setAdminRecord(null);
+        }
+      } else {
+        setAdminRecord(null);
+      }
+    };
+
+    loadSavedSession();
+
+    const handleAuthEvent = (e: any) => {
+      setAdminRecord(e.detail);
+    };
+
+    window.addEventListener('adminAuthChanged', handleAuthEvent);
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentAdminUser(user);
     });
-    return () => unsubscribe();
+
+    return () => {
+      window.removeEventListener('adminAuthChanged', handleAuthEvent);
+      unsubscribe();
+    };
   }, []);
 
   // Dark Mode Theme State
@@ -249,11 +274,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-200 text-emerald-950 text-xs font-black rounded-lg shadow-md transition-all duration-200 cursor-pointer active:scale-95 border border-amber-500/80 shrink-0"
             title="গুগল অথেন্টিকেশন ও এডমিন প্যানেল সাইন ইন"
           >
-            {currentAdminUser ? (
+            {(currentAdminUser || adminRecord) ? (
               <>
-                {currentAdminUser.photoURL ? (
+                {(currentAdminUser?.photoURL || adminRecord?.photoUrl) ? (
                   <img 
-                    src={currentAdminUser.photoURL} 
+                    src={currentAdminUser?.photoURL || adminRecord?.photoUrl} 
                     alt="Admin Avatar" 
                     className="w-5 h-5 rounded-full border border-emerald-900 object-cover"
                   />
@@ -261,7 +286,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
                   <UserCheck className="w-4 h-4 text-emerald-950" />
                 )}
                 <span className="truncate max-w-[110px]">
-                  {currentAdminUser.displayName || currentAdminUser.email?.split('@')[0] || 'এডমিন'}
+                  {adminRecord?.name ? adminRecord.name.split(' ')[0] : (currentAdminUser?.displayName?.split(' ')[0] || currentAdminUser?.email?.split('@')[0] || 'এডমিন')}
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
               </>

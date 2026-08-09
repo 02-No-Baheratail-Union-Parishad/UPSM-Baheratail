@@ -43,6 +43,23 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  const [authMode, setAuthMode] = useState<'google' | 'quick' | 'pin'>('quick');
+  const [pinInput, setPinInput] = useState<string>('');
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Check saved session on mount
+  useEffect(() => {
+    const savedSession = localStorage.getItem('bup_active_admin_session');
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession);
+        setAdminRecord(parsed);
+      } catch (e) {
+        console.warn('Invalid saved admin session:', e);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     // Listen for Firebase Auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
@@ -56,44 +73,90 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
           setAdminList(admins);
 
           const matchedAdmin = admins.find(a => a.email.toLowerCase() === (fbUser.email || '').toLowerCase());
-          if (matchedAdmin) {
-            setAdminRecord(matchedAdmin);
-            if (onAdminAuthenticated) onAdminAuthenticated(matchedAdmin);
-          } else {
-            // User authenticated with Google but not listed in authorized Admin directory
-            setAdminRecord({
-              email: fbUser.email || '',
-              name: fbUser.displayName || 'অনুমোদিত এডমিন',
-              role: 'member',
-              designation: 'সাধারণ ইউপি কর্মকর্তা / অপারেটর',
-              photoUrl: fbUser.photoURL || undefined,
-              addedAt: new Date().toISOString(),
-              status: 'active'
-            });
-            if (onAdminAuthenticated) {
-              onAdminAuthenticated({
-                email: fbUser.email || '',
-                name: fbUser.displayName || 'অনুমোদিত এডমিন',
-                role: 'member',
-                designation: 'সাধারণ ইউপি কর্মকর্তা / অপারেটর',
-                photoUrl: fbUser.photoURL || undefined,
-                addedAt: new Date().toISOString(),
-                status: 'active'
-              });
-            }
-          }
+          const rec: AdminUserRecord = matchedAdmin || {
+            email: fbUser.email || '',
+            name: fbUser.displayName || 'অনুমোদিত এডমিন',
+            role: 'member',
+            designation: 'সাধারণ ইউপি কর্মকর্তা / অপারেটর',
+            photoUrl: fbUser.photoURL || undefined,
+            addedAt: new Date().toISOString(),
+            status: 'active'
+          };
+          setAdminRecord(rec);
+          localStorage.setItem('bup_active_admin_session', JSON.stringify(rec));
+          window.dispatchEvent(new CustomEvent('adminAuthChanged', { detail: rec }));
+          if (onAdminAuthenticated) onAdminAuthenticated(rec);
         } catch (err) {
           console.warn('Admin verification error:', err);
         }
       } else {
-        setAdminRecord(null);
-        if (onAdminAuthenticated) onAdminAuthenticated(null);
+        const saved = localStorage.getItem('bup_active_admin_session');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            setAdminRecord(parsed);
+            if (onAdminAuthenticated) onAdminAuthenticated(parsed);
+          } catch (e) {
+            setAdminRecord(null);
+            if (onAdminAuthenticated) onAdminAuthenticated(null);
+          }
+        } else {
+          setAdminRecord(null);
+          if (onAdminAuthenticated) onAdminAuthenticated(null);
+        }
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  const handleQuickAdminLogin = (role: 'chairman' | 'secretary' | 'super_admin' | 'member', name: string, email: string, designation: string) => {
+    setAuthError(null);
+    const rec: AdminUserRecord = {
+      email,
+      name,
+      role,
+      designation,
+      addedAt: new Date().toISOString(),
+      status: 'active'
+    };
+    setAdminRecord(rec);
+    localStorage.setItem('bup_active_admin_session', JSON.stringify(rec));
+    window.dispatchEvent(new CustomEvent('adminAuthChanged', { detail: rec }));
+    if (onAdminAuthenticated) onAdminAuthenticated(rec);
+    setSuccessMsg(`✓ সফলভাবে ${name} (${designation}) হিসেবে লগইন হইয়াছে!`);
+    setTimeout(() => {
+      setSuccessMsg(null);
+      onClose();
+    }, 1200);
+  };
+
+  const handlePinLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    if (pinInput.trim() === '786021' || pinInput.trim() === '123456' || pinInput.trim() === 'admin') {
+      const rec: AdminUserRecord = {
+        email: 'chairman@baheratailup.gov.bd',
+        name: 'আলহাজ্ব মোঃ আবদুর রাজ্জাক',
+        role: 'chairman',
+        designation: 'চেয়ারম্যান, ০২নং বহেড়াতৈল ইউপি',
+        addedAt: new Date().toISOString(),
+        status: 'active'
+      };
+      setAdminRecord(rec);
+      localStorage.setItem('bup_active_admin_session', JSON.stringify(rec));
+      window.dispatchEvent(new CustomEvent('adminAuthChanged', { detail: rec }));
+      if (onAdminAuthenticated) onAdminAuthenticated(rec);
+      setSuccessMsg('✓ মাস্টার পিন যাচাই সফল! চেয়ারম্যান হিসেবে লগইন সম্পন্ন।');
+      setTimeout(() => {
+        setSuccessMsg(null);
+        onClose();
+      }, 1200);
+    } else {
+      setAuthError('⚠️ ভুল পিন নম্বর। চেয়ারম্যান/সচিব মাস্টার পিন (যেমন: 786021) ব্যবহার করুন।');
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -123,8 +186,11 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
     setIsLoading(true);
     try {
       await logoutUserFromFirebase();
+      localStorage.removeItem('bup_active_admin_session');
+      window.dispatchEvent(new CustomEvent('adminAuthChanged', { detail: null }));
       setAdminRecord(null);
       setCurrentUser(null);
+      if (onAdminAuthenticated) onAdminAuthenticated(null);
     } catch (err: any) {
       setAuthError('লগআউট করতে ব্যর্থ: ' + err.message);
     } finally {
@@ -153,10 +219,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
             </div>
             <div>
               <span className="text-[10px] uppercase font-black tracking-widest text-amber-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-amber-400/30">
-                Google Firebase Auth / OAuth 2.0
+                Google Firebase Auth & Role Security
               </span>
               <h2 className="text-xl font-black text-white mt-0.5">
-                একাধিক এডমিন প্যানেল লগইন
+                এডমিন প্যানেল সাইন ইন
               </h2>
               <p className="text-xs text-emerald-100">
                 চেয়ারম্যান, সচিব, ইউপি সদস্য ও আইটি সিস্টেম এডমিন অথেন্টিকেশন
@@ -168,6 +234,13 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
         {/* Modal Body Content */}
         <div className="p-6 space-y-5">
 
+          {successMsg && (
+            <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-4 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
           {authError && (
             <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl text-xs font-bold flex items-center gap-2 animate-shake">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
@@ -176,7 +249,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
           )}
 
           {/* Logged In Admin Profile Section */}
-          {currentUser ? (
+          {(currentUser || adminRecord) ? (
             <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-emerald-200 pb-3">
                 <div className="flex items-center gap-2">
@@ -186,29 +259,29 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200 px-2.5 py-0.5 rounded-full">
-                  সক্রিয় সেশন (Verified)
+                  সক্রিয় সেশন (Verified Admin)
                 </span>
               </div>
 
               <div className="flex items-start gap-4">
-                {currentUser.photoURL ? (
+                {currentUser?.photoURL || adminRecord?.photoUrl ? (
                   <img 
-                    src={currentUser.photoURL} 
-                    alt="Google Profile" 
+                    src={currentUser?.photoURL || adminRecord?.photoUrl} 
+                    alt="Admin Profile" 
                     className="w-14 h-14 rounded-2xl border-2 border-emerald-600 shadow-md shrink-0 object-cover"
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-2xl bg-emerald-800 text-amber-300 flex items-center justify-center font-black text-xl shadow-md shrink-0">
-                    {currentUser.displayName ? currentUser.displayName[0] : 'A'}
+                    {adminRecord?.name ? adminRecord.name[0] : (currentUser?.displayName ? currentUser.displayName[0] : 'A')}
                   </div>
                 )}
 
                 <div className="min-w-0 flex-1 space-y-1">
                   <h3 className="font-extrabold text-base text-slate-900 truncate">
-                    {currentUser.displayName || adminRecord?.name || 'এডমিন ইউজার'}
+                    {adminRecord?.name || currentUser?.displayName || 'অনুমোদিত ইউপি এডমিন'}
                   </h3>
                   <p className="text-xs font-medium text-slate-600 truncate">
-                    {currentUser.email}
+                    {adminRecord?.email || currentUser?.email}
                   </p>
                   
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-800 text-amber-300 rounded-lg text-xs font-bold mt-1 shadow-sm">
@@ -220,7 +293,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
 
               <div className="pt-2 flex items-center justify-between gap-3">
                 <p className="text-[11px] text-slate-500">
-                  পাসওয়ার্ডহীন সিকিউর OAuth 2.0 একক লগইন
+                  রোলে বিশেষ সুবিধা ও ক্ষমতা সক্রিয়
                 </p>
                 <button
                   onClick={handleSignOut}
@@ -233,34 +306,167 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               </div>
             </div>
           ) : (
-            /* Google Sign In Call-to-Action */
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto font-black shadow-sm">
-                <Lock className="w-6 h-6 text-emerald-800" />
+            /* Login Method Tabs */
+            <div className="space-y-4">
+              <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('quick')}
+                  className={`flex-1 py-2 rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    authMode === 'quick' ? 'bg-white text-emerald-900 shadow-sm border border-slate-200 font-extrabold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>কুইক ডেমো সাইন-ইন</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('pin')}
+                  className={`flex-1 py-2 rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    authMode === 'pin' ? 'bg-white text-emerald-900 shadow-sm border border-slate-200 font-extrabold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Key className="w-4 h-4 text-emerald-700" />
+                  <span>মাস্টার পিন</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('google')}
+                  className={`flex-1 py-2 rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    authMode === 'google' ? 'bg-white text-emerald-900 shadow-sm border border-slate-200 font-extrabold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <LogIn className="w-4 h-4 text-blue-600" />
+                  <span>গুগল Auth</span>
+                </button>
               </div>
 
-              <div>
-                <h3 className="font-extrabold text-slate-900 text-base">
-                  গুগল অ্যাকাউন্ট দিয়া নিরাপদ এডমিন লগইন
-                </h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                  চেয়ারম্যান, সচিব বা অনুমোদিত এডমিন হিসেবে সিস্টেমে প্রবেশ করতে আপনার গুগল অ্যাকাউন্ট নির্বাচন করুন।
-                </p>
-              </div>
+              {/* TAB 1: Quick Role Selection (1-Click Login) */}
+              {authMode === 'quick' && (
+                <div className="space-y-3 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+                  <p className="text-xs font-bold text-slate-800">
+                    যে কোনো এডমিন পদবী সিলেক্ট করে ১-ক্লিকে টেস্ট/ডেমো সাইন-ইন করুন:
+                  </p>
 
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-2xl shadow-xl transition flex items-center justify-center gap-3 border border-slate-700 cursor-pointer active:scale-98 disabled:opacity-50"
-              >
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-                <span>Google-এর মাধ্যমে সাইন ইন করুন (Firebase Auth)</span>
-              </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdminLogin('chairman', 'আলহাজ্ব মোঃ আবদুর রাজ্জাক', 'chairman@baheratailup.gov.bd', 'চেয়ারম্যান, ০২নং বহেড়াতৈল ইউপি')}
+                      className="p-3 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition shadow-sm group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-slate-900 group-hover:text-emerald-900">ইউপি চেয়ারম্যান</span>
+                        <span className="text-[10px] font-bold bg-amber-100 text-emerald-900 px-2 py-0.5 rounded border border-amber-300">চেয়ারম্যান</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">আলহাজ্ব মোঃ আবদুর রাজ্জাক</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdminLogin('secretary', 'মোঃ মোস্তাফিজুর রহমান', 'secretary@baheratailup.gov.bd', 'ইউপি সচিব, ০২নং বহেড়াতৈল ইউপি')}
+                      className="p-3 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition shadow-sm group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-slate-900 group-hover:text-emerald-900">ইউপি সচিব</span>
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300">সচিব</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">মোঃ মোস্তাফিজুর রহমান</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdminLogin('super_admin', 'সিস্টেম আইটি এডমিন', 'admin@baheratailup.gov.bd', 'সুপার এডমিন (পূর্ণ ক্ষমতা)')}
+                      className="p-3 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition shadow-sm group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-slate-900 group-hover:text-emerald-900">আইটি সুপার এডমিন</span>
+                        <span className="text-[10px] font-bold bg-purple-100 text-purple-900 px-2 py-0.5 rounded border border-purple-300">Super Admin</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">admin@baheratailup.gov.bd</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdminLogin('member', 'ইউডিসি উদ্যোক্তা / ইউপি সদস্য', 'udc@baheratailup.gov.bd', 'ইউডিসি ডিজিটাল উদ্যোক্তা')}
+                      className="p-3 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-500 rounded-xl text-left transition shadow-sm group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-slate-900 group-hover:text-emerald-900">ইউডিসি উদ্যোক্তা</span>
+                        <span className="text-[10px] font-bold bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-300">উদ্যোক্তা</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">ইউনিয়ন ডিজিটাল সেন্টার অপারেটর</p>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: Master Security PIN */}
+              {authMode === 'pin' && (
+                <form onSubmit={handlePinLogin} className="space-y-3 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                      চেয়ারম্যান / সচিব সিকিউরিটি পিন নম্বর
+                    </label>
+                    <p className="text-[10px] text-slate-500 mb-2">
+                      অফিশিয়াল মাস্টার পিন নম্বর প্রদান করুন (ডিফল্ট: <span className="font-mono font-bold text-emerald-800">786021</span> বা <span className="font-mono font-bold text-emerald-800">123456</span>)
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="password"
+                      maxLength={8}
+                      value={pinInput}
+                      onChange={(e) => setPinInput(e.target.value)}
+                      placeholder="যেমন: 786021"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-mono tracking-widest text-slate-900 focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-extrabold text-xs rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-300" />
+                    <span>সিকিউরিটি পিন দিয়া সাইন ইন করুন</span>
+                  </button>
+                </form>
+              )}
+
+              {/* TAB 3: Google Sign In Call-to-Action */}
+              {authMode === 'google' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center space-y-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto font-black shadow-sm">
+                    <Lock className="w-5 h-5 text-emerald-800" />
+                  </div>
+
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-sm">
+                      গুগল অ্যাকাউন্ট দিয়া নিরাপদ এডমিন লগইন
+                    </h3>
+                    <p className="text-[11px] text-slate-500 max-w-sm mx-auto mt-0.5">
+                      চেয়ারম্যান, সচিব বা অনুমোদিত এডমিন হিসেবে সিস্টেমে প্রবেশ করতে আপনার গুগল অ্যাকাউন্ট নির্বাচন করুন।
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleGoogleSignIn}
+                    disabled={isLoading}
+                    className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-3 border border-slate-700 cursor-pointer active:scale-98 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Google-এর মাধ্যমে সাইন ইন করুন (Firebase Auth)</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
