@@ -75,6 +75,22 @@ export interface CertificateRecord {
   paymentMethod?: 'bKash' | 'Nagad' | 'Rocket' | 'Cash' | 'Upay';
   trxId?: string;
   paymentStatus?: 'paid' | 'unpaid' | 'waived';
+  biometricVerified?: boolean;
+  biometricAuthType?: 'WebAuthn Passkey' | 'Platform Biometrics' | 'Biometric PIN' | 'Security Passkey';
+  biometricTimestamp?: string;
+  verifiedByBiometrics?: string;
+}
+
+export interface WebAuthnPasskeyCredential {
+  id: string;
+  rawId: string;
+  type: string;
+  deviceName: string;
+  authenticatorAttachment?: 'platform' | 'cross-platform';
+  registeredAt: string;
+  lastUsedAt?: string;
+  userEmail: string;
+  transports?: string[];
 }
 
 export interface CouncilMember {

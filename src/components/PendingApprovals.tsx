@@ -23,6 +23,7 @@ import {
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { CERTIFICATE_TYPES, CERTIFICATE_CATEGORIES } from '../data/certificateTypes';
 import { saveCertificateToFirebase } from '../firebase';
+import { BiometricAuthModal } from './BiometricAuthModal';
 
 interface PendingApprovalsProps {
   config: UnionParishadConfig;
@@ -45,6 +46,10 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
   // Rejection reason modal state
   const [rejectingCert, setRejectingCert] = useState<CertificateRecord | null>(null);
   const [rejectReasonInput, setRejectReasonInput] = useState<string>('তথ্য অসম্পূর্ণ বা এনআইডি যাচাই ব্যর্থ');
+
+  // Biometric Auth Modal State
+  const [isBiometricModalOpen, setIsBiometricModalOpen] = useState<boolean>(false);
+  const [pendingBiometricTarget, setPendingBiometricTarget] = useState<CertificateRecord | 'ALL' | null>(null);
 
   // Fetch Pending List & Stats from Server
   const fetchPendingList = async () => {
@@ -78,7 +83,16 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
   };
 
   // One-Click Single Approve
-  const handleApprove = async (cert: CertificateRecord) => {
+  const handleApprove = async (
+    cert: CertificateRecord,
+    biometricVerification?: { authType: string; timestamp: string; verifiedBy: string }
+  ) => {
+    if (!biometricVerification) {
+      setPendingBiometricTarget(cert);
+      setIsBiometricModalOpen(true);
+      return;
+    }
+
     setProcessingId(cert.id);
     try {
       const res = await fetch('/api/admin/approve-cert', {
@@ -86,7 +100,11 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: cert.id,
-          approvedBy: config.chairmanName || 'ইউপি চেয়ারম্যান'
+          approvedBy: config.chairmanName || 'ইউপি চেয়ারম্যান',
+          biometricVerified: true,
+          biometricAuthType: biometricVerification.authType,
+          biometricTimestamp: biometricVerification.timestamp,
+          verifiedByBiometrics: biometricVerification.verifiedBy
         })
       });
       const data = await res.json();
@@ -157,9 +175,17 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
   };
 
   // One-Click Batch Approve All
-  const handleBatchApprove = async () => {
+  const handleBatchApprove = async (
+    biometricVerification?: { authType: string; timestamp: string; verifiedBy: string }
+  ) => {
     if (pendingList.length === 0) return;
-    if (!window.confirm(`আপনি কি নিশ্চিত যে সকল (${pendingList.length} টি) পেন্ডিং আবেদন একসাথে অনুমোদন করতে চান?`)) {
+
+    if (!biometricVerification) {
+      if (!window.confirm(`আপনি কি নিশ্চিত যে সকল (${pendingList.length} টি) পেন্ডিং আবেদন একসাথে অনুমোদন করতে চান?`)) {
+        return;
+      }
+      setPendingBiometricTarget('ALL');
+      setIsBiometricModalOpen(true);
       return;
     }
 
@@ -170,7 +196,11 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          approvedBy: config.chairmanName || 'ইউপি চেয়ারম্যান'
+          approvedBy: config.chairmanName || 'ইউপি চেয়ারম্যান',
+          biometricVerified: true,
+          biometricAuthType: biometricVerification.authType,
+          biometricTimestamp: biometricVerification.timestamp,
+          verifiedByBiometrics: biometricVerification.verifiedBy
         })
       });
       const data = await res.json();
@@ -784,6 +814,36 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
           </div>
         </div>
       )}
+
+      {/* WebAuthn Biometric Modal */}
+      <BiometricAuthModal
+        isOpen={isBiometricModalOpen}
+        onClose={() => {
+          setIsBiometricModalOpen(false);
+          setPendingBiometricTarget(null);
+        }}
+        actionTitle="চেয়ারম্যান অনুমোদনের পূর্বে বায়োমেট্রিক প্যাসকি যাচাই"
+        actionDetails={
+          pendingBiometricTarget === 'ALL'
+            ? `পেন্ডিং থাকা মোট ${pendingList.length} টি আবেদন একসাথে অনুমোদনের পূর্বে আপনার ডিভাইসের বায়োমেট্রিক স্পর্শ করুন।`
+            : `আবেদনকারী ${typeof pendingBiometricTarget === 'object' && pendingBiometricTarget ? pendingBiometricTarget.citizen.name : 'নাগরিক'}-এর প্রত্যয়নপত্র চেয়ারম্যান অনুমোদনের পূর্বে বায়োমেট্রিক প্যাসকি দিন।`
+        }
+        adminUser={{
+          name: config.chairmanName || 'ইউপি চেয়ারম্যান',
+          email: config.email || 'chairman@up.gov.bd',
+          role: 'chairman',
+          designation: 'ইউনিয়ন পরিষদ চেয়ারম্যান'
+        }}
+        onVerified={(verification) => {
+          setIsBiometricModalOpen(false);
+          if (pendingBiometricTarget === 'ALL') {
+            handleBatchApprove(verification);
+          } else if (pendingBiometricTarget && typeof pendingBiometricTarget === 'object') {
+            handleApprove(pendingBiometricTarget, verification);
+          }
+          setPendingBiometricTarget(null);
+        }}
+      />
     </div>
   );
 };

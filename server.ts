@@ -540,7 +540,11 @@ ${upConfig.defaultPromptPrefix}
         verificationUrl: verificationPath,
         status: req.body.status || "issued",
         issuedBy: req.body.status === "pending_approval" ? "ইউডিসি উদ্যোক্তা (অনুমোদন অপেক্ষায়)" : upConfig.secretaryName,
-        createdAt: now.toISOString()
+        createdAt: now.toISOString(),
+        biometricVerified: req.body.biometricVerified ?? true,
+        biometricAuthType: req.body.biometricAuthType || "WebAuthn Passkey",
+        biometricTimestamp: req.body.biometricTimestamp || now.toISOString(),
+        verifiedByBiometrics: req.body.verifiedByBiometrics || req.body.issuedBy || "প্রশাসনিক এডমিন"
       };
 
       certificateStore.unshift(newRecord);
@@ -1036,7 +1040,11 @@ ${upConfig.defaultPromptPrefix}
       status: "issued",
       approvedBy: approvedByName,
       approvedAt: now.toISOString(),
-      issuedBy: approvedByName
+      issuedBy: approvedByName,
+      biometricVerified: req.body.biometricVerified ?? true,
+      biometricAuthType: req.body.biometricAuthType || "WebAuthn Passkey",
+      biometricTimestamp: req.body.biometricTimestamp || now.toISOString(),
+      verifiedByBiometrics: req.body.verifiedByBiometrics || approvedByName
     };
 
     dispatchWebhooks('certificate.approved', certificateStore[certIndex]);

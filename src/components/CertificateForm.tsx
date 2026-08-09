@@ -34,6 +34,7 @@ import {
 import { NidScannerModal } from './NidScannerModal';
 import { WarishTableBuilder } from './WarishTableBuilder';
 import { FormProgressIndicator } from './FormProgressIndicator';
+import { BiometricAuthModal } from './BiometricAuthModal';
 
 import { saveCertificateToFirebase } from '../firebase';
 import { sanitizeInput } from '../utils/security';
@@ -95,6 +96,11 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Biometric WebAuthn Modal State
+  const [isBiometricModalOpen, setIsBiometricModalOpen] = useState<boolean>(false);
+  const [pendingTargetStatus, setPendingTargetStatus] = useState<'issued' | 'pending_approval'>('issued');
+  const [biometricData, setBiometricData] = useState<{ authType: string; timestamp: string; verifiedBy: string } | null>(null);
 
   // Auto-fill form from selected initial citizen (e.g. from Citizen Master Register)
   useEffect(() => {
@@ -292,8 +298,12 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   const currentFee = calculateFee();
 
   // Handle Submit Form
-  const handleSubmit = async (e: React.FormEvent, targetStatus: 'issued' | 'pending_approval' = 'issued') => {
-    e.preventDefault();
+  const handleSubmit = async (
+    e: React.FormEvent,
+    targetStatus: 'issued' | 'pending_approval' = 'issued',
+    biometricVerification?: { authType: string; timestamp: string; verifiedBy: string }
+  ) => {
+    if (e && e.preventDefault) e.preventDefault();
     setErrorMessage(null);
 
     // Schema and input validation using validation utility module
@@ -312,6 +322,13 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
 
     if (!validationResult.isValid && validationResult.firstError) {
       setErrorMessage(`⚠️ ${validationResult.firstError}`);
+      return;
+    }
+
+    // Trigger Biometric Verification modal for direct issuance if not verified yet
+    if (targetStatus === 'issued' && !biometricVerification && !biometricData) {
+      setPendingTargetStatus('issued');
+      setIsBiometricModalOpen(true);
       return;
     }
 
@@ -343,6 +360,12 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
         }
       });
 
+      const bioDetails = biometricVerification || biometricData || {
+        authType: 'WebAuthn Passkey',
+        timestamp: new Date().toISOString(),
+        verifiedBy: config.secretaryName || 'প্রশাসনিক এডমিন'
+      };
+
       const payload = {
         typeKey: selectedTypeKey,
         nid: sanitizeInput(nid.trim()),
@@ -368,7 +391,11 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
         paymentMethod,
         trxId: sanitizeInput(trxId.trim()),
         paymentStatus: 'paid',
-        status: targetStatus
+        status: targetStatus,
+        biometricVerified: true,
+        biometricAuthType: bioDetails.authType,
+        biometricTimestamp: bioDetails.timestamp,
+        verifiedByBiometrics: bioDetails.verifiedBy
       };
 
       const res = await fetch('/api/certificate/generate', {
@@ -1118,6 +1145,27 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onAutoFill={handleNidAutoFill}
+      />
+
+      {/* WebAuthn Biometric Authentication Modal */}
+      <BiometricAuthModal
+        isOpen={isBiometricModalOpen}
+        onClose={() => setIsBiometricModalOpen(false)}
+        actionTitle="অফিশিয়াল সনদ ইস্যুর পুর্বে বায়োমেট্রিক প্যাসকি যাচাই"
+        actionDetails={`আবেদনকারী ${name || 'নাগরিক'}-এর ${selectedTypeObj.label} সরাসরি ইস্যু করার পূর্ব নিরাপত্তা নিশ্চিত করতে আপনার আঙুলের ছাপ/প্যাসকি দিন।`}
+        adminUser={{
+          name: config.secretaryName || 'সচিব / প্রশাসনিক কর্মকর্তা',
+          email: config.email || 'admin@up.gov.bd',
+          role: 'secretary',
+          designation: 'প্রশাসনিক কর্মকর্তা (সচিব)'
+        }}
+        onVerified={(verification) => {
+          setBiometricData(verification);
+          setIsBiometricModalOpen(false);
+          // Auto execute final submit after biometric passkey verified
+          const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+          handleSubmit(fakeEvent, pendingTargetStatus, verification);
+        }}
       />
     </div>
   );

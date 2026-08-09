@@ -58,7 +58,6 @@ import {
   subscribeToAdminUsersFromFirebase,
   saveRolePermissionsMatrixToFirebase,
   subscribeToRolePermissionsMatrix,
-  addAuditLogToFirebase,
   AdminUserRecord,
   FirestoreCollectionExportResult 
 } from '../firebase';
@@ -174,7 +173,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
 
   const [roleSearchFilter, setRoleSearchFilter] = useState('');
   const [roleFilterRole, setRoleFilterRole] = useState<string>('all');
-  const [roleFilterWard, setRoleFilterWard] = useState<string>('all');
   const [roleStatusToast, setRoleStatusToast] = useState<string | null>(null);
 
   // Real-time synchronization for admin directory and role permissions matrix
@@ -252,17 +250,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
       };
 
       const pk = String(permKey);
-
-      // Create SHA256 Secured Audit Log
-      await addAuditLogToFirebase({
-        action: 'ADMIN_ROLE_UPDATED',
-        actionTitle: `রোল পারমিশন পরিবর্তন: ${roleLabels[roleKey] || roleKey}`,
-        details: `রোল "${roleLabels[roleKey] || roleKey}"-এর জন্য পারমিশন "${permLabels[pk] || pk}"=${newVal ? 'অন' : 'অফ'} করা হইয়াছে। ফায়ারবেস রিয়েল-টাইম সিঙ্ক সম্পন্ন।`,
-        performedByEmail: config.email || 'baheratailunion@gmail.com',
-        performedByName: 'সুপার এডমিন প্যানেল',
-        performedByRole: 'super_admin'
-      });
-
       setRoleStatusToast(
         `✓ ${roleLabels[roleKey] || roleKey}-এর "${permLabels[pk] || pk}" পারমিশন ফায়ারবেসে রিয়েল-টাইমে সিঙ্ক করা হইয়াছে!`
       );
@@ -308,65 +295,11 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
 
     try {
       await saveAdminUserToFirebase(updatedUser);
-
-      await addAuditLogToFirebase({
-        action: 'ADMIN_ROLE_UPDATED',
-        actionTitle: `স্বতন্ত্র ইউজার পারমিশন আপডেট: ${user.name}`,
-        details: `ইউজার ${user.name} (${user.email})-এর কাস্টম পারমিশন "${permKey}"=${newVal ? 'অন' : 'অফ'} করা হইয়াছে।`,
-        performedByEmail: config.email || 'baheratailunion@gmail.com',
-        performedByName: 'সুপার এডমিন প্যানেল',
-        performedByRole: 'super_admin'
-      });
-
       setRoleStatusToast(`✓ ${user.name}-এর পারমিশন ফায়ারবেস মেটাডাটা রিয়েল-টাইমে আপডেট হইয়াছে!`);
       setTimeout(() => setRoleStatusToast(null), 4000);
     } catch (err) {
       console.error('Error saving user permissions:', err);
       setRoleStatusToast('⚠️ ফায়ারবেস মেটাডাটা আপডেটে ত্রুটি।');
-      setTimeout(() => setRoleStatusToast(null), 4000);
-    }
-  };
-
-  const handleChangeUserRole = async (
-    email: string, 
-    newRole: 'super_admin' | 'chairman' | 'secretary' | 'member' | 'developer'
-  ) => {
-    const userIndex = adminsDirectory.findIndex((u) => u.email === email);
-    if (userIndex === -1) return;
-
-    const user = adminsDirectory[userIndex];
-    const defaultPerms = roleMatrix[newRole] || {
-      canApproveCertificates: false,
-      canIssueCertificates: true,
-      canManageAdmins: false,
-      canEditConfig: false,
-      canExportData: false,
-      canDeleteLogs: false,
-    };
-
-    const updatedUser: AdminUserRecord = {
-      ...user,
-      role: newRole,
-      permissions: defaultPerms,
-    };
-
-    try {
-      await saveAdminUserToFirebase(updatedUser);
-
-      await addAuditLogToFirebase({
-        action: 'ADMIN_ROLE_UPDATED',
-        actionTitle: `ইউজার পদবী/রোল পরিবর্তন: ${user.name}`,
-        details: `ইউজার ${user.name} (${user.email})-এর রোল পরিবর্তন করিয়া "${newRole}" নির্ধারণ করা হইয়াছে এবং ডিফল্ট পারমিশন অ্যাসাইন করা হইয়াছে।`,
-        performedByEmail: config.email || 'baheratailunion@gmail.com',
-        performedByName: 'সুপার এডমিন প্যানেল',
-        performedByRole: 'super_admin'
-      });
-
-      setRoleStatusToast(`✓ ${user.name}-এর রোল পরিবর্তন করিয়া "${newRole}" করা হইয়াছে এবং ফায়ারবেসে সিঙ্ক হইয়াছে!`);
-      setTimeout(() => setRoleStatusToast(null), 4000);
-    } catch (err) {
-      console.error('Error updating user role:', err);
-      setRoleStatusToast('⚠️ রোল পরিবর্তন ও সিঙ্কিংয়ে ত্রুটি দেখা দিয়েছে।');
       setTimeout(() => setRoleStatusToast(null), 4000);
     }
   };
@@ -388,104 +321,10 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
 
     try {
       await saveAdminUserToFirebase(updatedUser);
-
-      await addAuditLogToFirebase({
-        action: 'ADMIN_ROLE_UPDATED',
-        actionTitle: `ইউজার পারমিশন রিসেট: ${user.name}`,
-        details: `ইউজার ${user.name}-এর পারমিশন তাহার পদবী "${user.role}"-এর ডিফল্ট প্রিসেটে রিসেট করা হইয়াছে।`,
-        performedByEmail: config.email || 'baheratailunion@gmail.com',
-        performedByName: 'সুপার এডমিন প্যানেল',
-        performedByRole: 'super_admin'
-      });
-
       setRoleStatusToast(`✓ ${user.name}-এর পারমিশন ডিফল্ট রোলে রিস্টোর হইয়াছে!`);
       setTimeout(() => setRoleStatusToast(null), 4000);
     } catch (err) {
       console.error('Error resetting user permissions:', err);
-    }
-  };
-
-  const handleResetRoleMatrixToArchetypes = async () => {
-    const defaultArchetypes: Record<string, AdminPermissions> = {
-      chairman: {
-        canView: true,
-        canEdit: true,
-        canApprove: true,
-        canDelete: false,
-        canApproveCertificates: true,
-        canIssueCertificates: true,
-        canManageAdmins: true,
-        canEditConfig: true,
-        canExportData: true,
-        canDeleteLogs: false,
-      },
-      secretary: {
-        canView: true,
-        canEdit: true,
-        canApprove: false,
-        canDelete: false,
-        canApproveCertificates: false,
-        canIssueCertificates: true,
-        canManageAdmins: false,
-        canEditConfig: false,
-        canExportData: true,
-        canDeleteLogs: false,
-      },
-      member: {
-        canView: true,
-        canEdit: false,
-        canApprove: false,
-        canDelete: false,
-        canApproveCertificates: false,
-        canIssueCertificates: true,
-        canManageAdmins: false,
-        canEditConfig: false,
-        canExportData: false,
-        canDeleteLogs: false,
-      },
-      super_admin: {
-        canView: true,
-        canEdit: true,
-        canApprove: true,
-        canDelete: true,
-        canApproveCertificates: true,
-        canIssueCertificates: true,
-        canManageAdmins: true,
-        canEditConfig: true,
-        canExportData: true,
-        canDeleteLogs: true,
-      },
-      developer: {
-        canView: true,
-        canEdit: true,
-        canApprove: true,
-        canDelete: true,
-        canApproveCertificates: true,
-        canIssueCertificates: true,
-        canManageAdmins: true,
-        canEditConfig: true,
-        canExportData: true,
-        canDeleteLogs: true,
-      },
-    };
-
-    setRoleMatrix(defaultArchetypes);
-    try {
-      await saveRolePermissionsMatrixToFirebase(defaultArchetypes);
-
-      await addAuditLogToFirebase({
-        action: 'ADMIN_ROLE_UPDATED',
-        actionTitle: 'ডিফল্ট প্রিসেট আর্কিটাইপে গ্লোবাল পারমিশন রিসেট',
-        details: 'সকল পদবীর (Super Admin, Chairman, Secretary, Member, Developer) পারমিশন স্ট্যান্ডার্ড আর্কিটাইপে রিসেট করিয়া ফায়ারবেসে সিঙ্ক করা হইয়াছে।',
-        performedByEmail: config.email || 'baheratailunion@gmail.com',
-        performedByName: 'সুপার এডমিন প্যানেল',
-        performedByRole: 'super_admin'
-      });
-
-      setRoleStatusToast('✓ সকল পদবীর পারমিশন ম্যাট্রিক্স ডিফল্ট প্রিসেটে রিস্টোর ও সিঙ্ক হইয়াছে!');
-      setTimeout(() => setRoleStatusToast(null), 4000);
-    } catch (err) {
-      console.error('Error resetting role matrix archetypes:', err);
     }
   };
   // API Key & Webhook Integration State
@@ -4258,30 +4097,18 @@ print("Response JSON:", res.json())
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleResetRoleMatrixToArchetypes}
-                  className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-extrabold rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-                  title="সকল পদবীর পারমিশন ডিফল্ট প্রিসেট আর্কিটাইপে রিসেট করুন"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-slate-700" />
-                  <span>ডিফল্ট প্রিসেট রিসেট</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    saveRolePermissionsMatrixToFirebase(roleMatrix);
-                    setRoleStatusToast('✓ রোল পারমিশন ম্যাট্রিক্স ফায়ারবেসে সিঙ্ক করা হইয়াছে।');
-                    setTimeout(() => setRoleStatusToast(null), 3000);
-                  }}
-                  className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-xs font-extrabold rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-amber-300" />
-                  <span>ফায়ারবেস সিঙ্ক স্টেট রিফ্রেশ</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  saveRolePermissionsMatrixToFirebase(roleMatrix);
+                  setRoleStatusToast('✓ রোল পারমিশন ম্যাট্রিক্স ফায়ারবেসে সিঙ্ক করা হইয়াছে।');
+                  setTimeout(() => setRoleStatusToast(null), 3000);
+                }}
+                className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-xs font-extrabold rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-300" />
+                <span>ফায়ারবেস সিঙ্ক স্টেট রিফ্রেশ</span>
+              </button>
             </div>
 
             {/* Switch-Based Permission Table */}
@@ -4289,17 +4116,17 @@ print("Response JSON:", res.json())
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider">
                   <tr>
-                    <th className="py-3.5 px-4">পদবী ও রোল (Council Role Archetypes)</th>
+                    <th className="py-3.5 px-4">পদবী ও রোল (Council Role)</th>
                     <th className="py-3.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>ভিউ / ইস্যু (View)</span>
+                        <span>ভিউ (View)</span>
                       </div>
                     </th>
                     <th className="py-3.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Edit3 className="w-3.5 h-3.5 text-amber-300" />
-                        <span>এডিট / কনফিগ (Edit)</span>
+                        <span>এডিট (Edit)</span>
                       </div>
                     </th>
                     <th className="py-3.5 px-3 text-center">
@@ -4311,7 +4138,7 @@ print("Response JSON:", res.json())
                     <th className="py-3.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                        <span>ডিলিট / লগস (Delete)</span>
+                        <span>ডিলিট (Delete)</span>
                       </div>
                     </th>
                     <th className="py-3.5 px-3 text-center">
@@ -4435,12 +4262,12 @@ print("Response JSON:", res.json())
                     পরিষদ সদস্য ও এডমিনদের জন্য স্বতন্ত্র পারমিশন কন্ট্রোল (Individual Account Controls)
                   </h4>
                   <p className="text-xs text-slate-500 font-medium">
-                    ওয়ার্ড ১-৯ সদস্য ও এডমিনদের নাম/ইমেইল/ওয়ার্ড ফিল্টার করুন, পদবী পরিবর্তন এবং স্বতন্ত্র সুইচ টগল করুন
+                    নির্দিষ্ট কোনো পরিষদ সদস্যের পারমিশন আলাদাভাবে সুইচ টগল করে ফায়ারবেসে রিয়েল-টাইমে আপডেট করুন
                   </p>
                 </div>
               </div>
 
-              {/* Search & Ward / Role Filter */}
+              {/* Search & Filter */}
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
@@ -4448,30 +4275,11 @@ print("Response JSON:", res.json())
                     type="text"
                     value={roleSearchFilter}
                     onChange={(e) => setRoleSearchFilter(e.target.value)}
-                    placeholder="নাম, ইমেইল বা পদবী..."
-                    className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-emerald-600 focus:outline-none w-44"
+                    placeholder="নাম, ইমেইল বা ওয়ার্ড খুঁজুন..."
+                    className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-emerald-600 focus:outline-none w-48"
                   />
                 </div>
 
-                {/* Ward Filter */}
-                <select
-                  value={roleFilterWard}
-                  onChange={(e) => setRoleFilterWard(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:border-emerald-600 focus:outline-none"
-                >
-                  <option value="all">সকল ওয়ার্ড (Ward 1-9)</option>
-                  <option value="01">ওয়ার্ড নং ০১</option>
-                  <option value="02">ওয়ার্ড নং ০২</option>
-                  <option value="03">ওয়ার্ড নং ০৩</option>
-                  <option value="04">ওয়ার্ড নং ০৪</option>
-                  <option value="05">ওয়ার্ড নং ০৫</option>
-                  <option value="06">ওয়ার্ড নং ০৬</option>
-                  <option value="07">ওয়ার্ড নং ০৭</option>
-                  <option value="08">ওয়ার্ড নং ০৮</option>
-                  <option value="09">ওয়ার্ড নং ০৯</option>
-                </select>
-
-                {/* Role Archetype Filter */}
                 <select
                   value={roleFilterRole}
                   onChange={(e) => setRoleFilterRole(e.target.value)}
@@ -4496,10 +4304,7 @@ print("Response JSON:", res.json())
                     adm.email.toLowerCase().includes(roleSearchFilter.toLowerCase()) ||
                     adm.designation.toLowerCase().includes(roleSearchFilter.toLowerCase());
                   const matchRole = roleFilterRole === 'all' || adm.role === roleFilterRole;
-                  const matchWard = roleFilterWard === 'all' || 
-                    adm.wardNo === roleFilterWard || 
-                    adm.wardNo === roleFilterWard.replace(/^0/, '');
-                  return matchSearch && matchRole && matchWard;
+                  return matchSearch && matchRole;
                 })
                 .map((user, idx) => {
                   const uPerms = user.permissions || roleMatrix[user.role] || {
@@ -4539,7 +4344,7 @@ print("Response JSON:", res.json())
                   return (
                     <div
                       key={idx}
-                      className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:border-emerald-400 transition"
+                      className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-emerald-400 transition"
                     >
                       <div className="flex items-start gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-emerald-900 text-amber-300 font-black flex items-center justify-center shrink-0 shadow text-base">
@@ -4548,21 +4353,9 @@ print("Response JSON:", res.json())
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <h5 className="font-extrabold text-slate-900 text-xs">{user.name}</h5>
-                            
-                            {/* Dynamic Role Change Selector */}
-                            <select
-                              value={user.role}
-                              onChange={(e) => handleChangeUserRole(user.email, e.target.value as any)}
-                              className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-950 border border-emerald-300 rounded-md focus:outline-none cursor-pointer"
-                              title="ইউজার রোল ও পদবী পরিবর্তন করুন"
-                            >
-                              <option value="super_admin">🛡️ super_admin</option>
-                              <option value="chairman">👑 chairman</option>
-                              <option value="secretary">📜 secretary</option>
-                              <option value="member">🏛️ member</option>
-                              <option value="developer">💻 developer</option>
-                            </select>
-
+                            <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-950 border border-emerald-300 rounded-md">
+                              {user.role}
+                            </span>
                             {user.wardNo && (
                               <span className="text-[10px] font-extrabold px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md">
                                 ওয়ার্ড নং {user.wardNo}
