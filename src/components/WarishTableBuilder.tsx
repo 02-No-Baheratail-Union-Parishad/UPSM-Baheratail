@@ -62,14 +62,14 @@ export const WarishTableBuilder: React.FC<WarishTableBuilderProps> = ({
 
       <div className="overflow-x-auto rounded-lg border border-slate-300">
         <table className="w-full text-xs text-left text-slate-800">
-          <thead className="bg-emerald-800 text-white font-semibold">
+          <thead className="bg-slate-100 text-black font-bold border-b border-slate-300">
             <tr>
               {tableConfig.headers.map((header, idx) => (
-                <th key={idx} className="p-2.5 border-r border-emerald-700 last:border-r-0 whitespace-nowrap">
+                <th key={idx} className="p-2.5 border-r border-slate-300 last:border-r-0 whitespace-nowrap text-black font-bold bg-slate-100">
                   {header}
                 </th>
               ))}
-              <th className="p-2.5 text-center w-12">অ্যাকশন</th>
+              <th className="p-2.5 text-center w-12 text-black bg-slate-100 font-bold">অ্যাকশন</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 bg-white">

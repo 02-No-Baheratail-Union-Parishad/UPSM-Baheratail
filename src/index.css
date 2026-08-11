@@ -66,34 +66,89 @@ html.dark textarea::placeholder {
   color: #64748b !important;
 }
 
-html.dark :not(#certificate-print-area):not(#certificate-print-area *) table th {
-  background-color: #1e293b !important;
-  color: #f8fafc !important;
-}
-
-html.dark :not(#certificate-print-area):not(#certificate-print-area *) table td {
+/* Dark mode table overrides ONLY for general UI cards, NOT for certificate print area */
+html.dark .bg-slate-50 table th,
+html.dark .bg-slate-50 table td,
+html.dark .bg-slate-100 table th,
+html.dark .bg-slate-100 table td {
   border-color: #334155 !important;
-  color: #e2e8f0 !important;
-}
-
-html.dark :not(#certificate-print-area):not(#certificate-print-area *) table tr:nth-child(even) {
-  background-color: #0f172a !important;
 }
 
 /* EXCEPTION & GUARANTEE: Certificate print area paper canvas ALWAYS remains pure white paper with crisp black text */
 #certificate-print-area,
+#certificate-print-area *,
 .print-paper,
+.print-paper *,
 html.dark #certificate-print-area,
-html.dark .print-paper {
-  background-color: #ffffff !important;
+html.dark #certificate-print-area *,
+html.dark .print-paper,
+html.dark .print-paper * {
   color: #000000 !important;
 }
 
-#certificate-print-area *,
-.print-paper *,
-html.dark #certificate-print-area *,
-html.dark .print-paper * {
+/* Explicit Table Styling Rules for Certificate Paper - ALWAYS pitch black text and borders */
+#certificate-print-area table,
+#certificate-print-area table *,
+#certificate-print-area table tr,
+#certificate-print-area table tr *,
+#certificate-print-area table td,
+#certificate-print-area table td *,
+.print-paper table,
+.print-paper table *,
+.print-paper table tr,
+.print-paper table tr *,
+.print-paper table td,
+.print-paper table td *,
+html.dark #certificate-print-area table,
+html.dark #certificate-print-area table *,
+html.dark #certificate-print-area table tr,
+html.dark #certificate-print-area table tr *,
+html.dark #certificate-print-area table td,
+html.dark #certificate-print-area table td *,
+html.dark .print-paper table,
+html.dark .print-paper table *,
+html.dark .print-paper table tr,
+html.dark .print-paper table tr *,
+html.dark .print-paper table td,
+html.dark .print-paper table td * {
   color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+#certificate-print-area table,
+#certificate-print-area table tr,
+#certificate-print-area table td,
+.print-paper table,
+.print-paper table tr,
+.print-paper table td,
+html.dark #certificate-print-area table,
+html.dark #certificate-print-area table tr,
+html.dark #certificate-print-area table td,
+html.dark .print-paper table,
+html.dark .print-paper table tr,
+html.dark .print-paper table td {
+  background-color: #ffffff !important;
+}
+
+/* Table Header: White background with crisp pure black text */
+#certificate-print-area table th,
+#certificate-print-area table th *,
+.print-paper table th,
+.print-paper table th *,
+html.dark #certificate-print-area table th,
+html.dark #certificate-print-area table th *,
+html.dark .print-paper table th,
+html.dark .print-paper table th * {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+/* Certificate Title Badge Exception */
+#certificate-print-area .cert-title-badge span,
+html.dark #certificate-print-area .cert-title-badge span {
+  color: #ffffff !important;
+  background-color: #022c22 !important;
 }
 
 #certificate-print-area .text-emerald-950,
@@ -113,30 +168,6 @@ html.dark #certificate-print-area .text-slate-500 {
 #certificate-print-area .bg-slate-50,
 html.dark #certificate-print-area .bg-slate-50 {
   background-color: #f8fafc !important;
-}
-
-#certificate-print-area table th,
-html.dark #certificate-print-area table th {
-  background-color: #064e3b !important;
-  color: #ffffff !important;
-}
-
-#certificate-print-area table td,
-html.dark #certificate-print-area table td {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border-color: #000000 !important;
-}
-
-#certificate-print-area .bg-emerald-950,
-#certificate-print-area .bg-emerald-950 *,
-#certificate-print-area .text-white,
-#certificate-print-area .text-white *,
-html.dark #certificate-print-area .bg-emerald-950,
-html.dark #certificate-print-area .bg-emerald-950 *,
-html.dark #certificate-print-area .text-white,
-html.dark #certificate-print-area .text-white * {
-  color: #ffffff !important;
 }
 
 /* Print Friendly Certificate Layout Rules */
@@ -216,24 +247,39 @@ html.dark #certificate-print-area .text-white * {
     margin: 0 auto !important;
     padding: 0 !important;
     width: 100% !important;
+    height: 100% !important;
     max-width: 100% !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
     page-break-before: avoid !important;
     page-break-after: avoid !important;
     box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .print-paper.is-portrait,
   #certificate-print-area.is-portrait {
+    height: 287mm !important;
+    min-height: 287mm !important;
     max-height: 287mm !important;
-    min-height: 280mm !important;
   }
 
   .print-paper.is-landscape,
   #certificate-print-area.is-landscape {
+    height: 200mm !important;
+    min-height: 200mm !important;
     max-height: 200mm !important;
-    min-height: 195mm !important;
+  }
+
+  .cert-inner-frame {
+    height: 100% !important;
+    min-height: 100% !important;
+    flex: 1 1 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
   }
 
   /* Prevent page breaks inside any child element */
@@ -248,8 +294,9 @@ html.dark #certificate-print-area .text-white * {
   }
 
   .is-compact-mode .cert-inner-frame {
-    padding: 10px !important;
-    min-height: auto !important;
+    padding: 12px !important;
+    height: 100% !important;
+    min-height: 100% !important;
   }
 
   .is-compact-mode .cert-header {

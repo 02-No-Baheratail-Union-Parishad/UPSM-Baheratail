@@ -417,7 +417,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
         <div 
           className={`cert-inner-frame p-5 md:p-7 h-full flex flex-col justify-between relative z-10 ${
             pageOrientation === 'landscape' ? 'min-h-[540px]' : 'min-h-[800px]'
-          } print:min-h-0 print:h-auto ${
+          } print:min-h-full print:h-full flex-1 ${
             borderStyle === 'double-green-red'
               ? 'border-4 border-emerald-950 outline-2 outline-red-700 outline-offset-2'
               : borderStyle === 'double-green'
@@ -553,115 +553,109 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
               </div>
             )}
 
-            {/* Extra Field Details (if applicable) - Village/Holding excluded per mandate */}
-            {certificate.extra?.simpleFields && (
-              (() => {
-                const labelMap: Record<string, string> = {
-                  voterNo: 'ভোটার নম্বর',
-                  purpose: 'সনদের উদ্দেশ্য',
-                  regNo: 'রেজিস্ট্রেশন / স্মারক নম্বর',
-                  nameInNid: 'এনআইডি অনুযায়ী নাম',
-                  nameInCert: 'সনদে নাম',
-                  deceasedName: 'মৃত ব্যক্তির নাম',
-                  deathDate: 'মৃত্যুর তারিখ',
-                  relationWithApplicant: 'আবেদনকারীর সাথে সম্পর্ক',
-                  headOfFamily: 'পরিবার প্রধানের নাম',
-                  deathPlace: 'মৃত্যুর স্থান',
-                  wardName: 'নাবালকের নাম',
-                  relation: 'সম্পর্ক',
-                  landOwner: 'জমির মালিকের নাম',
-                  khatianNo: 'খতিয়ান/দাগ নম্বর',
-                  marriageDate: 'বিবাহের তারিখ',
-                  spouseNid: 'স্বামী/স্ত্রীর এনআইডি/জন্ম সনদ',
-                  lateSpouseName: 'মৃত স্বামী/স্ত্রীর নাম',
-                  lateHusbandName: 'মৃত স্বামীর নাম',
-                  exHusbandName: 'সাবেক স্বামীর নাম',
-                  childName: 'সন্তানের নাম',
-                  amountInTaka: 'বাৎসরিক আয় (টাকা)',
-                  sourceOfIncome: 'আয়ের উৎস',
-                  cropType: 'উৎপাদিত ফসল',
-                  landAmount: 'জমির পরিমাণ',
-                  familyMembersCount: 'পরিবারের সদস্য সংখ্যা',
-                  businessName: 'প্রতিষ্ঠানের নাম',
-                  businessType: 'ব্যবসার ধরন',
-                  educationalQualification: 'শিক্ষাগত যোগ্যতা',
-                  disabilityType: 'প্রতিবন্ধিতার ধরন',
-                  religion: 'ধর্ম',
-                  incorrectInfo: 'এনআইডির ভুল তথ্য',
-                  correctInfo: 'সঠিক তথ্য',
-                  birthCertNo: 'জন্ম সনদ নম্বর',
-                  correctionDetails: 'সংশোধনের বিবরণ',
-                  affidavitSubject: 'হলফনামার বিষয়',
-                  ffName: 'বীর মুক্তিযোদ্ধার নাম',
-                  ffGazetteNo: 'গেজেট/সনদ নম্বর',
-                  relationWithFF: 'সম্পর্ক',
-                  ethnicGroup: 'জাতিগোষ্ঠীর নাম',
-                  causeOfDeath: 'মৃত্যুর কারণ',
-                  previousAddress: 'পূর্বের ঠিকানা',
-                  institutionName: 'শিক্ষা প্রতিষ্ঠানের নাম',
-                  classOrDegree: 'শ্রেণী/বিভাগ',
-                  bankName: 'ব্যাংকের নাম',
-                  schemeName: 'ভাতার ধরন',
-                  customSubject: 'প্রত্যয়নের বিষয়',
-                  customNote: 'বিশেষ বিবরণ'
-                };
-
-                const filteredEntries = Object.entries(certificate.extra.simpleFields).filter(([k, v]) => {
-                  if (!v) return false;
-                  const keyLower = k.toLowerCase();
-                  // NEVER include village or holding number in extra attached statement
-                  if (keyLower.includes('holding') || keyLower.includes('village') || keyLower.includes('গ্রাম') || keyLower.includes('হোল্ডিং')) {
-                    return false;
-                  }
-                  return true;
-                });
-
-                if (filteredEntries.length === 0) return null;
-
-                return (
-                  <div className="my-3 bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1 text-xs text-slate-800">
-                    <p className="font-bold text-emerald-900 border-b border-slate-200 pb-1 mb-1.5">সংযুক্ত অতিরিক্ত বিবরণী:</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {filteredEntries.map(([k, v]) => (
-                        <div key={k} className="flex gap-1">
-                          <span className="font-semibold text-slate-600">{labelMap[k] || k}:</span>
-                          <span className="font-medium text-slate-900">{toBengaliNumeral(String(v ?? ''))}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-
             {/* Dynamic Tables (Warish / Family List / Additional Statement) */}
             {Object.keys(extraTables).length > 0 && (
               <div className="my-4 space-y-3">
                 {Object.entries(extraTables).map(([tableKey, rows]) => (
                   <div key={tableKey} className="space-y-1.5">
-                    <p className="font-bold text-xs text-emerald-950 border-b-2 border-emerald-900 pb-1">
+                    <p className="font-bold text-xs text-black border-b-2 border-black pb-1">
                       অতিরিক্ত সংযুক্ত বিবরণী (উত্তরাধিকার / পরিবার সদস্য তালিকা):
                     </p>
-                    <table className="w-full text-xs text-left border-collapse border border-slate-900">
+                    <table className="w-full text-xs text-left border-collapse border border-black bg-white text-black" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>
                       <thead>
-                        <tr className="bg-emerald-900 text-white font-bold">
-                          <th className="border border-slate-900 p-1.5 text-center w-12">ক্রমিক</th>
-                          <th className="border border-slate-900 p-1.5">সদস্যের নাম</th>
-                          <th className="border border-slate-900 p-1.5 text-center">জন্ম তারিখ / বয়স</th>
-                          <th className="border border-slate-900 p-1.5 text-center">সম্পর্ক</th>
-                          <th className="border border-slate-900 p-1.5 text-center">এনআইডি / জন্ম সনদ নম্বর</th>
+                        <tr className="bg-white text-black font-bold" style={{ color: '#000000', backgroundColor: '#ffffff' }}>
+                          <th className="border border-black p-2 text-center w-12 text-black bg-white" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>ক্রমিক নং</th>
+                          <th className="border border-black p-2 text-black bg-white" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>নাম</th>
+                          <th className="border border-black p-2 text-center text-black bg-white" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>জাতীয় পরিচয় পত্র নং</th>
+                          <th className="border border-black p-2 text-center text-black bg-white" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>জন্ম তারিখ</th>
+                          <th className="border border-black p-2 text-center text-black bg-white" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>সম্পর্ক</th>
+                          <th className="border border-black p-2 text-center text-black bg-white" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>মন্তব্য</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {(rows as string[][]).map((row, rIdx) => (
-                          <tr key={rIdx} className="odd:bg-white even:bg-slate-50">
-                            <td className="border border-slate-900 p-1.5 text-center font-bold">{toBengaliNumeral(row[0] || rIdx + 1)}</td>
-                            <td className="border border-slate-900 p-1.5 font-semibold text-slate-900">{row[1] || ''}</td>
-                            <td className="border border-slate-900 p-1.5 text-center">{toBengaliNumeral(row[2] || '')}</td>
-                            <td className="border border-slate-900 p-1.5 text-center font-semibold">{row[3] || ''}</td>
-                            <td className="border border-slate-900 p-1.5 text-center font-mono">{toBengaliNumeral(row[4] || '')}</td>
-                          </tr>
-                        ))}
+                      <tbody className="bg-white text-black" style={{ color: '#000000', backgroundColor: '#ffffff' }}>
+                        {(rows as string[][]).map((row, rIdx) => {
+                          let sl = row[0] || toBengaliNumeral(rIdx + 1);
+                          let name = row[1] || '';
+                          let nid = '';
+                          let dob = '';
+                          let relation = '';
+                          let comment = '';
+
+                          const c2 = (row[2] || '').trim();
+                          const c3 = (row[3] || '').trim();
+                          const c4 = (row[4] || '').trim();
+                          const c5 = (row[5] || '').trim();
+
+                          const isRelationWord = (val: string): boolean => {
+                            if (!val) return false;
+                            const s = val.trim();
+                            const rels = ['স্ত্রী', 'স্বামী', 'পুত্র', 'মেয়ে', 'মেয়ে', 'কন্যা', 'সন্তান', 'পিতা', 'মাতা', 'ভাই', 'বোন', 'নাতি', 'নাতনী', 'নাতনি', 'ভাতিজা', 'ভাগ্নে', 'ছেলে', 'নিজ', 'স্বয়ং', 'আবেদনকারী', 'মৃত', 'ওয়ারিশ', 'ওয়ারিশ'];
+                            return rels.some(r => s.includes(r));
+                          };
+
+                          const isDateOrAge = (val: string): boolean => {
+                            if (!val) return false;
+                            const s = val.trim();
+                            if (/[\/\.-]/.test(s) && /\d/.test(s)) return true;
+                            if (s.includes('বছর') || s.includes('মাস') || s.includes('দিন') || s.includes('বয়স') || s.includes('বয়স')) return true;
+                            return false;
+                          };
+
+                          const isNidNum = (val: string): boolean => {
+                            if (!val) return false;
+                            const digits = val.replace(/[^0-9০-৯]/g, '');
+                            return digits.length >= 7;
+                          };
+
+                          // Check if row is in OLD format: [sl, name, DOB/Age, Relation, NID, Comment]
+                          const isOldFormat = isRelationWord(c3) || (isDateOrAge(c2) && !isDateOrAge(c3)) || (isNidNum(c4) && !isNidNum(c2));
+
+                          if (isOldFormat) {
+                            dob = c2;
+                            relation = c3;
+                            nid = c4;
+                            comment = c5;
+                          } else {
+                            // NEW format: [sl, name, NID, DOB, Relation, Comment]
+                            nid = c2;
+                            dob = c3;
+                            relation = c4;
+                            comment = c5;
+                          }
+
+                          // Fail-safe relocation pass: ensure no column holds incorrect data types
+                          if (isRelationWord(nid) && !relation) {
+                            relation = nid;
+                            nid = '';
+                          }
+                          if (isRelationWord(dob) && !relation) {
+                            relation = dob;
+                            dob = '';
+                          }
+                          if (isDateOrAge(nid) && !dob) {
+                            dob = nid;
+                            nid = '';
+                          }
+                          if (isNidNum(relation) && !nid) {
+                            nid = relation;
+                            relation = '';
+                          }
+                          if (isNidNum(dob) && !nid) {
+                            nid = dob;
+                            dob = '';
+                          }
+
+                          return (
+                            <tr key={rIdx} className="bg-white text-black" style={{ color: '#000000', backgroundColor: '#ffffff' }}>
+                              <td className="border border-black p-2 text-center font-bold text-black" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>{toBengaliNumeral(sl)}</td>
+                              <td className="border border-black p-2 font-bold text-black" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>{name}</td>
+                              <td className="border border-black p-2 text-center font-mono font-bold text-black" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>{toBengaliNumeral(nid)}</td>
+                              <td className="border border-black p-2 text-center font-bold text-black" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>{toBengaliNumeral(dob)}</td>
+                              <td className="border border-black p-2 text-center font-bold text-black" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>{relation}</td>
+                              <td className="border border-black p-2 text-center font-bold text-black" style={{ color: '#000000', backgroundColor: '#ffffff', borderColor: '#000000' }}>{comment}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
