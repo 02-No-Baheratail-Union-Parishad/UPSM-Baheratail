@@ -34,9 +34,17 @@ export default function App() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
 
-  // Apply Security CSP Meta Tags on Initialization
+  // Apply Security CSP Meta Tags on Initialization & Sync Theme
   useEffect(() => {
     applySecurityMetaTags();
+    const savedTheme = localStorage.getItem('app_theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
   }, []);
 
   // Monitor Network Connectivity for PWA Offline Mode
@@ -93,7 +101,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 selection:bg-emerald-200 selection:text-emerald-900">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300 selection:bg-emerald-200 selection:text-emerald-900">
       {/* Responsive Left Sidebar Navigation (Fixed Desktop + Mobile Slide-out Drawer) */}
       <Sidebar
         activeTab={activeTab}

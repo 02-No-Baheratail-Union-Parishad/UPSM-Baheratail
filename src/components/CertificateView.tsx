@@ -23,7 +23,7 @@ import {
   X
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
-import { formatBanglaDate, convertEnglishDateToBanglaFormatted, generateSecurityChecksum } from '../lib/utils';
+import { formatBanglaDate, convertEnglishDateToBanglaFormatted, generateSecurityChecksum, toBengaliNumeral } from '../lib/utils';
 
 interface CertificateViewProps {
   certificate: CertificateRecord;
@@ -46,7 +46,9 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
 
   // A4 Print Optimization & Compact Mode State
   const [isCompactMode, setIsCompactMode] = useState<boolean>(true);
+  const [pageOrientation, setPageOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [printScale, setPrintScale] = useState<number>(100);
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState<boolean>(false);
 
   // WhatsApp Messaging State
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -57,6 +59,17 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
+    setIsPrintPreviewOpen(true);
+  };
+
+  const triggerActualPrint = () => {
+    if (pageOrientation === 'landscape') {
+      document.body.classList.add('print-landscape-mode');
+      document.body.classList.remove('print-portrait-mode');
+    } else {
+      document.body.classList.add('print-portrait-mode');
+      document.body.classList.remove('print-landscape-mode');
+    }
     window.print();
   };
 
@@ -292,6 +305,19 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 className="w-full accent-amber-400 cursor-pointer"
               />
             </div>
+
+            {/* Page Orientation Selector */}
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">সনদের ওরিয়েন্টেশন (Page Orientation):</label>
+              <select
+                value={pageOrientation}
+                onChange={(e) => setPageOrientation(e.target.value as any)}
+                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 rounded focus:border-amber-400 font-bold"
+              >
+                <option value="portrait">📱 পোর্ট্রেট - Portrait (খাড়া A4 - সেরা)</option>
+                <option value="landscape">🖥️ ল্যান্ডস্কেপ - Landscape (আড়াআড়ি ওয়াইড)</option>
+              </select>
+            </div>
             {/* Date Format Style */}
             <div>
               <label className="block text-slate-400 font-semibold mb-1">তারিখ ফরম্যাট (Bangla Date):</label>
@@ -364,11 +390,13 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
       <div 
         ref={printRef} 
         id="certificate-print-area"
-        className={`print-paper bg-white p-6 md:p-10 rounded-2xl shadow-xl border border-slate-300 max-w-4xl mx-auto relative overflow-hidden text-slate-900 print:shadow-none print:p-2 print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none ${
+        className={`print-paper bg-white p-6 md:p-10 rounded-2xl shadow-xl border border-slate-300 mx-auto relative overflow-hidden text-slate-900 print:shadow-none print:p-2 print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none ${
+          pageOrientation === 'landscape' ? 'is-landscape max-w-5xl' : 'is-portrait max-w-4xl'
+        } ${
           isCompactMode ? 'is-compact-mode' : ''
         }`}
         style={{ 
-          minHeight: isCompactMode ? '820px' : '960px',
+          minHeight: pageOrientation === 'landscape' ? (isCompactMode ? '600px' : '720px') : (isCompactMode ? '820px' : '960px'),
           transform: printScale !== 100 ? `scale(${printScale / 100})` : undefined,
           transformOrigin: 'top center'
         }}
@@ -387,7 +415,9 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
 
         {/* Outer Frame Border matching chosen borderStyle */}
         <div 
-          className={`cert-inner-frame p-5 md:p-7 h-full flex flex-col justify-between relative z-10 min-h-[800px] print:min-h-0 print:h-auto ${
+          className={`cert-inner-frame p-5 md:p-7 h-full flex flex-col justify-between relative z-10 ${
+            pageOrientation === 'landscape' ? 'min-h-[540px]' : 'min-h-[800px]'
+          } print:min-h-0 print:h-auto ${
             borderStyle === 'double-green-red'
               ? 'border-4 border-emerald-950 outline-2 outline-red-700 outline-offset-2'
               : borderStyle === 'double-green'
@@ -523,47 +553,113 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
               </div>
             )}
 
-            {/* Extra Field Details (if applicable) */}
-            {certificate.extra?.simpleFields && Object.keys(certificate.extra.simpleFields).length > 0 && (
-              <div className="my-3 bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1 text-xs text-slate-800">
-                <p className="font-bold text-emerald-900 border-b border-slate-200 pb-1 mb-1.5">সংযুক্ত অতিরিক্ত বিবরণী:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(certificate.extra.simpleFields).map(([k, v]) => (
-                    <div key={k} className="flex gap-1">
-                      <span className="font-semibold text-slate-600">{k}:</span>
-                      <span className="font-medium text-slate-900">{v}</span>
+            {/* Extra Field Details (if applicable) - Village/Holding excluded per mandate */}
+            {certificate.extra?.simpleFields && (
+              (() => {
+                const labelMap: Record<string, string> = {
+                  voterNo: 'ভোটার নম্বর',
+                  purpose: 'সনদের উদ্দেশ্য',
+                  regNo: 'রেজিস্ট্রেশন / স্মারক নম্বর',
+                  nameInNid: 'এনআইডি অনুযায়ী নাম',
+                  nameInCert: 'সনদে নাম',
+                  deceasedName: 'মৃত ব্যক্তির নাম',
+                  deathDate: 'মৃত্যুর তারিখ',
+                  relationWithApplicant: 'আবেদনকারীর সাথে সম্পর্ক',
+                  headOfFamily: 'পরিবার প্রধানের নাম',
+                  deathPlace: 'মৃত্যুর স্থান',
+                  wardName: 'নাবালকের নাম',
+                  relation: 'সম্পর্ক',
+                  landOwner: 'জমির মালিকের নাম',
+                  khatianNo: 'খতিয়ান/দাগ নম্বর',
+                  marriageDate: 'বিবাহের তারিখ',
+                  spouseNid: 'স্বামী/স্ত্রীর এনআইডি/জন্ম সনদ',
+                  lateSpouseName: 'মৃত স্বামী/স্ত্রীর নাম',
+                  lateHusbandName: 'মৃত স্বামীর নাম',
+                  exHusbandName: 'সাবেক স্বামীর নাম',
+                  childName: 'সন্তানের নাম',
+                  amountInTaka: 'বাৎসরিক আয় (টাকা)',
+                  sourceOfIncome: 'আয়ের উৎস',
+                  cropType: 'উৎপাদিত ফসল',
+                  landAmount: 'জমির পরিমাণ',
+                  familyMembersCount: 'পরিবারের সদস্য সংখ্যা',
+                  businessName: 'প্রতিষ্ঠানের নাম',
+                  businessType: 'ব্যবসার ধরন',
+                  educationalQualification: 'শিক্ষাগত যোগ্যতা',
+                  disabilityType: 'প্রতিবন্ধিতার ধরন',
+                  religion: 'ধর্ম',
+                  incorrectInfo: 'এনআইডির ভুল তথ্য',
+                  correctInfo: 'সঠিক তথ্য',
+                  birthCertNo: 'জন্ম সনদ নম্বর',
+                  correctionDetails: 'সংশোধনের বিবরণ',
+                  affidavitSubject: 'হলফনামার বিষয়',
+                  ffName: 'বীর মুক্তিযোদ্ধার নাম',
+                  ffGazetteNo: 'গেজেট/সনদ নম্বর',
+                  relationWithFF: 'সম্পর্ক',
+                  ethnicGroup: 'জাতিগোষ্ঠীর নাম',
+                  causeOfDeath: 'মৃত্যুর কারণ',
+                  previousAddress: 'পূর্বের ঠিকানা',
+                  institutionName: 'শিক্ষা প্রতিষ্ঠানের নাম',
+                  classOrDegree: 'শ্রেণী/বিভাগ',
+                  bankName: 'ব্যাংকের নাম',
+                  schemeName: 'ভাতার ধরন',
+                  customSubject: 'প্রত্যয়নের বিষয়',
+                  customNote: 'বিশেষ বিবরণ'
+                };
+
+                const filteredEntries = Object.entries(certificate.extra.simpleFields).filter(([k, v]) => {
+                  if (!v) return false;
+                  const keyLower = k.toLowerCase();
+                  // NEVER include village or holding number in extra attached statement
+                  if (keyLower.includes('holding') || keyLower.includes('village') || keyLower.includes('গ্রাম') || keyLower.includes('হোল্ডিং')) {
+                    return false;
+                  }
+                  return true;
+                });
+
+                if (filteredEntries.length === 0) return null;
+
+                return (
+                  <div className="my-3 bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1 text-xs text-slate-800">
+                    <p className="font-bold text-emerald-900 border-b border-slate-200 pb-1 mb-1.5">সংযুক্ত অতিরিক্ত বিবরণী:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {filteredEntries.map(([k, v]) => (
+                        <div key={k} className="flex gap-1">
+                          <span className="font-semibold text-slate-600">{labelMap[k] || k}:</span>
+                          <span className="font-medium text-slate-900">{toBengaliNumeral(String(v ?? ''))}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                );
+              })()
             )}
 
-            {/* Dynamic Tables (Warish / Family List) */}
+            {/* Dynamic Tables (Warish / Family List / Additional Statement) */}
             {Object.keys(extraTables).length > 0 && (
               <div className="my-4 space-y-3">
                 {Object.entries(extraTables).map(([tableKey, rows]) => (
                   <div key={tableKey} className="space-y-1.5">
                     <p className="font-bold text-xs text-emerald-950 border-b-2 border-emerald-900 pb-1">
-                      উত্তরাধিকার / পরিবারের তালিকা বিবরণী:
+                      অতিরিক্ত সংযুক্ত বিবরণী (উত্তরাধিকার / পরিবার সদস্য তালিকা):
                     </p>
                     <table className="w-full text-xs text-left border-collapse border border-slate-900">
                       <thead>
                         <tr className="bg-emerald-900 text-white font-bold">
-                          <th className="border border-slate-900 p-1.5 text-center w-10">ক্রমিক</th>
+                          <th className="border border-slate-900 p-1.5 text-center w-12">ক্রমিক</th>
                           <th className="border border-slate-900 p-1.5">সদস্যের নাম</th>
                           <th className="border border-slate-900 p-1.5 text-center">জন্ম তারিখ / বয়স</th>
-                          <th className="border border-slate-900 p-1.5">সম্পর্ক</th>
-                          <th className="border border-slate-900 p-1.5">জাতীয় পরিচয়পত্র / মন্তব্য</th>
+                          <th className="border border-slate-900 p-1.5 text-center">সম্পর্ক</th>
+                          <th className="border border-slate-900 p-1.5 text-center">এনআইডি / জন্ম সনদ নম্বর</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(rows as string[][]).map((row, rIdx) => (
                           <tr key={rIdx} className="odd:bg-white even:bg-slate-50">
-                            <td className="border border-slate-900 p-1.5 text-center font-bold">{row[0] || rIdx + 1}</td>
-                            <td className="border border-slate-900 p-1.5 font-semibold text-slate-900">{row[1]}</td>
-                            <td className="border border-slate-900 p-1.5 text-center">{row[2]}</td>
-                            <td className="border border-slate-900 p-1.5 font-semibold">{row[3]}</td>
-                            <td className="border border-slate-900 p-1.5">{row[4]}</td>
+                            <td className="border border-slate-900 p-1.5 text-center font-bold">{toBengaliNumeral(row[0] || rIdx + 1)}</td>
+                            <td className="border border-slate-900 p-1.5 font-semibold text-slate-900">{row[1] || ''}</td>
+                            <td className="border border-slate-900 p-1.5 text-center">{toBengaliNumeral(row[2] || '')}</td>
+                            <td className="border border-slate-900 p-1.5 text-center font-semibold">{row[3] || ''}</td>
+                            <td className="border border-slate-900 p-1.5 text-center font-mono">{toBengaliNumeral(row[4] || '')}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -779,6 +875,277 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 <span>WhatsApp Web এ পাঠান</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive A4 Print Preview Modal */}
+      {isPrintPreviewOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:hidden"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-900/60 text-emerald-300 rounded-xl border border-emerald-700/50">
+                  <Printer className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-white">
+                      A4 প্রিন্ট প্রিভিউ & লেআউট ভেরিফিকেশন (Print Preview)
+                    </h3>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center gap-1 ${
+                      isCompactMode 
+                        ? 'bg-amber-400 text-slate-950 shadow-sm' 
+                        : 'bg-slate-700 text-slate-300 border border-slate-600'
+                    }`}>
+                      {isCompactMode ? '📄 ১-পাতা অটো-ফিট অন' : '📄 সাধারণ মোড'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    প্রিন্টারে পেপার পাঠাবার আগে A4 ১-পাতার সীমানা ও কমপ্যাক্ট মোড লেআউট স্বচক্ষে যাচাই করুন।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsPrintPreviewOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                title="বন্ধ করুন"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Real-time Control Bar */}
+            <div className="p-3 bg-slate-950/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                {/* Compact Mode Switch */}
+                <button
+                  onClick={() => setIsCompactMode(!isCompactMode)}
+                  className={`px-3 py-1.5 rounded-lg border font-black transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                    isCompactMode
+                      ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-600'
+                  }`}
+                  title="A4 ১ পাতায় সব লেখা ফিট করানোর জন্য কমপ্যাক্ট মোড অন/অফ করুন"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 text-slate-950" />
+                  <span>{isCompactMode ? '⚡ কমপ্যাক্ট মোড: অন (১-পাতা অটো-ফিট)' : '⚪ কমপ্যাক্ট মোড: অফ'}</span>
+                </button>
+
+                {/* Page Orientation Selector Buttons */}
+                <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-lg border border-slate-700">
+                  <button
+                    onClick={() => setPageOrientation('portrait')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded transition cursor-pointer flex items-center gap-1 ${
+                      pageOrientation === 'portrait'
+                        ? 'bg-emerald-600 text-white font-extrabold shadow-sm'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="খাড়া A4 পোর্ট্রেট লেআউট"
+                  >
+                    <span>📱 পোর্ট্রেট (Portrait)</span>
+                  </button>
+                  <button
+                    onClick={() => setPageOrientation('landscape')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded transition cursor-pointer flex items-center gap-1 ${
+                      pageOrientation === 'landscape'
+                        ? 'bg-emerald-600 text-white font-extrabold shadow-sm'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="আড়াআড়ি A4 ল্যান্ডস্কেপ লেআউট"
+                  >
+                    <span>🖥️ ল্যান্ডস্কেপ (Landscape)</span>
+                  </button>
+                </div>
+
+                {/* Print Scale Selector */}
+                <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                  <span className="text-slate-400 font-semibold">প্রিন্ট স্কেল:</span>
+                  <select
+                    value={printScale}
+                    onChange={(e) => setPrintScale(Number(e.target.value))}
+                    className="bg-slate-900 text-amber-300 font-bold border border-slate-600 rounded px-1.5 py-0.5 text-xs focus:ring-1 focus:ring-amber-400 cursor-pointer"
+                  >
+                    <option value={100}>১০০% (সাধারণ)</option>
+                    <option value={95}>৯৫% (A4 এর জন্য উপযুক্ত)</option>
+                    <option value={90}>৯০% (কমপ্যাক্ট)</option>
+                    <option value={85}>৮৫% (দীর্ঘ আবেদনের জন্য)</option>
+                    <option value={80}>৮০% (অতিরিক্ত বড় টেবিল)</option>
+                  </select>
+                </div>
+
+                {/* Font Size Selector */}
+                <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                  <span className="text-slate-400 font-semibold">ফন্ট:</span>
+                  <select
+                    value={fontSize}
+                    onChange={(e) => setFontSize(Number(e.target.value))}
+                    className="bg-slate-900 text-white font-bold border border-slate-600 rounded px-1.5 py-0.5 text-xs cursor-pointer"
+                  >
+                    <option value={13}>১৩px (ক্ষুদ্র)</option>
+                    <option value={14}>১৪px (ছোট)</option>
+                    <option value={15}>১৫px (কমপ্যাক্ট)</option>
+                    <option value={16}>১৬px (স্ট্যান্ডার্ড)</option>
+                    <option value={18}>১৮px (বড়)</option>
+                  </select>
+                </div>
+
+                {/* Header Mode Toggle */}
+                <button
+                  onClick={() => setShowHeaderInPrint(!showHeaderInPrint)}
+                  className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    showHeaderInPrint
+                      ? 'bg-emerald-900/50 text-emerald-300 border-emerald-700'
+                      : 'bg-amber-900/50 text-amber-300 border-amber-700'
+                  }`}
+                >
+                  {showHeaderInPrint ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                  <span>{showHeaderInPrint ? 'ডিজিটাল হেডার' : 'প্যাড (হেডার লুকানো)'}</span>
+                </button>
+              </div>
+
+              {/* Reset to 1-Page Recommended */}
+              <button
+                onClick={() => {
+                  setIsCompactMode(true);
+                  setFontSize(15);
+                  setPrintScale(95);
+                }}
+                className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-lg transition cursor-pointer shadow"
+              >
+                ⚡ ১-পাতা ফিট অটো-সেট
+              </button>
+            </div>
+
+            {/* A4 Interactive Mock-Up Viewport */}
+            <div className="p-4 sm:p-6 bg-slate-950/80 overflow-y-auto flex flex-col items-center justify-start min-h-[420px] max-h-[62vh] border-b border-slate-800 relative shadow-inner">
+              <div className="mb-2 flex items-center justify-between w-full max-w-4xl text-[11px] text-slate-400 px-2">
+                <span className="flex items-center gap-1 font-mono text-emerald-400 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>
+                    {pageOrientation === 'landscape' 
+                      ? 'A4 Landscape Canvas (297mm × 210mm) — Wide 1 Page Sheet' 
+                      : 'A4 Portrait Canvas (210mm × 297mm) — 1 Page Bound'}
+                  </span>
+                </span>
+                <span className="text-amber-300 font-semibold">
+                  {isCompactMode ? '✅ কমপ্যাক্ট মোড সক্রিয় - ১ পাতায় প্রিন্ট গ্যারান্টি' : '⚠️ সাধারণ মোড - বিবরণী দীর্ঘ হলে ২য় পাতায় যেতে পারে'}
+                </span>
+              </div>
+
+              {/* Scaled A4 Mockup Sheet Canvas */}
+              <div className={`w-full bg-slate-900 p-2 sm:p-4 rounded-xl border border-slate-800 shadow-2xl relative transition-all duration-300 ${
+                pageOrientation === 'landscape' ? 'max-w-4xl' : 'max-w-3xl'
+              }`}>
+                {/* Visual A4 Page Marker */}
+                <div className="absolute top-2 right-2 z-20 px-2 py-0.5 bg-emerald-950/90 text-emerald-300 border border-emerald-700 text-[10px] font-mono rounded font-bold">
+                  A4 {pageOrientation.toUpperCase()} PAGE 1
+                </div>
+
+                <div 
+                  className={`bg-white text-slate-900 rounded-lg p-4 md:p-6 shadow-xl border border-slate-300 transition-all duration-200 ${
+                    pageOrientation === 'landscape' ? 'is-landscape' : 'is-portrait'
+                  } ${
+                    isCompactMode ? 'is-compact-mode' : ''
+                  }`}
+                  style={{
+                    transform: printScale !== 100 ? `scale(${printScale / 100})` : undefined,
+                    transformOrigin: 'top center',
+                    minHeight: pageOrientation === 'landscape' 
+                      ? (isCompactMode ? '540px' : '640px') 
+                      : (isCompactMode ? '720px' : '880px')
+                  }}
+                >
+                  {/* Miniature Live Preview of Certificate Layout */}
+                  <div className={`p-4 border-2 border-emerald-900 rounded ${borderStyle === 'double-green-red' ? 'outline-2 outline-red-700 outline-offset-2' : ''}`}>
+                    {showHeaderInPrint && (
+                      <div className="text-center pb-2 border-b border-emerald-900 mb-3">
+                        <p className="text-xs font-bold text-emerald-950">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</p>
+                        <h4 className="text-sm font-black text-emerald-950">{config.upName}</h4>
+                        <p className="text-[10px] text-slate-600">{config.address}</p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-700 mb-3">
+                      <span>স্মারক নং: {certificate.memoNo}</span>
+                      <span>তারিখ: {certificate.issueDate}</span>
+                    </div>
+
+                    <div className="text-center my-3">
+                      <span className="inline-block bg-emerald-950 text-white font-bold text-xs px-4 py-1 rounded">
+                        {certificate.typeLabel}
+                      </span>
+                    </div>
+
+                    <div 
+                      className="text-justify text-xs font-medium text-slate-900 leading-relaxed my-3 px-1 indent-4"
+                      style={{ fontSize: `${Math.max(12, fontSize - 2)}px` }}
+                    >
+                      {editableBodyText.length > 350 
+                        ? editableBodyText.substring(0, 350) + '...' 
+                        : editableBodyText}
+                    </div>
+
+                    {Object.keys(extraTables).length > 0 && (
+                      <div className="my-2 p-1.5 bg-slate-50 border border-slate-300 rounded text-[10px]">
+                        <p className="font-bold text-emerald-950 border-b pb-0.5 mb-1">সংযুক্ত তথ্য / ওয়ারিশ বিবরণী টেবিল (সক্রিয়)</p>
+                        <div className="text-slate-600 italic">মোট সদস্য / সারি: {(Object.values(extraTables)[0] as Array<any>)?.length || 0} টি</div>
+                      </div>
+                    )}
+
+                    <div className="mt-8 pt-3 border-t border-slate-300 flex justify-between items-end text-[10px]">
+                      <div className="space-y-1">
+                        <img src={qrImageUrl} alt="QR" className="w-10 h-10 border border-emerald-900 p-0.5 bg-white rounded" />
+                        <p className="text-[9px] text-slate-500">অনলাইন যাচাইকৃত</p>
+                      </div>
+
+                      <div className="text-center space-y-0.5">
+                        <p className="font-bold text-slate-950">{config.chairmanName}</p>
+                        <p className="text-[9px] text-emerald-900">{config.chairmanTitle}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                <span className="text-amber-400 font-bold">💡 টিপস:</span>
+                <span>প্রিন্ট আউট ১ পাতায় নিশ্চিত করতে "কমপ্যাক্ট মোড অন" সিলেক্ট রেখে প্রিন্টারে পাঠান।</span>
+              </div>
+
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <button
+                  onClick={() => setIsPrintPreviewOpen(false)}
+                  className="w-1/2 sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
+                >
+                  ফিরে যান
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsPrintPreviewOpen(false);
+                    setTimeout(() => {
+                      triggerActualPrint();
+                    }, 100);
+                  }}
+                  className="w-1/2 sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg hover:shadow-emerald-900/30 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-amber-300" />
+                  <span>প্রিন্টারে পাঠান (Confirm Print)</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

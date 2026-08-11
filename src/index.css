@@ -1,32 +1,184 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
-    color-scheme: light dark;
+    color-scheme: light;
   }
 
   html.dark {
     color-scheme: dark;
-    background-color: #0f172a;
-    color: #f8fafc;
+    background-color: #090d16;
+    color: #f1f5f9;
+  }
+
+  html.dark body {
+    background-color: #090d16;
+    color: #f1f5f9;
   }
 }
 
-/* Print Friendly Certificate Layout Rules */
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 4mm 4mm;
-  }
+/* Automatic Dark Mode UI Overrides for Components, Cards & Panels (excluding certificate print paper) */
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).bg-white {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
 
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).bg-slate-50,
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).bg-slate-100 {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).bg-slate-200 {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).text-slate-900,
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).text-slate-800,
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).text-slate-700 {
+  color: #f1f5f9 !important;
+}
+
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).text-slate-600,
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).border-slate-200,
+html.dark :not(#certificate-print-area):not(#certificate-print-area *):not(.print-paper):not(.print-paper *).border-slate-300 {
+  border-color: #334155 !important;
+}
+
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.dark select,
+html.dark textarea {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark :not(#certificate-print-area):not(#certificate-print-area *) table th {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+html.dark :not(#certificate-print-area):not(#certificate-print-area *) table td {
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark :not(#certificate-print-area):not(#certificate-print-area *) table tr:nth-child(even) {
+  background-color: #0f172a !important;
+}
+
+/* EXCEPTION & GUARANTEE: Certificate print area paper canvas ALWAYS remains pure white paper with crisp black text */
+#certificate-print-area,
+.print-paper,
+html.dark #certificate-print-area,
+html.dark .print-paper {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+#certificate-print-area *,
+.print-paper *,
+html.dark #certificate-print-area *,
+html.dark .print-paper * {
+  color: #000000 !important;
+}
+
+#certificate-print-area .text-emerald-950,
+#certificate-print-area .text-emerald-900,
+html.dark #certificate-print-area .text-emerald-950,
+html.dark #certificate-print-area .text-emerald-900 {
+  color: #022c22 !important;
+}
+
+#certificate-print-area .text-slate-600,
+#certificate-print-area .text-slate-500,
+html.dark #certificate-print-area .text-slate-600,
+html.dark #certificate-print-area .text-slate-500 {
+  color: #334155 !important;
+}
+
+#certificate-print-area .bg-slate-50,
+html.dark #certificate-print-area .bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+
+#certificate-print-area table th,
+html.dark #certificate-print-area table th {
+  background-color: #064e3b !important;
+  color: #ffffff !important;
+}
+
+#certificate-print-area table td,
+html.dark #certificate-print-area table td {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+#certificate-print-area .bg-emerald-950,
+#certificate-print-area .bg-emerald-950 *,
+#certificate-print-area .text-white,
+#certificate-print-area .text-white *,
+html.dark #certificate-print-area .bg-emerald-950,
+html.dark #certificate-print-area .bg-emerald-950 *,
+html.dark #certificate-print-area .text-white,
+html.dark #certificate-print-area .text-white * {
+  color: #ffffff !important;
+}
+
+/* Print Friendly Certificate Layout Rules */
+@page {
+  size: A4 portrait;
+  margin: 4mm 4mm;
+}
+
+@page portraitPage {
+  size: A4 portrait;
+  margin: 4mm 4mm;
+}
+
+@page landscapePage {
+  size: A4 landscape;
+  margin: 4mm 4mm;
+}
+
+.is-portrait {
+  page: portraitPage;
+}
+
+.is-landscape {
+  page: landscapePage;
+}
+
+@media print {
   html, body {
     height: 100% !important;
-    max-height: 297mm !important;
     overflow: hidden !important;
     background: #ffffff !important;
     color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  body.print-portrait-mode {
+    max-height: 297mm !important;
+  }
+
+  body.print-landscape-mode {
+    max-height: 210mm !important;
   }
 
   /* Hide non-printable UI components */
@@ -65,12 +217,23 @@
     padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 287mm !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
     page-break-before: avoid !important;
     page-break-after: avoid !important;
     box-sizing: border-box !important;
+  }
+
+  .print-paper.is-portrait,
+  #certificate-print-area.is-portrait {
+    max-height: 287mm !important;
+    min-height: 280mm !important;
+  }
+
+  .print-paper.is-landscape,
+  #certificate-print-area.is-landscape {
+    max-height: 200mm !important;
+    min-height: 195mm !important;
   }
 
   /* Prevent page breaks inside any child element */
