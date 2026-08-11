@@ -40,7 +40,8 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const [dateFormatStyle, setDateFormatStyle] = useState<'numeric' | 'full' | 'long' | 'banglaSan' | 'both'>('full');
   const [showDigitalSig, setShowDigitalSig] = useState<boolean>(config.enableDigitalSignature !== false);
   const [showSecretarySig, setShowSecretarySig] = useState<boolean>(config.showSecretarySignature !== false);
-  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(true);
+  const [watermarkOpacity, setWatermarkOpacity] = useState<number>(config.watermarkOpacity || 0.08);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editableBodyText, setEditableBodyText] = useState(certificate.bodyText);
 
@@ -435,8 +436,8 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 {/* Header Style 1: Tri-Column (User Requested Layout) */}
                 {headerStyle === 'tri-column' && (
                   <div className="flex justify-between items-start w-full gap-2 my-1">
-                    {/* Left Column (Width: ~32%): Chairman Information (5 Lines, pushed slightly down) */}
-                    <div className="w-[32%] min-w-0 text-left space-y-0.5 break-words pt-2.5">
+                    {/* Left Column (Width: ~32%): Chairman Information (5 Lines, pushed down below address level) */}
+                    <div className="w-[32%] min-w-0 text-left space-y-0.5 break-words pt-11">
                       <p className="text-xs md:text-sm font-extrabold text-slate-950 leading-snug">{config.chairmanName}</p>
                       <p className="text-[11px] md:text-xs font-bold text-emerald-900 leading-snug">{config.chairmanTitle}</p>
                       <p className="text-[10px] md:text-[11px] text-slate-800 font-semibold leading-snug">
@@ -446,7 +447,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                       <p className="text-[10px] md:text-[11px] text-slate-700 font-medium leading-snug">মোবাইল: {config.chairmanPhone}</p>
                     </div>
 
-                    {/* Middle Column (Width: ~36%, text-align: center): Govt Title, UP Heading, Logo, Location */}
+                    {/* Middle Column (Width: ~36%, text-align: center): Govt Title, UP Heading, Address, Logo */}
                     <div className="w-[36%] min-w-0 text-center flex flex-col items-center justify-center break-words px-1">
                       <p className="text-center text-xs md:text-sm font-extrabold text-emerald-950 tracking-wide mb-0.5 leading-snug whitespace-nowrap">
                         গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
@@ -454,18 +455,18 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                       <h2 className="text-base md:text-xl font-black text-emerald-950 leading-tight whitespace-nowrap">
                         {config.upName}
                       </h2>
+                      <p className="text-[11px] md:text-xs font-bold text-emerald-900 leading-tight whitespace-nowrap my-0.5">
+                        {config.upazila}, {config.district}।
+                      </p>
                       <img 
                         src={config.logoUrl} 
                         alt="Government / UP Logo" 
-                        className="cert-logo w-12 h-12 md:w-14 md:h-14 object-contain my-1 mx-auto"
+                        className="cert-logo w-11 h-11 md:w-13 md:h-13 object-contain my-1 mx-auto"
                       />
-                      <p className="text-[11px] md:text-xs font-bold text-emerald-900 leading-tight whitespace-nowrap">
-                        {config.upazila}, {config.district}।
-                      </p>
                     </div>
 
-                    {/* Right Column (Width: ~32%): Chairman Details (5 Lines, pushed slightly down) */}
-                    <div className="w-[32%] min-w-0 text-right space-y-0.5 break-words pt-2.5">
+                    {/* Right Column (Width: ~32%): Chairman Details (5 Lines, pushed down below address level) */}
+                    <div className="w-[32%] min-w-0 text-right space-y-0.5 break-words pt-11">
                       <p className="text-xs md:text-sm font-extrabold text-slate-950 leading-snug">{config.chairmanName}</p>
                       <p className="text-[11px] md:text-xs font-bold text-emerald-900 leading-snug">{config.chairmanTitle}</p>
                       <p className="text-[10px] md:text-[11px] text-slate-800 font-semibold leading-snug">
