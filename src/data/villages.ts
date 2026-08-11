@@ -28,15 +28,15 @@ export const KNOWN_POST_OFFICES = [
 export const WARDS = ['০১', '০২', '০৩', '০৪', '০৫', '০৬', '০৭', '০৮', '০৯'];
 
 export const DEFAULT_UP_CONFIG: UnionParishadConfig = {
-  upName: '০২নং বহেড়াতৈল ইউনিয়ন পরিষদ',
+  upName: '০২নং বহেড়াতৈল ইউনিয়ন পরিষদ',
   upNameEn: '02 No. Baheratail Union Parishad',
   upazila: 'সখিপুর',
   district: 'টাঙ্গাইল',
-  address: 'ডাকঘর: বহেড়াতৈল - ১৯৫০, উপজেলা: সখিপুর, জেলা: টাঙ্গাইল।',
+  address: 'ডাকঘর: বহেড়াতৈল - ১৯৫০, উপজেলা: সখিপুর, জেলা: টাঙ্গাইল।',
   phone: '০১৮৩৪-৩৩৩৩৩০০',
   email: 'baheratailunion@gmail.com',
-  chairmanName: 'মোশারফ হোসেন (হিরো মিয়া)',
-  chairmanTitle: 'প্যানেল চেয়ারম্যান - ০১',
+  chairmanName: 'মোশাররফ হোসেন (হিরো মিয়া)',
+  chairmanTitle: 'প্যানেল চেয়ারম্যান /চেয়ারম্যান/প্রশাসক',
   chairmanPhone: '০১৭৯৯-১১২২৩৩',
   chairmanSignatureUrl: '',
   secretaryName: 'মোঃ সাইদুজ্জামান',

@@ -431,67 +431,86 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
           {/* Header Section */}
           <div>
             {showHeaderInPrint && (
-              <header className="cert-header pb-3 border-b-2 border-emerald-900">
-                <p className="text-center text-base md:text-lg font-extrabold text-emerald-950 tracking-wide mb-1.5">
-                  গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
-                </p>
-
-                {/* Header Style 1: Tri-Column (Matching User Reference Image) */}
+              <header className="cert-header pb-2 border-b-2 border-emerald-900">
+                {/* Header Style 1: Tri-Column (User Requested Layout) */}
                 {headerStyle === 'tri-column' && (
-                  <div className="grid grid-cols-12 items-center gap-2 my-1.5">
-                    {/* Left Column: Chairman Details */}
-                    <div className="col-span-4 text-left space-y-0.5">
-                      <p className="text-sm font-extrabold text-slate-950">{config.chairmanName}</p>
-                      <p className="text-xs font-bold text-emerald-900">{config.chairmanTitle}</p>
-                      <p className="text-[11px] text-slate-700 font-semibold">{config.upName}</p>
-                      <p className="text-[11px] text-slate-600 font-medium">{config.upazila}, {config.district}</p>
+                  <div className="flex justify-between items-start w-full gap-2 my-1">
+                    {/* Left Column (Width: ~32%): Chairman Information (5 Lines, pushed slightly down) */}
+                    <div className="w-[32%] min-w-0 text-left space-y-0.5 break-words pt-2.5">
+                      <p className="text-xs md:text-sm font-extrabold text-slate-950 leading-snug">{config.chairmanName}</p>
+                      <p className="text-[11px] md:text-xs font-bold text-emerald-900 leading-snug">{config.chairmanTitle}</p>
+                      <p className="text-[10px] md:text-[11px] text-slate-800 font-semibold leading-snug">
+                        {config.upName ? config.upName.replace(/পরিষদ/g, '').trim() : '০২নং বহেড়াতৈল ইউনিয়ন'}
+                      </p>
+                      <p className="text-[10px] md:text-[11px] text-slate-600 font-medium leading-snug">{config.upazila}, {config.district}।</p>
+                      <p className="text-[10px] md:text-[11px] text-slate-700 font-medium leading-snug">মোবাইল: {config.chairmanPhone}</p>
                     </div>
 
-                    {/* Center Column: UP Logo & Title */}
-                    <div className="col-span-4 text-center flex flex-col items-center justify-center">
-                      <img 
-                        src={config.logoUrl} 
-                        alt="UP Logo" 
-                        className="cert-logo w-14 h-14 md:w-16 md:h-16 object-contain mb-1"
-                      />
-                      <h2 className="text-xl md:text-2xl font-black text-emerald-950 leading-tight">
+                    {/* Middle Column (Width: ~36%, text-align: center): Govt Title, UP Heading, Logo, Location */}
+                    <div className="w-[36%] min-w-0 text-center flex flex-col items-center justify-center break-words px-1">
+                      <p className="text-center text-xs md:text-sm font-extrabold text-emerald-950 tracking-wide mb-0.5 leading-snug whitespace-nowrap">
+                        গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
+                      </p>
+                      <h2 className="text-base md:text-xl font-black text-emerald-950 leading-tight whitespace-nowrap">
                         {config.upName}
                       </h2>
-                      <p className="text-xs font-bold text-emerald-900 mt-0.5">
-                        {config.address}
+                      <img 
+                        src={config.logoUrl} 
+                        alt="Government / UP Logo" 
+                        className="cert-logo w-12 h-12 md:w-14 md:h-14 object-contain my-1 mx-auto"
+                      />
+                      <p className="text-[11px] md:text-xs font-bold text-emerald-900 leading-tight whitespace-nowrap">
+                        {config.upazila}, {config.district}।
                       </p>
                     </div>
 
-                    {/* Right Column: Secretary Details */}
-                    <div className="col-span-4 text-right space-y-0.5">
-                      <p className="text-sm font-extrabold text-slate-950">{config.secretaryName}</p>
-                      <p className="text-xs font-bold text-emerald-900">{config.secretaryTitle}</p>
-                      <p className="text-[11px] text-slate-700 font-semibold">{config.upName}</p>
-                      <p className="text-[11px] text-slate-600 font-medium">{config.upazila}, {config.district}</p>
+                    {/* Right Column (Width: ~32%): Chairman Details (5 Lines, pushed slightly down) */}
+                    <div className="w-[32%] min-w-0 text-right space-y-0.5 break-words pt-2.5">
+                      <p className="text-xs md:text-sm font-extrabold text-slate-950 leading-snug">{config.chairmanName}</p>
+                      <p className="text-[11px] md:text-xs font-bold text-emerald-900 leading-snug">{config.chairmanTitle}</p>
+                      <p className="text-[10px] md:text-[11px] text-slate-800 font-semibold leading-snug">
+                        {config.upName ? config.upName.replace(/পরিষদ/g, '').trim() : '০২নং বহেড়াতৈল ইউনিয়ন'}
+                      </p>
+                      <p className="text-[10px] md:text-[11px] text-slate-600 font-medium leading-snug">{config.upazila}, {config.district}।</p>
+                      <p className="text-[10px] md:text-[11px] text-slate-700 font-medium leading-snug">মোবাইল: {config.chairmanPhone}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Header Style 2: Centered */}
                 {headerStyle === 'centered' && (
-                  <div className="text-center flex flex-col items-center justify-center my-3">
-                    <img src={config.logoUrl} alt="Logo" className="w-16 h-16 object-contain mb-2" />
-                    <h2 className="text-2xl font-black text-emerald-950">{config.upName}</h2>
-                    <p className="text-xs font-semibold text-slate-700">{config.address}</p>
+                  <div className="text-center flex flex-col items-center justify-center my-2">
+                    <p className="text-xs md:text-sm font-extrabold text-emerald-950 tracking-wide mb-0.5">
+                      গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
+                    </p>
+                    <h2 className="text-xl md:text-2xl font-black text-emerald-950 leading-tight">
+                      {config.upName}
+                    </h2>
+                    <img src={config.logoUrl} alt="Logo" className="w-14 h-14 md:w-16 md:h-16 object-contain my-1" />
+                    <p className="text-xs font-bold text-emerald-900">{config.address}</p>
                   </div>
                 )}
 
                 {/* Header Style 3: Classic */}
                 {headerStyle === 'classic' && (
                   <div className="flex items-center justify-between my-2">
-                    <img src={config.logoUrl} alt="Logo" className="w-14 h-14 object-contain" />
-                    <div className="text-center">
-                      <h2 className="text-xl font-bold text-emerald-950">{config.upName}</h2>
-                      <p className="text-xs text-slate-600">{config.address}</p>
+                    <div className="text-left text-xs space-y-0.5">
+                      <p className="font-extrabold text-slate-950">{config.chairmanName}</p>
+                      <p className="text-emerald-800 font-bold">{config.chairmanTitle}</p>
+                      <p className="text-slate-700 font-semibold">{config.upName}</p>
+                      <p className="text-slate-600">{config.upazila}, {config.district}</p>
                     </div>
-                    <div className="text-right text-xs">
-                      <p className="font-bold">{config.chairmanName}</p>
-                      <p className="text-emerald-800">{config.chairmanTitle}</p>
+                    <div className="text-center flex flex-col items-center">
+                      <p className="text-xs font-extrabold text-emerald-950">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</p>
+                      <h2 className="text-lg md:text-xl font-black text-emerald-950">{config.upName}</h2>
+                      <img src={config.logoUrl} alt="Logo" className="w-12 h-12 object-contain my-1" />
+                      <p className="text-[11px] font-bold text-emerald-900">{config.address}</p>
+                    </div>
+                    <div className="text-right text-xs space-y-0.5">
+                      <p className="font-extrabold text-slate-950">{config.chairmanName}</p>
+                      <p className="text-emerald-800 font-bold">{config.chairmanTitle}</p>
+                      <p className="text-slate-700 font-semibold">{config.upName}</p>
+                      <p className="text-slate-600">{config.upazila}, {config.district}</p>
                     </div>
                   </div>
                 )}

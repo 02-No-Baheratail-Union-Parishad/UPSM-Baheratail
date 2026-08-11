@@ -119,7 +119,7 @@ function seedSampleData() {
   const sampleRecords: CertificateRecord[] = [
     {
       id: "cert_1001",
-      memoNo: "BUP-2026-1082",
+      memoNo: "ইউপি.বহেড়া-২০২৬০৭০১",
       issueDate: "১৫/০৭/২০২৬ খ্রি.",
       issueDateEn: "2026-07-15",
       typeKey: "citizenship",
@@ -139,14 +139,14 @@ function seedSampleData() {
       },
       extra: { simpleFields: {}, tables: {} },
       bodyText: "এই মর্মে প্রত্যয়ন করা যাইতেছে যে, মোঃ আতিকুর রহমান, পিতা: হাজী আব্দুল গণি, মাতা: আয়েশা খাতুন, গ্রাম: বহেড়াতৈল, ডাকঘর: বহেড়াতৈল-১৯৫০, ওয়ার্ড নং-০৫, উপজেলা: সখিপুর, জেলা: টাঙ্গাইল। তিনি জন্মসূত্রে বাংলাদেশের একজন স্থায়ী নাগরিক এবং ০২নং বহেড়াতৈল ইউনিয়ন পরিষদের ৫নং ওয়ার্ডের নিয়মিত স্থায়ী বাসিন্দা। তাহার নৈতিক চরিত্র উত্তম এবং তিনি কোনো রাষ্ট্রবিরোধী কর্মকাণ্ডে জড়িত নহেন।",
-      verificationUrl: "/verify/BUP-2026-1082",
+      verificationUrl: "/verify/ইউপি.বহেড়া-২০২৬০৭০১",
       status: "issued",
-      issuedBy: "প্রশাসনিক কর্মকর্তা (সচিব)",
+      issuedBy: "প্যানেল চেয়ারম্যান (প্রশাসক)",
       createdAt: new Date("2026-07-15").toISOString()
     },
     {
       id: "cert_1002",
-      memoNo: "BUP-2026-1095",
+      memoNo: "ইউপি.বহেড়া-২০২৬০৭০২",
       issueDate: "২০/০৭/২০২৬ খ্রি.",
       issueDateEn: "2026-07-20",
       typeKey: "warish",
@@ -179,14 +179,14 @@ function seedSampleData() {
         }
       },
       bodyText: "এই মর্মে প্রত্যয়ন করা যাইতেছে যে, মৃত সোলাইমান মিয়া, পিতা: মৃত কাসেম আলী, গ্রাম: ডাবাইল, ওয়ার্ড নং: ০১, ০২নং বহেড়াতৈল ইউনিয়ন পরিষদ, উপজেলা: সখিপুর, জেলা: টাঙ্গাইল গত ১০/০২/২০২৫ খ্রি. তারিখে মৃত্যুবরণ করিয়াছেন। তাহার মৃত্যুর সময় উপরে বর্ণিত ৩ (তিন) জন বৈধ ওয়ারিশগণ জীবিত রহিয়াছেন। তাহারা ব্যতিত তাহার অন্য কোনো জৈবিক বা আইনি উত্তরাধিকার নাই।",
-      verificationUrl: "/verify/BUP-2026-1095",
+      verificationUrl: "/verify/ইউপি.বহেড়া-২০২৬০৭০২",
       status: "issued",
       issuedBy: "প্যানেল চেয়ারম্যান - ০১",
       createdAt: new Date("2026-07-20").toISOString()
     },
     {
       id: "cert_1003",
-      memoNo: "BUP-2026-1102",
+      memoNo: "ইউপি.বহেড়া-২০২৬০৮০১",
       issueDate: "০২/০৮/২০২৬ খ্রি.",
       issueDateEn: "2026-08-02",
       typeKey: "citizenship",
@@ -206,7 +206,7 @@ function seedSampleData() {
       },
       extra: { simpleFields: {}, tables: {} },
       bodyText: "এই মর্মে প্রত্যয়ন করা যাইতেছে যে, মোঃ জলিল শেখ, পিতা: মৃত ইনসান শেখ, মাতা: মোছাঃ ফাতেমা বেগম, গ্রাম: ইন্দারজানী, ৩নং ওয়ার্ড, ০২নং বহেড়াতৈল ইউনিয়ন পরিষদ, উপজেলা: সখিপুর, জেলা: টাঙ্গাইল। তিনি উক্ত ওয়ার্ডের নিয়মিত স্থায়ী বাসিন্দা এবং জন্মসূত্রে বাংলাদেশের নাগরিক।",
-      verificationUrl: "/verify/BUP-2026-1102",
+      verificationUrl: "/verify/ইউপি.বহেড়া-২০২৬০৮০১",
       status: "pending_approval",
       issuedBy: "ইউডিসি উদ্যোক্তা (UDC Operator)",
       createdAt: new Date("2026-08-02T10:15:00").toISOString(),
@@ -488,12 +488,22 @@ ${upConfig.defaultPromptPrefix}
         generatedBodyText = `এই মর্মে প্রত্যয়ন করা যাইতেছে যে, ${name}, পিতা: ${father || spouseName || "N/A"}, মাতা: ${mother}, গ্রাম: ${village}, ডাকঘর: ${postOffice || "বহেড়াতৈল"}, ওয়ার্ড নং: ${convertToBengaliDigits(wardNo)}, উপজেলা: ${upConfig.upazila}, জেলা: ${upConfig.district}। ${idText ? idText + "। " : ""}তিনি ০২নং বহেড়াতৈল ইউনিয়ন পরিষদের উক্ত ওয়ার্ডের স্থায়ী বাসিন্দা। তিনি আমার জানা মতে সৎ, চরিত্রবান এবং কোনো রাষ্ট্রবিরোধী কর্মকাণ্ডে জড়িত নহেন।`;
       }
 
-      // Generate unique Memo No and dates
-      const year = new Date().getFullYear();
-      const randNo = Math.floor(1000 + Math.random() * 9000);
-      const memoNo = `BUP-${year}-${randNo}`;
+      // Generate unique Memo No and dates following strict structure: ইউপি.বহেড়া-[বছর][মাস][ক্রমিক নং]
       const now = new Date();
-      const issueDateBn = `${convertToBengaliDigits(now.getDate().toString().padStart(2, '0'))}/${convertToBengaliDigits((now.getMonth() + 1).toString().padStart(2, '0'))}/${convertToBengaliDigits(year)} খ্রি.`;
+      const yearStr = now.getFullYear().toString();
+      const monthStr = (now.getMonth() + 1).toString().padStart(2, '0');
+      
+      // Calculate monthly serial count for the current month
+      const currentMonthPrefix = `${yearStr}-${monthStr}`;
+      const monthlyCount = certificateStore.filter(c => c.createdAt && c.createdAt.startsWith(currentMonthPrefix)).length + 1;
+      const serialStr = monthlyCount.toString().padStart(2, '0');
+      
+      const yearBn = convertToBengaliDigits(yearStr);
+      const monthBn = convertToBengaliDigits(monthStr);
+      const serialBn = convertToBengaliDigits(serialStr);
+      
+      const memoNo = `ইউপি.বহেড়া-${yearBn}${monthBn}${serialBn}`;
+      const issueDateBn = `${convertToBengaliDigits(now.getDate().toString().padStart(2, '0'))}/${convertToBengaliDigits(monthStr)}/${yearBn} খ্রি.`;
 
       const verificationPath = `/verify/${memoNo}`;
 
