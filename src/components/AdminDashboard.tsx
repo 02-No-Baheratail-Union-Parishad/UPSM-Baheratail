@@ -34,10 +34,12 @@ import {
   RotateCcw,
   CheckSquare,
   Square,
-  UserCog
+  UserCog,
+  Zap
 } from 'lucide-react';
 import { UnionParishadConfig, AuditLogRecord, AdminUserRecord, CertificateRecord, AdminPermissions } from '../types';
 import { GoogleSheetsSyncModal } from './GoogleSheetsSyncModal';
+import { RbacQuickActions } from './RbacQuickActions';
 import { 
   auth, 
   signInWithGooglePopup, 
@@ -122,7 +124,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Active subtab in dashboard
-  const [activeView, setActiveView] = useState<'admins' | 'roles' | 'logs'>('admins');
+  const [activeView, setActiveView] = useState<'rbac' | 'admins' | 'roles' | 'logs'>('rbac');
 
   // Role & Permission Management State
   const [editingAdminEmail, setEditingAdminEmail] = useState<string | null>(null);
@@ -644,6 +646,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
       {/* 3. Navigation Controls / View Switcher */}
       <div className="bg-slate-200/80 p-1.5 rounded-2xl flex items-center gap-2 overflow-x-auto">
         <button
+          onClick={() => setActiveView('rbac')}
+          className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeView === 'rbac'
+              ? 'bg-emerald-900 text-amber-300 shadow-md ring-2 ring-amber-400/50'
+              : 'text-slate-700 hover:bg-slate-300/80'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-300" />
+          <span>১. ডায়নামিক RBAC কুইক অ্যাকশন</span>
+        </button>
+
+        <button
           onClick={() => setActiveView('admins')}
           className={`flex-1 min-w-[180px] py-3 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
             activeView === 'admins'
@@ -652,7 +666,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
           }`}
         >
           <Users className="w-4 h-4 text-amber-300" />
-          <span>১. ইউপি এডমিন ডিরেক্টরি ({adminsList.length})</span>
+          <span>২. ইউপি এডমিন ডিরেক্টরি ({adminsList.length})</span>
         </button>
 
         <button
@@ -664,7 +678,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
           }`}
         >
           <UserCog className="w-4 h-4 text-amber-300" />
-          <span>২. ডায়নামিক রোল ও পারমিশন কন্ট্রোল</span>
+          <span>৩. পারমিশন ম্যাট্রিক্স রোলস</span>
         </button>
 
         <button
@@ -676,9 +690,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ config, onNaviga
           }`}
         >
           <Activity className="w-4 h-4 text-amber-300" />
-          <span>৩. সিকিউর অডিট লগ ({filteredLogs.length})</span>
+          <span>৪. সিকিউর অডিট লগ ({filteredLogs.length})</span>
         </button>
       </div>
+
+      {/* VIEW 0: DYNAMIC RBAC QUICK ACTIONS */}
+      {activeView === 'rbac' && (
+        <RbacQuickActions config={config} onNavigateTab={onNavigateTab} />
+      )}
 
       {/* VIEW 1: MULTI-ADMIN USER MANAGEMENT */}
       {activeView === 'admins' && (
