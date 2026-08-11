@@ -77,7 +77,7 @@ export const DEFAULT_UP_CONFIG: UnionParishadConfig = {
   templateDocId: '1iJ4jvnV7om8rPp9Tjth4e7l_ipjxc6QpQ1ejLxlJd5k',
   targetFolderId: '16vXelYwApSFuFFru0Qkj1gaHCUwKZ-vz',
   sheetId: '15ePvh-T4nvs6Xn2ghwrwowogFbMV7yex2uV6lZ7jBUY',
-  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbx_baheratail_up_automation/exec',
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbwa7PHYGGucLgz4V9aKcIw3pO8zkoYafvHLgAG7MI1OW-ca0txcRGj8q8YsOl9o9r67Jw/exec',
   r2AccountId: '8145fd7882d729f182b85e7c18c1a5f0',
   r2AccessKeyId: '26d4ea0bfd548258646061ba6d80d57d',
   r2SecretAccessKey: 'b4c85f0e7c2937703376d89fb7d2a880cb2aa00631fcb8c32c8aa3d6612db94f',

@@ -16,10 +16,13 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 6mm;
+    margin: 4mm 4mm;
   }
 
-  body {
+  html, body {
+    height: 100% !important;
+    max-height: 297mm !important;
+    overflow: hidden !important;
     background: #ffffff !important;
     color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
@@ -53,14 +56,80 @@
     print-color-adjust: exact !important;
   }
 
-  /* Ensure print paper canvas fills page cleanly without shadow or border artifacts */
-  .print-paper {
+  /* Ensure print paper canvas fills page cleanly without shadow or border artifacts and strictly avoids 2nd page overflow */
+  .print-paper,
+  #certificate-print-area {
     box-shadow: none !important;
     border: none !important;
     margin: 0 auto !important;
     padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    max-height: 287mm !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Prevent page breaks inside any child element */
+  .print-paper * {
     page-break-inside: avoid !important;
   }
+
+  /* Global Compact Mode Helper for 1-Page A4 Guarantee */
+  .is-compact-mode #certificate-print-area,
+  .print-paper.is-compact-mode {
+    font-size: 0.88rem !important;
+  }
+
+  .is-compact-mode .cert-inner-frame {
+    padding: 10px !important;
+    min-height: auto !important;
+  }
+
+  .is-compact-mode .cert-header {
+    padding-bottom: 4px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .is-compact-mode .cert-title-badge {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    font-size: 1rem !important;
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .is-compact-mode .cert-body-text {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+    line-height: 1.45 !important;
+    font-size: 0.9em !important;
+  }
+
+  .is-compact-mode .cert-footer {
+    margin-top: 10px !important;
+    padding-top: 6px !important;
+  }
+
+  .is-compact-mode .cert-signature-space {
+    min-height: 36px !important;
+  }
+
+  .is-compact-mode img.cert-logo {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .is-compact-mode .qr-code-img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+}
+
+/* Global On-Screen Compact Utility Styles */
+.is-compact-mode {
+  --cert-padding-scale: 0.8;
 }

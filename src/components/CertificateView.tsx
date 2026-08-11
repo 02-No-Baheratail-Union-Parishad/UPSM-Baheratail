@@ -44,6 +44,10 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const [isEditingText, setIsEditingText] = useState(false);
   const [editableBodyText, setEditableBodyText] = useState(certificate.bodyText);
 
+  // A4 Print Optimization & Compact Mode State
+  const [isCompactMode, setIsCompactMode] = useState<boolean>(true);
+  const [printScale, setPrintScale] = useState<number>(100);
+
   // WhatsApp Messaging State
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsappPhone, setWhatsappPhone] = useState(certificate.citizen?.mobile || '');
@@ -162,6 +166,20 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
             <span>হোয়াটসঅ্যাপে পাঠান</span>
           </button>
 
+          {/* Compact Mode Toggle for 1-Page Guarantee */}
+          <button
+            onClick={() => setIsCompactMode(!isCompactMode)}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+              isCompactMode
+                ? 'bg-amber-400 text-slate-950 border-amber-500 font-black'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+            }`}
+            title="A4 ১ পাতায় সম্পূর্ণ সনদ ফিট নিশ্চিত করার জন্য কমপ্যাক্ট মোড"
+          >
+            <Maximize2 className="w-3.5 h-3.5 text-emerald-950" />
+            <span>{isCompactMode ? '📄 ১ পাতায় ফিট (Compact ON)' : '📄 সাধারণ সাইজ'}</span>
+          </button>
+
           {/* Edit AI Text Toggle */}
           <button
             onClick={() => setIsEditingText(!isEditingText)}
@@ -227,11 +245,24 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
           <div className="flex items-center justify-between border-b border-slate-800 pb-2">
             <h3 className="text-xs font-bold text-amber-300 flex items-center gap-2">
               <Sliders className="w-4 h-4 text-amber-400" />
-              <span>সনদের টেমপ্লেট ও লেআউট লাইভ কাস্টমাইজার</span>
+              <span>সনদের টেমপ্লেট, A4 সাইজ ও লেআউট কাস্টমাইজার</span>
             </h3>
-            <span className="text-[10px] bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded font-mono">
-              REAL-TIME PREVIEW
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setIsCompactMode(true);
+                  setFontSize(15);
+                  setBlankSealSize(72);
+                  setPrintScale(95);
+                }}
+                className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] rounded transition cursor-pointer"
+              >
+                ⚡ ১-পাতা অটো-ফিট সেট করুন
+              </button>
+              <span className="text-[10px] bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded font-mono">
+                REAL-TIME PREVIEW
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
@@ -254,45 +285,13 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
               <label className="block text-slate-400 font-semibold mb-1">ফন্ট সাইজ (পিটি): {fontSize}px</label>
               <input
                 type="range"
-                min={13}
+                min={12}
                 max={20}
                 value={fontSize}
                 onChange={(e) => setFontSize(Number(e.target.value))}
                 className="w-full accent-amber-400 cursor-pointer"
               />
             </div>
-
-            {/* Border Style */}
-            <div>
-              <label className="block text-slate-400 font-semibold mb-1">ফ্রেম বর্ডার ডিজাইন:</label>
-              <select
-                value={borderStyle}
-                onChange={(e) => setBorderStyle(e.target.value as any)}
-                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-white rounded focus:border-amber-400 font-semibold"
-              >
-                <option value="double-green-red">১. ডবল বর্ডার (সবুজ ও লাল স্ট্রাইপ)</option>
-                <option value="double-green">২. ডবল সবুজ বর্ডার</option>
-                <option value="single-green">৩. একক চিকন সবুজ বর্ডার</option>
-                <option value="none">৪. নো বর্ডার (প্লেন কাগজ)</option>
-              </select>
-            </div>
-
-            {/* Blank Seal Diameter */}
-            <div>
-              <label className="block text-slate-400 font-semibold mb-1">
-                গোল সিল ফাঁকা ডায়ামিটার: {blankSealSize === 0 ? 'হাইড' : `${blankSealSize}px`}
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={140}
-                step={8}
-                value={blankSealSize}
-                onChange={(e) => setBlankSealSize(Number(e.target.value))}
-                className="w-full accent-amber-400 cursor-pointer"
-              />
-            </div>
-
             {/* Date Format Style */}
             <div>
               <label className="block text-slate-400 font-semibold mb-1">তারিখ ফরম্যাট (Bangla Date):</label>
@@ -309,8 +308,34 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
               </select>
             </div>
 
-            {/* Signature Display Toggles */}
-            <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-4 text-xs">
+            {/* Print Scale Selection */}
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">প্রিন্ট স্কেল (%) (A4 ফিটিং):</label>
+              <select
+                value={printScale}
+                onChange={(e) => setPrintScale(Number(e.target.value))}
+                className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 rounded focus:border-amber-400 font-bold"
+              >
+                <option value={100}>১০০% (স্বাভাবিক সাইজ)</option>
+                <option value={95}>৯৫% (A4 ১ পাতায় উপযুক্ত)</option>
+                <option value={90}>৯০% (কমপ্যাক্ট ফিট)</option>
+                <option value={85}>৮৫% (দীর্ঘ আবেদনের জন্য)</option>
+                <option value={80}>৮০% (অতিরিক্ত বড় টেবিলের জন্য)</option>
+              </select>
+            </div>
+
+            {/* Signature & Compact Mode Display Toggles */}
+            <div className="pt-2 border-t border-slate-800 col-span-full flex flex-wrap items-center justify-between gap-4 text-xs">
+              <label className="text-amber-300 font-bold cursor-pointer flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isCompactMode}
+                  onChange={(e) => setIsCompactMode(e.target.checked)}
+                  className="w-4 h-4 accent-amber-400 cursor-pointer"
+                />
+                <span>📄 A4 ১-পাতা কমপ্যাক্ট মোড (Compact Mode Active)</span>
+              </label>
+
               <label className="text-slate-300 font-semibold cursor-pointer flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -339,8 +364,14 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
       <div 
         ref={printRef} 
         id="certificate-print-area"
-        className="print-paper bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-slate-300 max-w-4xl mx-auto relative overflow-hidden text-slate-900 print:shadow-none print:p-4 print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none"
-        style={{ minHeight: '1020px' }}
+        className={`print-paper bg-white p-6 md:p-10 rounded-2xl shadow-xl border border-slate-300 max-w-4xl mx-auto relative overflow-hidden text-slate-900 print:shadow-none print:p-2 print:border-none print:m-0 print:w-full print:max-w-none print:rounded-none ${
+          isCompactMode ? 'is-compact-mode' : ''
+        }`}
+        style={{ 
+          minHeight: isCompactMode ? '820px' : '960px',
+          transform: printScale !== 100 ? `scale(${printScale / 100})` : undefined,
+          transformOrigin: 'top center'
+        }}
       >
         {/* Background Watermark */}
         <div 
@@ -350,13 +381,13 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
           <img 
             src={config.logoUrl} 
             alt="Watermark Seal" 
-            className="w-96 h-96 object-contain"
+            className="w-80 h-80 md:w-96 md:h-96 object-contain"
           />
         </div>
 
         {/* Outer Frame Border matching chosen borderStyle */}
         <div 
-          className={`p-6 md:p-8 h-full flex flex-col justify-between relative z-10 min-h-[960px] ${
+          className={`cert-inner-frame p-5 md:p-7 h-full flex flex-col justify-between relative z-10 min-h-[800px] print:min-h-0 print:h-auto ${
             borderStyle === 'double-green-red'
               ? 'border-4 border-emerald-950 outline-2 outline-red-700 outline-offset-2'
               : borderStyle === 'double-green'
@@ -370,14 +401,14 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
           {/* Header Section */}
           <div>
             {showHeaderInPrint && (
-              <header className="pb-4 border-b-2 border-emerald-900">
-                <p className="text-center text-base md:text-lg font-extrabold text-emerald-950 tracking-wide mb-2">
+              <header className="cert-header pb-3 border-b-2 border-emerald-900">
+                <p className="text-center text-base md:text-lg font-extrabold text-emerald-950 tracking-wide mb-1.5">
                   গণপ্রজাতন্ত্রী বাংলাদেশ সরকার
                 </p>
 
                 {/* Header Style 1: Tri-Column (Matching User Reference Image) */}
                 {headerStyle === 'tri-column' && (
-                  <div className="grid grid-cols-12 items-center gap-2 my-2">
+                  <div className="grid grid-cols-12 items-center gap-2 my-1.5">
                     {/* Left Column: Chairman Details */}
                     <div className="col-span-4 text-left space-y-0.5">
                       <p className="text-sm font-extrabold text-slate-950">{config.chairmanName}</p>
@@ -391,7 +422,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                       <img 
                         src={config.logoUrl} 
                         alt="UP Logo" 
-                        className="w-16 h-16 object-contain mb-1"
+                        className="cert-logo w-14 h-14 md:w-16 md:h-16 object-contain mb-1"
                       />
                       <h2 className="text-xl md:text-2xl font-black text-emerald-950 leading-tight">
                         {config.upName}
@@ -454,15 +485,15 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
             </div>
 
             {/* Certificate Title Badge */}
-            <div className="text-center my-6">
-              <span className="inline-block bg-emerald-950 text-white font-extrabold text-lg md:text-xl px-8 py-2 rounded-md shadow-sm border border-emerald-900 tracking-wider">
+            <div className="cert-title-badge text-center my-5 print:my-2">
+              <span className="inline-block bg-emerald-950 text-white font-extrabold text-lg md:text-xl px-8 py-1.5 rounded-md shadow-sm border border-emerald-900 tracking-wider">
                 {certificate.typeLabel}
               </span>
             </div>
 
             {/* Main Bureaucratic Body Text with Dynamic Font Size & AI Correction Mode */}
             {isEditingText ? (
-              <div className="my-6 p-4 bg-amber-50 rounded-xl border-2 border-amber-300 space-y-2 print:hidden">
+              <div className="my-4 p-4 bg-amber-50 rounded-xl border-2 border-amber-300 space-y-2 print:hidden">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-amber-700" />
@@ -485,7 +516,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
               </div>
             ) : (
               <div 
-                className="my-6 text-justify leading-relaxed font-medium text-slate-900 whitespace-pre-line px-2 indent-8"
+                className="cert-body-text my-5 print:my-2 text-justify leading-relaxed font-medium text-slate-900 whitespace-pre-line px-2 indent-8"
                 style={{ fontSize: `${fontSize}px` }}
               >
                 {editableBodyText}
@@ -494,8 +525,8 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
 
             {/* Extra Field Details (if applicable) */}
             {certificate.extra?.simpleFields && Object.keys(certificate.extra.simpleFields).length > 0 && (
-              <div className="my-4 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-1.5 text-xs text-slate-800">
-                <p className="font-bold text-emerald-900 border-b border-slate-200 pb-1 mb-2">সংযুক্ত অতিরিক্ত বিবরণী:</p>
+              <div className="my-3 bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1 text-xs text-slate-800">
+                <p className="font-bold text-emerald-900 border-b border-slate-200 pb-1 mb-1.5">সংযুক্ত অতিরিক্ত বিবরণী:</p>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(certificate.extra.simpleFields).map(([k, v]) => (
                     <div key={k} className="flex gap-1">
@@ -509,30 +540,30 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
 
             {/* Dynamic Tables (Warish / Family List) */}
             {Object.keys(extraTables).length > 0 && (
-              <div className="my-6 space-y-4">
+              <div className="my-4 space-y-3">
                 {Object.entries(extraTables).map(([tableKey, rows]) => (
-                  <div key={tableKey} className="space-y-2">
-                    <p className="font-bold text-sm text-emerald-950 border-b-2 border-emerald-900 pb-1">
+                  <div key={tableKey} className="space-y-1.5">
+                    <p className="font-bold text-xs text-emerald-950 border-b-2 border-emerald-900 pb-1">
                       উত্তরাধিকার / পরিবারের তালিকা বিবরণী:
                     </p>
                     <table className="w-full text-xs text-left border-collapse border border-slate-900">
                       <thead>
                         <tr className="bg-emerald-900 text-white font-bold">
-                          <th className="border border-slate-900 p-2 text-center w-12">ক্রমিক</th>
-                          <th className="border border-slate-900 p-2">সদস্যের নাম</th>
-                          <th className="border border-slate-900 p-2 text-center">জন্ম তারিখ / বয়স</th>
-                          <th className="border border-slate-900 p-2">সম্পর্ক</th>
-                          <th className="border border-slate-900 p-2">জাতীয় পরিচয়পত্র / মন্তব্য</th>
+                          <th className="border border-slate-900 p-1.5 text-center w-10">ক্রমিক</th>
+                          <th className="border border-slate-900 p-1.5">সদস্যের নাম</th>
+                          <th className="border border-slate-900 p-1.5 text-center">জন্ম তারিখ / বয়স</th>
+                          <th className="border border-slate-900 p-1.5">সম্পর্ক</th>
+                          <th className="border border-slate-900 p-1.5">জাতীয় পরিচয়পত্র / মন্তব্য</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(rows as string[][]).map((row, rIdx) => (
                           <tr key={rIdx} className="odd:bg-white even:bg-slate-50">
-                            <td className="border border-slate-900 p-2 text-center font-bold">{row[0] || rIdx + 1}</td>
-                            <td className="border border-slate-900 p-2 font-semibold text-slate-900">{row[1]}</td>
-                            <td className="border border-slate-900 p-2 text-center">{row[2]}</td>
-                            <td className="border border-slate-900 p-2 font-semibold">{row[3]}</td>
-                            <td className="border border-slate-900 p-2">{row[4]}</td>
+                            <td className="border border-slate-900 p-1.5 text-center font-bold">{row[0] || rIdx + 1}</td>
+                            <td className="border border-slate-900 p-1.5 font-semibold text-slate-900">{row[1]}</td>
+                            <td className="border border-slate-900 p-1.5 text-center">{row[2]}</td>
+                            <td className="border border-slate-900 p-1.5 font-semibold">{row[3]}</td>
+                            <td className="border border-slate-900 p-1.5">{row[4]}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -543,25 +574,25 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
             )}
 
             {/* Closing Wishing Statement */}
-            <div className="mt-6 text-sm font-semibold text-slate-900">
+            <div className="mt-4 text-xs md:text-sm font-semibold text-slate-900">
               আমি তাহার সর্বাঙ্গীন মঙ্গল ও উত্তরোত্তর সাফল্য কামনা করি।
             </div>
           </div>
 
           {/* Footer Signatures, QR Verification & Blank Round Seal */}
-          <div className="mt-16 pt-8 border-t border-slate-300">
-            <div className="grid grid-cols-12 items-end justify-between gap-4">
+          <div className="cert-footer mt-10 print:mt-4 pt-4 border-t border-slate-300">
+            <div className="grid grid-cols-12 items-end justify-between gap-2">
               
               {/* Left Column: Secretary Signature Block & QR Code */}
-              <div className="col-span-4 flex flex-col items-start justify-end space-y-3">
+              <div className="col-span-4 flex flex-col items-start justify-end space-y-2">
                 {showSecretarySig && (
                   <div className="space-y-0.5 text-left w-full">
-                    <div className="min-h-[48px] flex items-end justify-start">
+                    <div className="cert-signature-space min-h-[40px] flex items-end justify-start">
                       {showDigitalSig && config.secretarySignatureUrl ? (
                         <img 
                           src={config.secretarySignatureUrl} 
                           alt="Secretary Digital Signature" 
-                          className="max-h-14 max-w-[150px] object-contain filter contrast-125 mb-1"
+                          className="max-h-12 max-w-[140px] object-contain filter contrast-125 mb-1"
                         />
                       ) : (
                         <span className="font-serif italic text-slate-800 font-bold text-xs border-b border-slate-700 px-3 mb-1">
@@ -587,7 +618,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                     <img 
                       src={qrImageUrl} 
                       alt="QR Verification Link" 
-                      className="w-20 h-20 border-2 border-emerald-900 p-1 rounded-lg bg-white shadow-sm group-hover:scale-105 transition"
+                      className="qr-code-img w-16 h-16 md:w-18 md:h-18 border-2 border-emerald-900 p-1 rounded-lg bg-white shadow-sm group-hover:scale-105 transition"
                     />
                   </a>
                   <div>
@@ -615,19 +646,19 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                     </span>
                   </div>
                 )}
-                <p className="text-[10px] font-semibold text-slate-500 mt-1">
+                <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
                   (অফিশিয়াল ম্যানুয়াল সিল)
                 </p>
               </div>
 
               {/* Right Column: Chairman Digital Signature Block */}
-              <div className="col-span-4 text-right space-y-1">
-                <div className="min-h-[56px] flex items-end justify-end">
+              <div className="col-span-4 text-right space-y-0.5">
+                <div className="cert-signature-space min-h-[44px] flex items-end justify-end">
                   {showDigitalSig && config.chairmanSignatureUrl ? (
                     <img 
                       src={config.chairmanSignatureUrl} 
                       alt="Chairman Digital Signature" 
-                      className="max-h-16 max-w-[170px] object-contain filter contrast-125 mb-1"
+                      className="max-h-14 max-w-[150px] object-contain filter contrast-125 mb-1"
                     />
                   ) : (
                     <span className="font-serif italic text-emerald-950 font-extrabold text-sm border-b-2 border-emerald-950 px-4 mb-1">
