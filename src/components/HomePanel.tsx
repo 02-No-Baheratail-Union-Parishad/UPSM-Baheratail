@@ -43,6 +43,7 @@ import { UnionParishadConfig, CitizenAccountRecord } from '../types';
 import { CertificateTrendDashboard } from './CertificateTrendDashboard';
 import { NoticeBoardTicker } from './NoticeBoardTicker';
 import { UnionMapViewer } from './UnionMapViewer';
+import { Dashboard } from './Dashboard';
 
 interface HomePanelProps {
   config: UnionParishadConfig;
@@ -288,6 +289,9 @@ export const HomePanel: React.FC<HomePanelProps> = ({ config, onNavigateTab }) =
           </div>
         </div>
       </div>
+
+      {/* 🌟 ROLE-BASED DYNAMIC DASHBOARD WIDGET (useAuth Session) */}
+      <Dashboard config={config} onNavigateTab={onNavigateTab} />
 
       {/* ⚡ REAL-TIME SMART SEARCH BAR (1-Second Instant Citizen & Certificate Search) */}
       <div className="bg-white p-5 rounded-2xl shadow-md border border-slate-200 space-y-3 relative z-30">

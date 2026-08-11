@@ -18,6 +18,7 @@ import { CertificateTrendDashboard } from './components/CertificateTrendDashboar
 import { UnionMapViewer } from './components/UnionMapViewer';
 import { NoticeBoardTicker } from './components/NoticeBoardTicker';
 import { AiCitizenAssistant } from './components/AiCitizenAssistant';
+import { Dashboard } from './components/Dashboard';
 import { AdminGuard } from './components/AdminGuard';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
@@ -131,6 +132,10 @@ export default function App() {
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 my-2">
         {activeTab === 'home' && (
           <HomePanel config={config} onNavigateTab={handleNavigateTab} />
+        )}
+
+        {activeTab === 'dashboard' && (
+          <Dashboard config={config} onNavigateTab={handleNavigateTab} />
         )}
 
         {activeTab === 'analytics' && (
