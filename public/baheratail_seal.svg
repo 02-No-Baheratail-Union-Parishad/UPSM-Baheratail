@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <!-- Top Arc Path for Circular Text -->
+    <path id="topTextArc" d="M 65,250 A 185,185 0 1,1 435,250" fill="none"/>
+    <!-- Bottom Arc Path for Circular Text -->
+    <path id="bottomTextArc" d="M 430,250 A 180,180 0 0,1 70,250" fill="none"/>
+    <!-- Gradient for Leaves & Water -->
+    <linearGradient id="sealGreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f5c2e"/>
+      <stop offset="100%" stop-color="#06381a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Double Circles -->
+  <circle cx="250" cy="250" r="240" fill="#ffffff" stroke="#0f5c2e" stroke-width="6"/>
+  <circle cx="250" cy="250" r="230" fill="none" stroke="#0f5c2e" stroke-width="2"/>
+  <circle cx="250" cy="250" r="180" fill="none" stroke="#0f5c2e" stroke-width="2"/>
+  <circle cx="250" cy="250" r="172" fill="none" stroke="#0f5c2e" stroke-width="4"/>
+
+  <!-- Top Curved Text: ০২ নং বহেড়াতৈল ইউনিয়ন পরিষদ -->
+  <text font-family="'Kalpurush', 'SolaimanLipi', 'Hind Siliguri', 'Segoe UI', sans-serif" font-size="28" font-weight="900" fill="#0f5c2e" letter-spacing="2">
+    <textPath href="#topTextArc" startOffset="50%" text-anchor="middle">
+      ০২ নং বহেড়াতৈল ইউনিয়ন পরিষদ
+    </textPath>
+  </text>
+
+  <!-- Bottom Curved Text: সখিপুর, টাঙ্গাইল। -->
+  <text font-family="'Kalpurush', 'SolaimanLipi', 'Hind Siliguri', 'Segoe UI', sans-serif" font-size="26" font-weight="900" fill="#0f5c2e" letter-spacing="2">
+    <textPath href="#bottomTextArc" startOffset="50%" text-anchor="middle">
+      সখিপুর, টাঙ্গাইল।
+    </textPath>
+  </text>
+
+  <!-- Paddy Sheaves / Leaves Frame (Left & Right) -->
+  <g fill="#0f5c2e">
+    <!-- Left Laurel Leaf Strand -->
+    <path d="M 120,240 C 105,210 100,170 115,130 C 110,150 115,180 130,205 Z"/>
+    <path d="M 115,280 C 100,310 95,350 110,390 C 105,370 110,340 125,315 Z"/>
+    <path d="M 98,210 C 82,185 80,150 95,120 C 92,140 98,165 110,185 Z"/>
+    <path d="M 95,290 C 80,315 78,350 92,380 C 90,360 95,335 108,315 Z"/>
+    <!-- Right Laurel Leaf Strand -->
+    <path d="M 380,240 C 395,210 400,170 385,130 C 390,150 385,180 370,205 Z"/>
+    <path d="M 385,280 C 400,310 405,350 390,390 C 395,370 390,340 375,315 Z"/>
+    <path d="M 402,210 C 418,185 420,150 405,120 C 408,140 402,165 390,185 Z"/>
+    <path d="M 405,290 C 420,315 422,350 408,380 C 410,360 405,335 392,315 Z"/>
+  </g>
+
+  <!-- Top Center Jute Leaf & 4 Stars -->
+  <g fill="#0f5c2e">
+    <!-- Top Jute Leaf -->
+    <path d="M 250,85 C 242,105 242,120 250,135 C 258,120 258,105 250,85 Z"/>
+    <path d="M 240,110 C 230,115 220,115 228,125 C 238,122 242,118 240,110 Z"/>
+    <path d="M 260,110 C 270,115 280,115 272,125 C 262,122 258,118 260,110 Z"/>
+
+    <!-- 4 Stars (2 on left, 2 on right) -->
+    <!-- Star 1 (Far Left) -->
+    <polygon points="195,115 198,123 206,123 200,128 202,136 195,131 188,136 190,128 184,123 192,123"/>
+    <!-- Star 2 (Inner Left) -->
+    <polygon points="222,98 225,106 233,106 227,111 229,119 222,114 215,119 217,111 211,106 219,106"/>
+    <!-- Star 3 (Inner Right) -->
+    <polygon points="278,98 281,106 289,106 283,111 285,119 278,114 271,119 273,111 267,106 275,106"/>
+    <!-- Star 4 (Far Right) -->
+    <polygon points="305,115 308,123 316,123 310,128 312,136 305,131 298,136 300,128 294,123 302,123"/>
+  </g>
+
+  <!-- Center Water Lily (Shapla) Motif -->
+  <g fill="#0f5c2e" stroke="#ffffff" stroke-width="2">
+    <!-- Main Center Petal -->
+    <path d="M 250,135 C 232,185 235,245 250,295 C 265,245 268,185 250,135 Z"/>
+    <!-- Left Inner Petal -->
+    <path d="M 250,175 C 215,200 200,240 215,285 C 235,260 248,225 250,175 Z"/>
+    <!-- Right Inner Petal -->
+    <path d="M 250,175 C 285,200 300,240 285,285 C 265,260 252,225 250,175 Z"/>
+    <!-- Left Outer Petal -->
+    <path d="M 250,210 C 185,215 160,250 180,280 C 210,265 235,245 250,210 Z"/>
+    <!-- Right Outer Petal -->
+    <path d="M 250,210 C 315,215 340,250 320,280 C 290,265 265,245 250,210 Z"/>
+    <!-- Lower Petals -->
+    <path d="M 250,240 C 170,250 140,270 155,290 C 190,280 225,265 250,240 Z"/>
+    <path d="M 250,240 C 330,250 360,270 345,290 C 310,280 275,265 250,240 Z"/>
+  </g>
+
+  <!-- Water Waves at Bottom of Center -->
+  <g fill="none" stroke="#0f5c2e" stroke-width="5" stroke-linecap="round">
+    <path d="M 165,305 Q 185,295 205,305 T 245,305 T 285,305 T 325,305 T 345,305"/>
+    <path d="M 160,320 Q 180,310 200,320 T 240,320 T 280,320 T 320,320 T 340,320"/>
+    <path d="M 170,335 Q 190,325 210,335 T 250,335 T 290,335 T 330,335"/>
+    <path d="M 180,350 Q 200,340 220,350 T 260,350 T 300,350 L 320,350"/>
+  </g>
+</svg>

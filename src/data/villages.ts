@@ -45,7 +45,7 @@ export const DEFAULT_UP_CONFIG: UnionParishadConfig = {
   secretarySignatureUrl: '',
   enableDigitalSignature: true,
   showSecretarySignature: true,
-  logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/84/Government_Seal_of_Bangladesh.svg',
+  logoUrl: '/baheratail_seal.svg',
   sealText: '০২নং বহেড়াতৈল ইউনিয়ন পরিষদ * সখিপুর, টাঙ্গাইল',
   defaultPromptPrefix: 'তুমি ০২নং বহেড়াতৈল ইউনিয়ন পরিষদ, সখিপুর, টাঙ্গাইল-এর একজন দক্ষ ও পেশাদার প্রশাসনিক লেখক। সরকারি গাম্ভীর্য বজায় রেখে প্রত্যয়নপত্রের বিবরণী তৈরি করো।',
   enableHeaderInPrint: true,

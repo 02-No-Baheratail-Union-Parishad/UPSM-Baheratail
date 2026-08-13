@@ -78,6 +78,51 @@ interface AdminSettingsProps {
   onUpdateConfig: (newConfig: UnionParishadConfig) => void;
 }
 
+// Utility to convert uploaded image (JPG/PNG with white paper background) into transparent PNG signature
+const makeSignatureTransparent = (dataUrl: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(dataUrl);
+
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Make near-white paper background transparent & enhance dark ink contrast
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const brightness = (r + g + b) / 3;
+
+        if (brightness > 195) {
+          data[i + 3] = 0; // 100% transparent background
+        } else if (brightness > 150) {
+          const alphaFactor = (195 - brightness) / 45;
+          data[i + 3] = Math.round(data[i + 3] * alphaFactor);
+        } else {
+          // Darken ink contrast
+          data[i] = Math.max(0, r - 40);
+          data[i + 1] = Math.max(0, g - 40);
+          data[i + 2] = Math.max(0, b - 40);
+          data[i + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+};
+
 export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateConfig }) => {
   const [formData, setFormData] = useState<UnionParishadConfig>({ ...config });
   const [isSaving, setIsSaving] = useState(false);
@@ -2382,33 +2427,48 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                     <div className="flex items-center justify-between">
                       <label className="block text-[11px] font-bold text-emerald-950 flex items-center gap-1">
                         <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>চেয়ারম্যানের ডিজিটাল স্বাক্ষর (Digital Signature)</span>
+                        <span>চেয়ারম্যানের ডিজিটাল স্বাক্ষর (Transparent PNG Signature)</span>
                       </label>
                       {formData.chairmanSignatureUrl && (
                         <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
                           <Check className="w-3 h-3 text-emerald-700" />
-                          <span>সংযুক্ত</span>
+                          <span>সংযুক্ত (স্বচ্ছ)</span>
                         </span>
                       )}
                     </div>
 
                     {formData.chairmanSignatureUrl ? (
-                      <div className="relative group bg-white border border-slate-300 rounded-lg p-2 flex items-center justify-between gap-3 shadow-sm">
-                        <div className="h-12 max-w-[180px] flex items-center justify-center overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:8px_8px] rounded p-1">
+                      <div className="relative group bg-white border border-slate-300 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                        <div className="h-14 max-w-[200px] flex items-center justify-center overflow-hidden bg-[radial-gradient(#d1d5db_1px,transparent_1px)] [background-size:8px_8px] rounded p-1 border border-slate-200 shadow-inner">
                           <img
                             src={formData.chairmanSignatureUrl}
                             alt="Chairman Signature"
                             className="max-h-full max-w-full object-contain filter contrast-125"
                           />
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, chairmanSignatureUrl: '' })}
-                          className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] font-bold transition flex items-center gap-1 border border-red-200 shrink-0 cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span>রিমুভ</span>
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!formData.chairmanSignatureUrl) return;
+                              const transparentUrl = await makeSignatureTransparent(formData.chairmanSignatureUrl);
+                              setFormData({ ...formData, chairmanSignatureUrl: transparentUrl });
+                            }}
+                            className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded text-[11px] font-bold transition flex items-center gap-1 border border-amber-300 cursor-pointer"
+                            title="কাগজের সাদা ব্যাকগ্রাউন্ড কেটে স্বচ্ছ PNG বানান"
+                          >
+                            <Sparkles className="w-3 h-3 text-amber-700" />
+                            <span>স্বচ্ছ PNG ট্রিম করুন</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, chairmanSignatureUrl: '' })}
+                            className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] font-bold transition flex items-center gap-1 border border-red-200 shrink-0 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>রিমুভ</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="p-3 bg-white border-2 border-dashed border-emerald-300 rounded-lg text-center space-y-1">
@@ -2419,7 +2479,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                     <div className="flex items-center gap-2">
                       <label className="flex-1 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-xs rounded-lg cursor-pointer transition shadow-sm flex items-center justify-center gap-1.5">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>স্বাক্ষর ফাইল আপলোড করুন</span>
+                        <span>স্বাক্ষর ফাইল আপলোড করুন (Auto Transparent)</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2427,8 +2487,10 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                             const file = e.target.files?.[0];
                             if (file) {
                               const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setFormData({ ...formData, chairmanSignatureUrl: reader.result as string });
+                              reader.onloadend = async () => {
+                                const rawUrl = reader.result as string;
+                                const cleanUrl = await makeSignatureTransparent(rawUrl);
+                                setFormData({ ...formData, chairmanSignatureUrl: cleanUrl });
                               };
                               reader.readAsDataURL(file);
                             }
@@ -2442,7 +2504,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                       type="text"
                       value={formData.chairmanSignatureUrl || ''}
                       onChange={(e) => setFormData({ ...formData, chairmanSignatureUrl: e.target.value })}
-                      placeholder="অথবা ইমেজের URL লিংক দিন"
+                      placeholder="অথবা ইমেজের URL লিংক দিন (যেমন: https://.../signature.png)"
                       className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono focus:border-emerald-600 focus:outline-none"
                     />
                   </div>
@@ -2484,33 +2546,48 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                     <div className="flex items-center justify-between">
                       <label className="block text-[11px] font-bold text-emerald-950 flex items-center gap-1">
                         <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>সচিবের ডিজিটাল স্বাক্ষর (Digital Signature)</span>
+                        <span>সচিবের ডিজিটাল স্বাক্ষর (Transparent PNG Signature)</span>
                       </label>
                       {formData.secretarySignatureUrl && (
                         <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
                           <Check className="w-3 h-3 text-emerald-700" />
-                          <span>সংযুক্ত</span>
+                          <span>সংযুক্ত (স্বচ্ছ)</span>
                         </span>
                       )}
                     </div>
 
                     {formData.secretarySignatureUrl ? (
-                      <div className="relative group bg-white border border-slate-300 rounded-lg p-2 flex items-center justify-between gap-3 shadow-sm">
-                        <div className="h-12 max-w-[180px] flex items-center justify-center overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:8px_8px] rounded p-1">
+                      <div className="relative group bg-white border border-slate-300 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                        <div className="h-14 max-w-[200px] flex items-center justify-center overflow-hidden bg-[radial-gradient(#d1d5db_1px,transparent_1px)] [background-size:8px_8px] rounded p-1 border border-slate-200 shadow-inner">
                           <img
                             src={formData.secretarySignatureUrl}
                             alt="Secretary Signature"
                             className="max-h-full max-w-full object-contain filter contrast-125"
                           />
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, secretarySignatureUrl: '' })}
-                          className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] font-bold transition flex items-center gap-1 border border-red-200 shrink-0 cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span>রিমুভ</span>
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!formData.secretarySignatureUrl) return;
+                              const transparentUrl = await makeSignatureTransparent(formData.secretarySignatureUrl);
+                              setFormData({ ...formData, secretarySignatureUrl: transparentUrl });
+                            }}
+                            className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded text-[11px] font-bold transition flex items-center gap-1 border border-amber-300 cursor-pointer"
+                            title="কাগজের সাদা ব্যাকগ্রাউন্ড কেটে স্বচ্ছ PNG বানান"
+                          >
+                            <Sparkles className="w-3 h-3 text-amber-700" />
+                            <span>স্বচ্ছ PNG ট্রিম করুন</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, secretarySignatureUrl: '' })}
+                            className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] font-bold transition flex items-center gap-1 border border-red-200 shrink-0 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>রিমুভ</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="p-3 bg-white border-2 border-dashed border-emerald-300 rounded-lg text-center space-y-1">
@@ -2521,7 +2598,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                     <div className="flex items-center gap-2">
                       <label className="flex-1 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-xs rounded-lg cursor-pointer transition shadow-sm flex items-center justify-center gap-1.5">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>স্বাক্ষর ফাইল আপলোড করুন</span>
+                        <span>স্বাক্ষর ফাইল আপলোড করুন (Auto Transparent)</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2529,8 +2606,10 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                             const file = e.target.files?.[0];
                             if (file) {
                               const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setFormData({ ...formData, secretarySignatureUrl: reader.result as string });
+                              reader.onloadend = async () => {
+                                const rawUrl = reader.result as string;
+                                const cleanUrl = await makeSignatureTransparent(rawUrl);
+                                setFormData({ ...formData, secretarySignatureUrl: cleanUrl });
                               };
                               reader.readAsDataURL(file);
                             }
@@ -2544,7 +2623,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                       type="text"
                       value={formData.secretarySignatureUrl || ''}
                       onChange={(e) => setFormData({ ...formData, secretarySignatureUrl: e.target.value })}
-                      placeholder="অথবা ইমেজের URL লিংক দিন"
+                      placeholder="অথবা ইমেজের URL লিংক দিন (যেমন: https://.../signature.png)"
                       className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono focus:border-emerald-600 focus:outline-none"
                     />
                   </div>
@@ -2593,29 +2672,35 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Logo Upload Section */}
-              <div className="md:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <label className="block text-xs font-bold text-slate-800">
-                  ইউনিয়ন পরিষদের লোগো / অফিশিয়াল সিল আপলোড ও লিংক (পূর্বে আপলোডকৃত লোগো সহ)
-                </label>
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="w-20 h-20 rounded-xl bg-white border-2 border-emerald-800 p-2 shadow-sm flex items-center justify-center shrink-0">
+              <div className="md:col-span-2 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 p-4 rounded-2xl border border-emerald-200/80 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-black text-emerald-950 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-emerald-700" />
+                    <span>ওয়েব অ্যাপ ও সনদের অফিশিয়াল লোগো (Web App Main Branding Logo)</span>
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    এডমিন কর্তৃক পরিবর্তনযোগ্য ⚙️
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3.5 rounded-xl border border-emerald-200/60 shadow-2xs">
+                  <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-emerald-800/80 p-2 shadow-sm flex items-center justify-center shrink-0 relative overflow-hidden group">
                     <img
-                      src={formData.logoUrl || 'https://upload.wikimedia.org/wikipedia/commons/8/84/Government_Seal_of_Bangladesh.svg'}
-                      alt="Logo Preview"
-                      className="max-w-full max-h-full object-contain"
+                      src={formData.logoUrl || '/baheratail_seal.svg'}
+                      alt="Web App Logo Preview"
+                      className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
-                  <div className="flex-1 w-full space-y-2">
-                    <input
-                      type="text"
-                      value={formData.logoUrl}
-                      onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                      placeholder="লোগোর অনলাইন ইমেজের URL লিংক প্রদান করুন"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:border-emerald-600 focus:outline-none"
-                    />
-                    <div className="flex items-center gap-2">
-                      <label className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-xs rounded-lg cursor-pointer transition shadow-sm flex items-center gap-1">
-                        <span>📁 নতুন লোগো ফাইল আপলোড করুন</span>
+
+                  <div className="flex-1 w-full space-y-2.5">
+                    <p className="text-[11px] font-semibold text-slate-600">
+                      এই লোগোটি ওয়েব অ্যাপের টপ নেভিগেশন বার, সাইডবার হেডার, প্রিন্ট হেড এবং নাগরিক সনদে তাৎক্ষণিকভাবে প্রদর্শিত হবে।
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-xs rounded-xl cursor-pointer transition shadow-xs flex items-center gap-1.5 active:scale-95">
+                        <Upload className="w-4 h-4 text-amber-300" />
+                        <span>📁 কম্পিউটার/মোবাইল থেকে নতুন লোগো আপলোড করুন</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2632,14 +2717,31 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                           className="hidden"
                         />
                       </label>
+
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, logoUrl: '/baheratail_seal.svg' })}
+                        className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 font-bold text-xs rounded-xl transition border border-emerald-300 flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>🟢 বহেড়াতৈল ইউপি সিল</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/84/Government_Seal_of_Bangladesh.svg' })}
-                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-lg transition"
+                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition border border-slate-300 flex items-center gap-1 cursor-pointer"
                       >
-                        সরকারি অফিশিয়াল সিল
+                        <span>🇧🇩 সরকারি সিল</span>
                       </button>
                     </div>
+
+                    <input
+                      type="text"
+                      value={formData.logoUrl}
+                      onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                      placeholder="অথবা লোগোর অনলাইন ইমেজের URL লিংক দিন (যেমন: https://.../logo.png)"
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono text-slate-800 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
                   </div>
                 </div>
               </div>
