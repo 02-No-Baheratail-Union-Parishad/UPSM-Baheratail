@@ -215,8 +215,8 @@ export async function fetchPendingCertificatesCountFromFirebase(): Promise<numbe
       }
     });
     return count;
-  } catch (error) {
-    console.error('Error fetching pending count from Firestore:', error);
+  } catch (error: any) {
+    console.warn('Notice: Firestore pending count fetch notice:', error?.message || error);
     return 0;
   }
 }

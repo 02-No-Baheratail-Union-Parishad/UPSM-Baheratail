@@ -2644,6 +2644,94 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                 </div>
               </div>
 
+              {/* High-Resolution Background Watermark Seal / Logo Upload Section */}
+              <div className="md:col-span-2 bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-emerald-700" />
+                    <span>সনদের ব্যাকগ্রাউন্ড ওয়াটারমার্ক সিল/লোগো (High-Res Background Watermark)</span>
+                  </label>
+                  {formData.watermarkUrl && (
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-700" />
+                      <span>কাস্টম ওয়াটারমার্ক সেট করা আছে</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="w-20 h-20 rounded-xl bg-white border-2 border-emerald-800/40 p-2 shadow-sm flex items-center justify-center shrink-0 overflow-hidden relative group bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:8px_8px]">
+                    <img
+                      src={formData.watermarkUrl || formData.logoUrl || 'https://upload.wikimedia.org/wikipedia/commons/8/84/Government_Seal_of_Bangladesh.svg'}
+                      alt="Watermark Preview"
+                      className="max-w-full max-h-full object-contain filter opacity-85"
+                    />
+                  </div>
+                  <div className="flex-1 w-full space-y-2">
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      হাই-রেজোলিউশন ট্র্যান্সপারেন্ট (PNG) সিল বা লোগো আপলোড করুন যা A4 প্যাডের কেন্দ্রে ব্যাকগ্রাউন্ড ওয়াটারমার্ক হিসেবে প্রদর্শিত হবে। (ফাঁকা রাখলে মূল লোগো ব্যবহার হবে)
+                    </p>
+                    <input
+                      type="text"
+                      value={formData.watermarkUrl || ''}
+                      onChange={(e) => setFormData({ ...formData, watermarkUrl: e.target.value })}
+                      placeholder="কাস্টম ওয়াটারমার্ক ইমেজের URL লিংক দিন (ঐচ্ছিক)"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:border-emerald-600 focus:outline-none"
+                    />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 font-bold text-xs rounded-lg cursor-pointer transition shadow-sm flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>ওয়াটারমার্ক সিল ফাইল আপলোড করুন</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setFormData({ ...formData, watermarkUrl: reader.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      {formData.watermarkUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, watermarkUrl: '' })}
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-lg transition flex items-center gap-1 border border-red-200 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>রিমুভ করুন (হেডার লোগোতে রিসেট)</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Watermark Opacity Slider inside AdminSettings */}
+                <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between gap-4">
+                  <span className="text-xs font-bold text-slate-700">ডিফল্ট জলছাপ স্বচ্ছতা (Watermark Opacity):</span>
+                  <div className="flex items-center gap-3 w-1/2">
+                    <input
+                      type="range"
+                      min="0.02"
+                      max="0.30"
+                      step="0.01"
+                      value={formData.watermarkOpacity ?? 0.08}
+                      onChange={(e) => setFormData({ ...formData, watermarkOpacity: parseFloat(e.target.value) })}
+                      className="w-full accent-emerald-700 cursor-pointer"
+                    />
+                    <span className="font-mono text-xs font-bold text-emerald-950 bg-white px-2 py-0.5 rounded border border-emerald-300 shrink-0">
+                      {Math.round((formData.watermarkOpacity ?? 0.08) * 100)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Template Layout Customizer Options */}
               <div className="md:col-span-2 bg-emerald-950 text-white p-4 rounded-xl space-y-3">
                 <p className="font-bold text-xs text-amber-300 flex items-center gap-1.5">

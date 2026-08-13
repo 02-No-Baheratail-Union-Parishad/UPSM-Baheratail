@@ -123,6 +123,7 @@ export interface UnionParishadConfig {
   enableDigitalSignature?: boolean;
   showSecretarySignature?: boolean;
   logoUrl: string;
+  watermarkUrl?: string;
   sealText: string;
   defaultPromptPrefix: string;
   enableHeaderInPrint: boolean;

@@ -405,10 +405,10 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
         {/* Background Watermark */}
         <div 
           className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
-          style={{ opacity: config.watermarkOpacity || 0.08 }}
+          style={{ opacity: watermarkOpacity }}
         >
           <img 
-            src={config.logoUrl} 
+            src={config.watermarkUrl || config.logoUrl} 
             alt="Watermark Seal" 
             className="w-80 h-80 md:w-96 md:h-96 object-contain"
           />
@@ -1121,6 +1121,13 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                       </div>
 
                       <div className="text-center space-y-0.5">
+                        {showDigitalSig && config.chairmanSignatureUrl && (
+                          <img 
+                            src={config.chairmanSignatureUrl} 
+                            alt="Chairman Digital Signature" 
+                            className="h-7 max-w-[100px] object-contain mx-auto mb-0.5 filter contrast-125" 
+                          />
+                        )}
                         <p className="font-bold text-slate-950">{config.chairmanName}</p>
                         <p className="text-[9px] text-emerald-900">{config.chairmanTitle}</p>
                       </div>
