@@ -192,9 +192,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     { 
       id: 'developer', 
-      label: lang === 'bn' ? '১৪. ডেভেলপার ও ব্যাকআপ' : '14. Developer & Backup', 
+      label: lang === 'bn' ? '১৪. সিস্টেম ডেভেলপার ও ক্রিয়েটর' : '14. System Developer & Creator', 
       icon: Code2, 
-      badge: 'MCP Sync' 
+      badge: lang === 'bn' ? 'প্রোফাইল' : 'Profile' 
     }
   ];
 

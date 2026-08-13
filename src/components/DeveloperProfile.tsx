@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Code2, 
   User, 
@@ -18,9 +18,19 @@ import {
   Wrench, 
   RefreshCw,
   Copy,
-  Check
+  Check,
+  Lock,
+  Edit3,
+  Globe,
+  Share2,
+  ShieldCheck,
+  MessageSquare,
+  Facebook,
+  Linkedin,
+  ArrowRight
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
+import { AdminAuthModal } from './AdminAuthModal';
 
 interface DeveloperProfileProps {
   config: UnionParishadConfig;
@@ -28,9 +38,12 @@ interface DeveloperProfileProps {
 }
 
 export const DeveloperProfile: React.FC<DeveloperProfileProps> = ({ config, onUpdateConfig }) => {
+  // Developer Info State
   const [developerName, setDeveloperName] = useState(config.developerName || 'MD JUBAER HOSSEN');
   const [developerTitle, setDeveloperTitle] = useState(config.developerTitle || 'লীড সিস্টেম আর্কিটেক্ট ও ফুল-স্ট্যাক অটোমেশন ইঞ্জিনিয়ার');
-  const [developerBio, setDeveloperBio] = useState(config.developerBio || '০২নং বহেড়াতৈল ইউনিয়ন পরিষদের ডিজিটাল অটোমেশন সিস্টেম, ক্লাউড আর্কিটেকচার এবং Gemini AI চালিত স্মার্ট প্রত্যয়নপত্র ইঞ্জিন প্রস্তুতকারক।');
+  const [developerBio, setDeveloperBio] = useState(
+    config.developerBio || '০২নং বহেড়াতৈল ইউনিয়ন পরিষদের ডিজিটাল অটোমেশন সিস্টেম, ক্লাউড আর্কিটেকচার এবং Gemini AI চালিত স্মার্ট প্রত্যয়নপত্র ইঞ্জিন প্রস্তুতকারক।'
+  );
   const [developerEmail, setDeveloperEmail] = useState(config.developerEmail || 'baheratailunion@gmail.com');
   const [developerPhone, setDeveloperPhone] = useState(config.developerPhone || '01834333300');
   const [developerWhatsapp, setDeveloperWhatsapp] = useState(config.developerWhatsappNumber || '01834333300');
@@ -38,18 +51,73 @@ export const DeveloperProfile: React.FC<DeveloperProfileProps> = ({ config, onUp
   const [developerLinkedin, setDeveloperLinkedin] = useState(config.developerLinkedinUrl || 'https://linkedin.com/in/jubaerhossen');
   const [photoUrl, setPhotoUrl] = useState(config.developerPhotoUrl || '');
 
+  // Tech / Backup State
   const [githubUrl, setGithubUrl] = useState(config.githubRepoUrl || 'https://github.com/baheratail-up/up-automation-system');
   const [githubBranch, setGithubBranch] = useState(config.githubBranch || 'main');
-  const [driveUrl, setDriveUrl] = useState(config.googleDriveBackupUrl || 'https://drive.google.com/drive/folders/1-fndRmFqGTF_Qn1aZRrS6piKXmUEfqNU');
+  const [driveUrl, setDriveUrl] = useState(config.googleDriveBackupUrl || 'https://drive.google.com/drive/folders/16vXelYwApSFuFFru0Qkj1gaHCUwKZ-vz');
   const [mcpEndpoint, setMcpEndpoint] = useState(config.mcpEndpointUrl || 'https://api.baheratailup.gov.bd/v1/mcp');
   const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl || 'https://api.baheratailup.gov.bd/v1/webhook');
   const [webhookSecret, setWebhookSecret] = useState(config.webhookSecret || 'whsec_up_baheratail_2026_secret_key');
+
+  // Interactive Controls State
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [activeAdmin, setActiveAdmin] = useState<any>(null);
 
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingBackup, setIsSyncingBackup] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [testLog, setTestLog] = useState<string | null>(null);
+
+  // Sync props config when config updates
+  useEffect(() => {
+    if (config) {
+      if (config.developerName) setDeveloperName(config.developerName);
+      if (config.developerTitle) setDeveloperTitle(config.developerTitle);
+      if (config.developerBio) setDeveloperBio(config.developerBio);
+      if (config.developerEmail) setDeveloperEmail(config.developerEmail);
+      if (config.developerPhone) setDeveloperPhone(config.developerPhone);
+      if (config.developerWhatsappNumber) setDeveloperWhatsapp(config.developerWhatsappNumber);
+      if (config.developerFacebookUrl) setDeveloperFacebook(config.developerFacebookUrl);
+      if (config.developerLinkedinUrl) setDeveloperLinkedin(config.developerLinkedinUrl);
+      if (config.developerPhotoUrl) setPhotoUrl(config.developerPhotoUrl);
+      if (config.githubRepoUrl) setGithubUrl(config.githubRepoUrl);
+      if (config.googleDriveBackupUrl) setDriveUrl(config.googleDriveBackupUrl);
+    }
+  }, [config]);
+
+  // Check logged in Developer session
+  useEffect(() => {
+    const checkSession = () => {
+      const saved = localStorage.getItem('bup_active_admin_session');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setActiveAdmin(parsed);
+        } catch (e) {
+          setActiveAdmin(null);
+        }
+      } else {
+        setActiveAdmin(null);
+      }
+    };
+
+    checkSession();
+    const handleAuthChange = (e: CustomEvent) => {
+      setActiveAdmin(e.detail || null);
+    };
+
+    window.addEventListener('adminAuthChanged' as any, handleAuthChange);
+    return () => {
+      window.removeEventListener('adminAuthChanged' as any, handleAuthChange);
+    };
+  }, []);
+
+  const isDeveloperOrAdmin = React.useMemo(() => {
+    if (!activeAdmin) return false;
+    return ['developer', 'super_admin', 'chairman', 'secretary'].includes(activeAdmin.role);
+  }, [activeAdmin]);
 
   // Photo Upload Handler
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,406 +206,655 @@ Pushing commit to ${githubBranch}...`);
     }, 800);
   };
 
-  const handleCopyGithub = () => {
-    navigator.clipboard.writeText(githubUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleToggleEditMode = () => {
+    if (isEditMode) {
+      setIsEditMode(false);
+      return;
+    }
+
+    if (isDeveloperOrAdmin) {
+      setIsEditMode(true);
+    } else {
+      setIsAuthModalOpen(true);
+    }
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header Banner */}
-      <div className="bg-emerald-950 text-white p-6 rounded-2xl shadow-lg border border-emerald-900 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-emerald-800/30 to-transparent pointer-events-none" />
+    <div className="space-y-8 max-w-5xl mx-auto pb-12">
+      {/* Auth Modal for Developer Login */}
+      <AdminAuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)}
+        onAdminAuthenticated={(user) => {
+          if (user && ['developer', 'super_admin', 'chairman', 'secretary'].includes(user.role)) {
+            setIsEditMode(true);
+          }
+          setIsAuthModalOpen(false);
+        }}
+      />
+
+      {/* Top Navigation & Mode Switch Banner */}
+      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 text-white p-6 rounded-2xl shadow-xl border border-emerald-800/80 relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-400/10 via-transparent to-transparent pointer-events-none" />
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
-            <span className="px-3 py-1 bg-amber-400 text-emerald-950 text-[10px] font-black uppercase tracking-wider rounded-full inline-block mb-2">
-              System Creator & Developer Control
-            </span>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
-              <Code2 className="w-6 h-6 text-amber-300" />
-              <span>ডেভেলপার প্রোফাইল, সোশ্যাল মিডিয়া ও ব্যাকআপ সিস্টেম</span>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="px-3 py-1 bg-amber-400 text-emerald-950 text-[11px] font-black uppercase tracking-wider rounded-full inline-flex items-center gap-1 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>System Developer & Creator Profile</span>
+              </span>
+              {isEditMode ? (
+                <span className="px-2.5 py-0.5 bg-emerald-500 text-slate-950 text-[10px] font-bold rounded-full border border-emerald-300 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>কাস্টমাইজেশন মোড চালু (Developer Logged In)</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 bg-slate-800 text-emerald-300 text-[10px] font-bold rounded-full border border-slate-700 flex items-center gap-1">
+                  <Globe className="w-3 h-3" />
+                  <span>পাবলিক ভিউয়ার মোড (Public Profile View)</span>
+                </span>
+              )}
+            </div>
+
+            <h2 className="text-xl md:text-2xl font-black text-white flex items-center gap-2.5">
+              <Code2 className="w-7 h-7 text-amber-300 shrink-0" />
+              <span>০২নং বহেড়াতৈল ইউনিয়ন পরিষদ সিস্টেম ডেভেলপার</span>
             </h2>
-            <p className="text-xs text-emerald-200 mt-1 max-w-xl">
-              {config.upName} এর সমস্ত ডেভেলপার তথ্য, সোশ্যাল মিডিয়া সংযোগ, হেল্পলাইন, GitHub ব্যাকআপ ও Webhook নিয়ন্ত্রণ করুন।
+            <p className="text-xs text-emerald-200/90 mt-1 max-w-2xl leading-relaxed">
+              ইউনিয়ন পরিষদের ক্লাউড আর্কিটেকচার, Gemini AI চালিত স্মার্ট অটোমেশন এবং সিস্টেম ক্রিয়েটর সম্পর্কিত সমস্ত অফিশিয়াল তথ্য ও সোশ্যাল মিডিয়া প্রোফাইল।
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <a
-              href={`https://wa.me/${developerWhatsapp.replace(/[^0-9]/g, '')}`}
-              target="_blank"
-              rel="noreferrer"
-              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow"
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleEditMode}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs transition duration-200 flex items-center gap-2 shadow-lg cursor-pointer ${
+                isEditMode
+                  ? 'bg-amber-400 hover:bg-amber-300 text-emerald-950 border border-amber-300'
+                  : 'bg-emerald-800 hover:bg-emerald-700 text-white border border-emerald-600'
+              }`}
             >
-              <Phone className="w-4 h-4 text-amber-300" />
-              <span>WhatsApp: {developerWhatsapp}</span>
-            </a>
-            <a
-              href={githubUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="px-3.5 py-2 bg-emerald-900 hover:bg-emerald-800 text-emerald-100 font-bold text-xs rounded-xl border border-emerald-700 transition flex items-center gap-1.5"
-            >
-              <Github className="w-4 h-4 text-amber-300" />
-              <span>GitHub Repo</span>
-            </a>
+              {isEditMode ? (
+                <>
+                  <Globe className="w-4 h-4 text-emerald-950" />
+                  <span>পাবলিক প্রোফাইল ভিউতে ফিরে যান</span>
+                </>
+              ) : (
+                <>
+                  <Edit3 className="w-4 h-4 text-amber-300" />
+                  <span>{isDeveloperOrAdmin ? '✏️ কাস্টমাইজ প্যানেল খুলুন' : '🔒 কাস্টমাইজ করুন (Developer Login)'}</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main Developer Editable Form Card */}
-      <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-6">
-        <h3 className="font-extrabold text-sm text-emerald-950 border-b border-slate-200 pb-2 flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <User className="w-4 h-4 text-emerald-700" />
-            <span>১. ডেভেলপার ব্যক্তিগত তথ্য ও সোশ্যাল মিডিয়া প্রোফাইল কাস্টমাইজেশন</span>
-          </span>
-          <span className="text-xs font-normal text-slate-500">
-            (এখানে পরিবর্তন করে নিচে সেভ বাটনে চাপ দিন)
-          </span>
-        </h3>
+      {/* ============================================================ */}
+      {/* PUBLIC DEVELOPER SHOWCASE CARD (VISIBLE TO ALL CITIZENS/VIEWERS) */}
+      {/* ============================================================ */}
+      {!isEditMode && (
+        <div className="space-y-6">
+          {/* Main Developer Persona Card */}
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden relative">
+            <div className="h-32 bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 p-6 flex items-end justify-end relative">
+              <span className="text-[11px] font-bold text-amber-300/80 tracking-wider uppercase bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-amber-400/20">
+                Official Creator & Lead Architect
+              </span>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Photo & Quick Contact Column */}
-          <div className="flex flex-col items-center text-center space-y-3 md:border-r border-slate-200 md:pr-6">
-            <div className="relative group">
-              <div className="w-36 h-36 rounded-2xl overflow-hidden border-4 border-emerald-800 shadow-md bg-slate-100 flex items-center justify-center">
-                {photoUrl ? (
-                  <img src={photoUrl} alt="Developer" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-slate-400 flex flex-col items-center">
-                    <User className="w-12 h-12 text-slate-400" />
-                    <span className="text-[10px] mt-1 font-bold">ছবি আপলোড করুন</span>
+            <div className="px-6 pb-6 pt-0 relative">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 -mt-16 mb-6">
+                {/* Fixed Photo Container */}
+                <div className="w-36 h-36 md:w-44 md:h-44 rounded-2xl overflow-hidden border-4 border-white shadow-2xl bg-emerald-950 shrink-0 relative group">
+                  {photoUrl ? (
+                    <img 
+                      src={photoUrl} 
+                      alt={developerName} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-emerald-900 to-slate-900 flex flex-col items-center justify-center p-4 text-center text-white">
+                      <User className="w-16 h-16 text-amber-300 mb-1" />
+                      <span className="text-[11px] font-black text-amber-300 leading-tight">MD JUBAER HOSSEN</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 ring-1 ring-black/10 rounded-2xl pointer-events-none" />
+                </div>
+
+                {/* Developer Details Header */}
+                <div className="text-center md:text-left flex-1 space-y-2 pt-2 md:pt-16">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                        {developerName}
+                      </h3>
+                      <p className="text-sm font-bold text-emerald-800">
+                        {developerTitle}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-center md:justify-end gap-2">
+                      <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-full flex items-center gap-1.5 shadow-2xs">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>গেজেটেড সিস্টেম আর্কিটেক্ট</span>
+                      </span>
+                    </div>
                   </div>
-                )}
+
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    {developerBio}
+                  </p>
+                </div>
               </div>
 
-              <label className="absolute bottom-2 right-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 p-2 rounded-xl shadow cursor-pointer transition">
-                <Upload className="w-4 h-4" />
-                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-              </label>
-            </div>
-
-            <div className="w-full text-left space-y-2 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">ছবি লিংক (Image URL):</label>
-                <input
-                  type="text"
-                  value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
-                />
-              </div>
-
-              <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 space-y-1">
-                <p className="text-[10px] font-bold text-emerald-900">অফিশিয়াল হেল্পলাইন ও সাপোর্ট:</p>
-                <p className="text-xs font-bold text-emerald-950 font-mono">
-                  📞 কল: {developerPhone}
-                </p>
-                <p className="text-xs font-bold text-emerald-950 font-mono">
-                  💬 WhatsApp: {developerWhatsapp}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Form Fields Column */}
-          <div className="md:col-span-2 space-y-4 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ডেভেলপার নাম:</label>
-                <input
-                  type="text"
-                  value={developerName}
-                  onChange={(e) => setDeveloperName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">পদবী/উপাধি:</label>
-                <input
-                  type="text"
-                  value={developerTitle}
-                  onChange={(e) => setDeveloperTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ফোন / হেল্পলাইন নম্বর:</label>
-                <input
-                  type="text"
-                  value={developerPhone}
-                  onChange={(e) => setDeveloperPhone(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">WhatsApp নম্বর:</label>
-                <input
-                  type="text"
-                  value={developerWhatsapp}
-                  onChange={(e) => setDeveloperWhatsapp(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ইমেইল ঠিকানা:</label>
-                <input
-                  type="email"
-                  value={developerEmail}
-                  onChange={(e) => setDeveloperEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Facebook প্রোফাইল লিংক:</label>
-                <input
-                  type="text"
-                  value={developerFacebook}
-                  onChange={(e) => setDeveloperFacebook(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1">LinkedIn প্রোফাইল লিংক:</label>
-                <input
-                  type="text"
-                  value={developerLinkedin}
-                  onChange={(e) => setDeveloperLinkedin(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">বায়ো / বিবরণী:</label>
-              <textarea
-                rows={2}
-                value={developerBio}
-                onChange={(e) => setDeveloperBio(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs leading-relaxed focus:bg-white focus:border-emerald-600 focus:outline-none"
-              />
-            </div>
-
-            {/* Live Social Quick Links Bar */}
-            <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center gap-2">
-              <span className="font-bold text-slate-600">লাইব সোশাল লিংকস:</span>
-              {developerFacebook && (
+              {/* Direct Helpline & Social Action Badges Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+                {/* Helpline Phone */}
                 <a
-                  href={developerFacebook}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-2.5 py-1 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition flex items-center gap-1"
+                  href={`tel:${developerPhone.replace(/[^0-9]/g, '')}`}
+                  className="p-3.5 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-2xl transition flex items-center gap-3 group shadow-2xs"
                 >
-                  <span>Facebook</span>
-                  <ExternalLink className="w-3 h-3" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-300 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-emerald-800 block uppercase">জরুরী হেল্পলাইন ও কল</span>
+                    <span className="text-xs font-black font-mono text-emerald-950 block truncate">{developerPhone}</span>
+                  </div>
                 </a>
-              )}
-              {developerWhatsapp && (
+
+                {/* WhatsApp Chat */}
                 <a
                   href={`https://wa.me/${developerWhatsapp.replace(/[^0-9]/g, '')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2.5 py-1 bg-emerald-600 text-white rounded font-bold hover:bg-emerald-700 transition flex items-center gap-1"
+                  className="p-3.5 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-2xl transition flex items-center gap-3 group shadow-2xs"
                 >
-                  <span>WhatsApp ({developerWhatsapp})</span>
-                  <ExternalLink className="w-3 h-3" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-emerald-800 block uppercase">WhatsApp চ্যাট করুন</span>
+                    <span className="text-xs font-black font-mono text-emerald-950 block truncate">{developerWhatsapp}</span>
+                  </div>
                 </a>
-              )}
-              {developerLinkedin && (
+
+                {/* Email Support */}
                 <a
-                  href={developerLinkedin}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-2.5 py-1 bg-sky-700 text-white rounded font-bold hover:bg-sky-800 transition flex items-center gap-1"
+                  href={`mailto:${developerEmail}`}
+                  className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition flex items-center gap-3 group shadow-2xs"
                 >
-                  <span>LinkedIn</span>
-                  <ExternalLink className="w-3 h-3" />
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-amber-300 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-slate-500 block uppercase">ইমেইল যোগাযোগ</span>
+                    <span className="text-xs font-bold font-mono text-slate-800 block truncate">{developerEmail}</span>
+                  </div>
                 </a>
-              )}
+              </div>
+
+              {/* Social Media Channels Bar */}
+              <div className="mt-5 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Share2 className="w-4 h-4 text-emerald-700" />
+                  <span>ডেভেলপারের সোশ্যাল মিডিয়া পেজ ও লিঙ্কসমূহ:</span>
+                </span>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {developerFacebook && (
+                    <a
+                      href={developerFacebook}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Facebook className="w-3.5 h-3.5" />
+                      <span>Facebook Profile</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerLinkedin && (
+                    <a
+                      href={developerLinkedin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Linkedin className="w-3.5 h-3.5" />
+                      <span>LinkedIn Profile</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {githubUrl && (
+                    <a
+                      href={githubUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Github className="w-3.5 h-3.5" />
+                      <span>GitHub Code Repository</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* GitHub Repository Connection & Backup Management */}
-      <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
-          <div>
-            <h3 className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
-              <Github className="w-4 h-4 text-emerald-700" />
-              <span>২. GitHub কানেকশন ও সোর্স কোড ব্যাকআপ সিঙ্ক্রোনাইজেশন</span>
+          {/* System Tech Architecture Showcase Cards */}
+          <div className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 space-y-4">
+            <h3 className="font-extrabold text-sm text-emerald-950 border-b border-slate-200 pb-3 flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-emerald-700" />
+              <span>কারিগরি আর্কিটেকচার ও সিস্টেম ফিচারসমুহ (System Engineering Specs)</span>
             </h3>
-            <p className="text-xs text-slate-500">
-              সিস্টেমের পুরো সোর্স কোড এবং স্কিমা সুরক্ষিত রাখতে GitHub Repository কানেক্ট করে সরাসরি ব্যাকআপ সিঙ্ক করুন।
-            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center font-bold mb-2">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <h4 className="font-black text-slate-900">Gemini 1.5 Flash Vision OCR</h4>
+                <p className="text-slate-600 leading-relaxed">
+                  এনআইডি ও জন্ম নিবন্ধন কার্ডের ছবি থেকে বাংলায় নিখুঁত তথ্য এক্সট্র্যাক্ট এবং এআই চালিত ড্রাফট তৈরীর জন্য জেনারেটিভ মডেল।
+                </p>
+              </div>
+
+              <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center font-bold mb-2">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <h4 className="font-black text-slate-900">Firebase Cloud Persistence</h4>
+                <p className="text-slate-600 leading-relaxed">
+                  রিয়েলটাইম এনক্রিপ্টেড ফায়ারস্টোর ডেটাবেস, অডিট ট্রেইল সিকিউরিটি এবং রোল-বেসড পারমিশন অ্যাক্সেস রুলস।
+                </p>
+              </div>
+
+              <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center font-bold mb-2">
+                  <Cloud className="w-4 h-4" />
+                </div>
+                <h4 className="font-black text-slate-900">Cloudflare R2 & Drive Auto-Sync</h4>
+                <p className="text-slate-600 leading-relaxed">
+                  ডিজিটাল কপি ক্লাউডে ব্যাকআপ এবং গুগল ড্রাইভ ও শিটসে স্বয়ংক্রিয় সিঙ্ক্রোনাইজেশন সিস্টেম।
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* PROTECTED DEVELOPER EDITING FORM (ACCESSIBLE IN EDIT MODE)  */}
+      {/* ============================================================ */}
+      {isEditMode && (
+        <div className="space-y-6">
+          {/* Main Developer Editable Form Card (Matches SmartSelect UI) */}
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-6">
+            <h3 className="font-extrabold text-sm text-emerald-950 border-b border-slate-200 pb-2 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <User className="w-4 h-4 text-emerald-700" />
+                <span>১. ডেভেলপার ব্যক্তিগত তথ্য ও সোশ্যাল মিডিয়া প্রোফাইল কাস্টমাইজেশন</span>
+              </span>
+              <span className="text-xs font-normal text-slate-500">
+                (এখানে পরিবর্তন করে নিচে সেভ বাটনে চাপ দিন)
+              </span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Photo & Quick Contact Column */}
+              <div className="flex flex-col items-center text-center space-y-3 md:border-r border-slate-200 md:pr-6">
+                <div className="relative group">
+                  <div className="w-36 h-36 rounded-2xl overflow-hidden border-4 border-emerald-800 shadow-md bg-slate-100 flex items-center justify-center">
+                    {photoUrl ? (
+                      <img src={photoUrl} alt="Developer" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-slate-400 flex flex-col items-center">
+                        <User className="w-12 h-12 text-slate-400" />
+                        <span className="text-[10px] mt-1 font-bold">ছবি আপলোড করুন</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <label className="absolute bottom-2 right-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 p-2 rounded-xl shadow cursor-pointer transition">
+                    <Upload className="w-4 h-4" />
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                  </label>
+                </div>
+
+                <div className="w-full text-left space-y-2 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">ছবি লিংক (Image URL):</label>
+                    <input
+                      type="text"
+                      value={photoUrl}
+                      onChange={(e) => setPhotoUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 space-y-1">
+                    <p className="text-[10px] font-bold text-emerald-900">অফিশিয়াল হেল্পলাইন ও সাপোর্ট:</p>
+                    <p className="text-xs font-bold text-emerald-950 font-mono">
+                      📞 কল: {developerPhone}
+                    </p>
+                    <p className="text-xs font-bold text-emerald-950 font-mono">
+                      💬 WhatsApp: {developerWhatsapp}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Fields Column */}
+              <div className="md:col-span-2 space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">ডেভেলপার নাম:</label>
+                    <input
+                      type="text"
+                      value={developerName}
+                      onChange={(e) => setDeveloperName(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">পদবী/উপাধি:</label>
+                    <input
+                      type="text"
+                      value={developerTitle}
+                      onChange={(e) => setDeveloperTitle(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">ফোন / হেল্পলাইন নম্বর:</label>
+                    <input
+                      type="text"
+                      value={developerPhone}
+                      onChange={(e) => setDeveloperPhone(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">WhatsApp নম্বর:</label>
+                    <input
+                      type="text"
+                      value={developerWhatsapp}
+                      onChange={(e) => setDeveloperWhatsapp(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">ইমেইল ঠিকানা:</label>
+                    <input
+                      type="email"
+                      value={developerEmail}
+                      onChange={(e) => setDeveloperEmail(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Facebook প্রোফাইল লিংক:</label>
+                    <input
+                      type="text"
+                      value={developerFacebook}
+                      onChange={(e) => setDeveloperFacebook(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-bold text-slate-700 mb-1">LinkedIn প্রোফাইল লিংক:</label>
+                    <input
+                      type="text"
+                      value={developerLinkedin}
+                      onChange={(e) => setDeveloperLinkedin(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">বায়ো / বিবরণী:</label>
+                  <textarea
+                    rows={2}
+                    value={developerBio}
+                    onChange={(e) => setDeveloperBio(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs leading-relaxed focus:bg-white focus:border-emerald-600 focus:outline-none"
+                  />
+                </div>
+
+                {/* Live Social Quick Links Bar */}
+                <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-slate-600">লাইব সোশাল লিংকস:</span>
+                  {developerFacebook && (
+                    <a
+                      href={developerFacebook}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition flex items-center gap-1"
+                    >
+                      <span>Facebook</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {developerWhatsapp && (
+                    <a
+                      href={`https://wa.me/${developerWhatsapp.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 bg-emerald-600 text-white rounded font-bold hover:bg-emerald-700 transition flex items-center gap-1"
+                    >
+                      <span>WhatsApp ({developerWhatsapp})</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {developerLinkedin && (
+                    <a
+                      href={developerLinkedin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 bg-sky-700 text-white rounded font-bold hover:bg-sky-800 transition flex items-center gap-1"
+                    >
+                      <span>LinkedIn</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleGithubBackupSync}
-            disabled={isSyncingBackup}
-            className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-xs rounded-xl shadow transition flex items-center gap-2 disabled:opacity-50 cursor-pointer shrink-0"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingBackup ? 'animate-spin' : ''}`} />
-            <span>{isSyncingBackup ? 'GitHub-এ ব্যাকআপ হচ্ছে...' : 'GitHub ব্যাকআপ সিঙ্ক চালান'}</span>
-          </button>
-        </div>
+          {/* GitHub Repository Connection & Backup Management */}
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+              <div>
+                <h3 className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
+                  <Github className="w-4 h-4 text-emerald-700" />
+                  <span>২. GitHub কানেকশন ও সোর্স কোড ব্যাকআপ সিঙ্ক্রোনাইজেশন</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  সিস্টেমের পুরো সোর্স কোড এবং স্কিমা সুরক্ষিত রাখতে GitHub Repository কানেক্ট করে সরাসরি ব্যাকআপ সিঙ্ক করুন।
+                </p>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="bg-slate-900 text-white p-4 rounded-xl space-y-3">
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">GitHub Repo URL:</label>
-              <input
-                type="text"
-                value={githubUrl}
-                onChange={(e) => setGithubUrl(e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 rounded font-mono"
-              />
+              <button
+                type="button"
+                onClick={handleGithubBackupSync}
+                disabled={isSyncingBackup}
+                className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-xs rounded-xl shadow transition flex items-center gap-2 disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingBackup ? 'animate-spin' : ''}`} />
+                <span>{isSyncingBackup ? 'GitHub-এ ব্যাকআপ হচ্ছে...' : 'GitHub ব্যাকআপ সিঙ্ক চালান'}</span>
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="bg-slate-900 text-white p-4 rounded-xl space-y-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">GitHub Repo URL:</label>
+                  <input
+                    type="text"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 rounded font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Target Branch:</label>
+                    <input
+                      type="text"
+                      value={githubBranch}
+                      onChange={(e) => setGithubBranch(e.target.value)}
+                      className="w-full px-2.5 py-1 bg-slate-800 border border-slate-700 text-white rounded font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">সর্বশেষ ব্যাকআপ:</label>
+                    <span className="block px-2.5 py-1 bg-slate-800 text-emerald-400 rounded font-mono font-bold">
+                      {config.lastBackupDate || 'আজ সকাল ১১:১৫'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-emerald-950 text-white p-4 rounded-xl space-y-3">
+                <div>
+                  <label className="block text-emerald-200 font-bold mb-1">Google Drive Backup URL:</label>
+                  <input
+                    type="text"
+                    value={driveUrl}
+                    onChange={(e) => setDriveUrl(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-emerald-900 border border-emerald-800 text-amber-300 rounded font-mono"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                  <a
+                    href={driveUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-amber-300 hover:underline flex items-center gap-1 font-bold"
+                  >
+                    <span>Google Drive ব্যাকআপ লিঙ্ক খুলুন</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+
+                  <span className="text-[10px] bg-emerald-800 px-2 py-0.5 rounded text-emerald-200 font-mono">
+                    AUTO-SYNC ON
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Webhook System Configuration */}
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Target Branch:</label>
+                <h3 className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-emerald-700" />
+                  <span>৩. সিস্টেম Webhook ইন্টিগ্রেশন (Real-Time External Event Notification)</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  নতুন কোন সনদ জেনারেট বা নাগরিক নিবন্ধিত হলে আপনার বাহ্যিক সার্ভারে Webhook Event পাঠাবে।
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRunMcpTest}
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                <span>Webhook টেস্ট করুন</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Webhook Endpoint URL:</label>
                 <input
                   type="text"
-                  value={githubBranch}
-                  onChange={(e) => setGithubBranch(e.target.value)}
-                  className="w-full px-2.5 py-1 bg-slate-800 border border-slate-700 text-white rounded font-mono"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder="https://api.yourdomain.com/webhook"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">সর্বশেষ ব্যাকআপ:</label>
-                <span className="block px-2.5 py-1 bg-slate-800 text-emerald-400 rounded font-mono font-bold">
-                  {config.lastBackupDate || 'আজ সকাল ১১:১৫'}
-                </span>
+                <label className="block font-bold text-slate-700 mb-1">Webhook Secret Key:</label>
+                <input
+                  type="text"
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                />
               </div>
             </div>
+
+            {/* Test Console Output */}
+            {testLog && (
+              <div className="bg-slate-950 text-emerald-400 p-3.5 rounded-xl font-mono text-xs whitespace-pre-line border border-slate-800 leading-relaxed">
+                {testLog}
+              </div>
+            )}
           </div>
 
-          <div className="bg-emerald-950 text-white p-4 rounded-xl space-y-3">
-            <div>
-              <label className="block text-emerald-200 font-bold mb-1">Google Drive Backup URL:</label>
-              <input
-                type="text"
-                value={driveUrl}
-                onChange={(e) => setDriveUrl(e.target.value)}
-                className="w-full px-3 py-1.5 bg-emerald-900 border border-emerald-800 text-amber-300 rounded font-mono"
-              />
+          {/* Save Status Notification */}
+          {savedSuccess && (
+            <div className="p-3.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>ডেভেলপার তথ্য, সোশাল সোশ্যাল লিংক, হেল্পলাইন, GitHub ও Webhook সফলভাবে সংরক্ষিত হয়েছে!</span>
             </div>
+          )}
 
-            <div className="pt-2 flex items-center justify-between">
-              <a
-                href={driveUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-amber-300 hover:underline flex items-center gap-1 font-bold"
-              >
-                <span>Google Drive ব্যাকআপ লিঙ্ক খুলুন</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
-              <span className="text-[10px] bg-emerald-800 px-2 py-0.5 rounded text-emerald-200 font-mono">
-                AUTO-SYNC ON
-              </span>
-            </div>
+          {/* Save Action */}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsEditMode(false)}
+              className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+            >
+              বাতিল (পাবলিক ভিউ)
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDeveloperConfig}
+              disabled={isSaving}
+              className="px-8 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-lg transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                  <span>সেভ হইতেছে...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                  <span>সমস্ত তথ্য ও ব্যাকআপ সেভ করুন</span>
+                </>
+              )}
+            </button>
           </div>
-        </div>
-      </div>
-
-      {/* Webhook System Configuration */}
-      <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-          <div>
-            <h3 className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-emerald-700" />
-              <span>৩. সিস্টেম Webhook ইন্টিগ্রেশন (Real-Time External Event Notification)</span>
-            </h3>
-            <p className="text-xs text-slate-500">
-              নতুন কোন সনদ জেনারেট বা নাগরিক নিবন্ধিত হলে আপনার বাহ্যিক সার্ভারে Webhook Event পাঠাবে।
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleRunMcpTest}
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            <span>Webhook টেস্ট করুন</span>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Webhook Endpoint URL:</label>
-            <input
-              type="text"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
-              placeholder="https://api.yourdomain.com/webhook"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">Webhook Secret Key:</label>
-            <input
-              type="text"
-              value={webhookSecret}
-              onChange={(e) => setWebhookSecret(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Test Console Output */}
-        {testLog && (
-          <div className="bg-slate-950 text-emerald-400 p-3.5 rounded-xl font-mono text-xs whitespace-pre-line border border-slate-800 leading-relaxed">
-            {testLog}
-          </div>
-        )}
-      </div>
-
-      {/* Save Status Notification */}
-      {savedSuccess && (
-        <div className="p-3.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>ডেভেলপার তথ্য, সোশাল সোশ্যাল লিংক, হেল্পলাইন, GitHub ও Webhook সফলভাবে সংরক্ষিত হয়েছে!</span>
         </div>
       )}
-
-      {/* Save Action */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSaveDeveloperConfig}
-          disabled={isSaving}
-          className="px-8 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-lg transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-        >
-          {isSaving ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
-              <span>সেভ হইতেছে...</span>
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-4 h-4 text-amber-300" />
-              <span>সমস্ত তথ্য ও ব্যাকআপ সেভ করুন</span>
-            </>
-          )}
-        </button>
-      </div>
     </div>
   );
 };
-

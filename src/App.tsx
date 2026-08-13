@@ -216,9 +216,7 @@ export default function App() {
         )}
 
         {activeTab === 'developer' && (
-          <AdminGuard allowedRoles={['developer', 'super_admin']} title="ডেভেলপার প্যানেল সিকিউরিটি প্রোফাইল">
-            <DeveloperProfile config={config} onUpdateConfig={setConfig} />
-          </AdminGuard>
+          <DeveloperProfile config={config} onUpdateConfig={setConfig} />
         )}
 
         {activeTab === 'audit_trail' && (
