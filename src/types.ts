@@ -162,6 +162,17 @@ export interface UnionParishadConfig {
   developerWhatsappNumber?: string;
   developerFacebookUrl?: string;
   developerLinkedinUrl?: string;
+  developerTiktokUrl?: string;
+  developerInstagramUrl?: string;
+  developerGithubProfileUrl?: string;
+  developerTwitterUrl?: string;
+  developerWordpressUrl?: string;
+  developerWhatsappUrl?: string;
+  developerWhatsappUsername?: string;
+  developerTelegramUrl?: string;
+  developerTelegramUsername?: string;
+  developerMessengerUrl?: string;
+  developerMessengerUsername?: string;
   githubRepoUrl?: string;
   githubBranch?: string;
   googleDriveBackupUrl?: string;

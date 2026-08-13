@@ -111,7 +111,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
     return () => unsubscribe();
   }, []);
 
-  const handleQuickAdminLogin = (role: 'chairman' | 'secretary' | 'super_admin' | 'member', name: string, email: string, designation: string) => {
+  const handleQuickAdminLogin = (role: 'chairman' | 'secretary' | 'super_admin' | 'member' | 'developer', name: string, email: string, designation: string) => {
     setAuthError(null);
     const rec: AdminUserRecord = {
       email,
@@ -428,6 +428,24 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
                         <span className="text-[10px] font-bold bg-purple-100 text-purple-900 px-2 py-0.5 rounded border border-purple-300">Super Admin</span>
                       </div>
                       <p className="text-[10px] text-slate-500 mt-0.5">admin@baheratailup.gov.bd</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdminLogin('developer', 'MD JUBAER HOSSEN', 'developer@baheratailup.gov.bd', 'লীড সিস্টেম আর্কিটেক্ট ও ডেভেলপার')}
+                      className="p-3 bg-gradient-to-r from-emerald-950 to-slate-900 border border-amber-400/60 text-white rounded-xl text-left transition shadow-md group cursor-pointer sm:col-span-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-amber-300 group-hover:text-amber-200 flex items-center gap-1.5">
+                          <span>👨‍💻 সিস্টেম ডেভেলপার সাইন-ইন</span>
+                        </span>
+                        <span className="text-[10px] font-bold bg-amber-400 text-emerald-950 px-2.5 py-0.5 rounded-full border border-amber-300">
+                          Developer Access
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-200 mt-1 font-medium">
+                        MD JUBAER HOSSEN (ক্যাটাগরি ১১, ১২, ১৩, ১৪ আনলক করুন)
+                      </p>
                     </button>
 
                     <button

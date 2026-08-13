@@ -20,6 +20,7 @@ import {
 } from '../firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { AdminAuthModal } from './AdminAuthModal';
+import { useTranslation } from '../utils/i18n';
 
 interface NavbarProps {
   activeTab: string;
@@ -88,17 +89,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
     setIsDarkMode(prev => !prev);
   };
 
-  // Language state (bn / en)
-  const [lang, setLang] = useState<'bn' | 'en'>(() => {
-    return (localStorage.getItem('app_lang') as 'bn' | 'en') || 'bn';
-  });
-
-  const toggleLanguage = () => {
-    const nextLang = lang === 'bn' ? 'en' : 'bn';
-    setLang(nextLang);
-    localStorage.setItem('app_lang', nextLang);
-    window.dispatchEvent(new CustomEvent('languageChange', { detail: nextLang }));
-  };
+  // Language state & Localization helper hook
+  const { lang, toggleLanguage, t } = useTranslation();
 
   // Fetch pending count from backend API and Firestore
   const fetchPendingCount = async () => {
@@ -151,18 +143,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>{lang === 'bn' ? 'গণপ্রজাতন্ত্রী বাংলাদেশ সরকার - স্থানীয় সরকার বিভাগ' : 'Govt. of the People\'s Republic of Bangladesh - Local Govt. Division'}</span>
+            <span>{t('govtTitle')}</span>
           </div>
           <div className="flex items-center gap-4 text-emerald-300">
-            <span>{lang === 'bn' ? 'হেল্পলাইন: ০৯৬৩৮০০১১২২' : 'Helpline: 09638001122'}</span>
+            <span>{t('helpline')}</span>
             <span className="hidden sm:inline">|</span>
-            <span className="hidden sm:inline">{lang === 'bn' ? 'ইমেইল: baheratailunion@gmail.com' : 'Email: baheratailunion@gmail.com'}</span>
+            <span className="hidden sm:inline">{t('email')}</span>
             
             {/* Top Bar Language Toggle Button */}
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-[11px] font-bold rounded-full border border-emerald-700 transition cursor-pointer active:scale-95"
-              title={lang === 'bn' ? 'Switch to English' : 'বাংলায় দেখুন'}
+              title={t('languageToggleTitle')}
             >
               <Globe className="w-3.5 h-3.5 text-amber-300" />
               <span className={lang === 'bn' ? 'text-amber-300 font-extrabold underline' : 'text-emerald-300'}>বাংলা</span>
@@ -206,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
               aria-label="Toggle Navigation Sidebar"
             >
               <Menu className="w-5 h-5 text-amber-300" />
-              <span className="text-xs font-bold hidden sm:inline">মেনু</span>
+              <span className="text-xs font-bold hidden sm:inline">{t('menu')}</span>
             </button>
           )}
         </div>
@@ -222,12 +214,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             {isDarkMode ? (
               <>
                 <Sun className="w-4 h-4 text-amber-300" />
-                <span>লাইট মোড</span>
+                <span>{t('lightMode')}</span>
               </>
             ) : (
               <>
                 <Moon className="w-4 h-4 text-amber-300" />
-                <span>ডার্ক মোড</span>
+                <span>{t('darkMode')}</span>
               </>
             )}
           </button>
@@ -236,7 +228,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           <button
             onClick={toggleLanguage}
             className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 transition cursor-pointer active:scale-95"
-            title={lang === 'bn' ? 'Switch to English' : 'বাংলায় রূপান্তর করুন'}
+            title={t('languageToggleTitle')}
           >
             <Globe className="w-4 h-4 text-amber-300" />
             <span>{lang === 'bn' ? 'English (EN)' : 'বাংলা (BN)'}</span>
@@ -250,7 +242,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
                 ? 'bg-amber-400/10 border-amber-400 text-amber-300 hover:bg-amber-400/20'
                 : 'bg-emerald-950/60 border-emerald-700 text-emerald-200 hover:bg-emerald-800'
             }`}
-            title={lang === 'bn' ? 'চেয়ারম্যান অনুমোদন পেন্ডিং আবেদনসমূহ' : 'Pending Chairman Approvals'}
+            title={t('chairmanApproval')}
           >
             <div className="relative">
               <Bell className={`w-4 h-4 ${pendingCount > 0 ? 'text-amber-300 animate-bounce' : 'text-emerald-300'}`} />
@@ -258,7 +250,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
                 <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
               )}
             </div>
-            <span>{lang === 'bn' ? 'চেয়ারম্যান অনুমোদন' : 'Chairman Approval'}</span>
+            <span>{t('chairmanApproval')}</span>
             <span
               className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
                 pendingCount > 0
@@ -295,7 +287,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4 text-emerald-950" />
-                <span>{lang === 'bn' ? 'এডমিন লগইন (Auth)' : 'Admin Auth Login'}</span>
+                <span>{t('adminAuthLogin')}</span>
               </>
             )}
           </button>
@@ -305,7 +297,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             className="flex items-center gap-2 px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-sm font-semibold rounded-lg shadow transition-all duration-200 cursor-pointer active:scale-95"
           >
             <Sparkles className="w-4 h-4 text-emerald-950 fill-emerald-950" />
-            <span>{lang === 'bn' ? 'স্মার্ট সনদ তৈরি করুন' : 'Create Smart Certificate'}</span>
+            <span>{t('createCertificate')}</span>
           </button>
         </div>
       </div>

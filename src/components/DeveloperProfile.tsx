@@ -27,7 +27,11 @@ import {
   MessageSquare,
   Facebook,
   Linkedin,
-  ArrowRight
+  Instagram,
+  Twitter,
+  ArrowRight,
+  Send,
+  MessageCircle
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { AdminAuthModal } from './AdminAuthModal';
@@ -45,14 +49,25 @@ export const DeveloperProfile: React.FC<DeveloperProfileProps> = ({ config, onUp
     config.developerBio || '০২নং বহেড়াতৈল ইউনিয়ন পরিষদের ডিজিটাল অটোমেশন সিস্টেম, ক্লাউড আর্কিটেকচার এবং Gemini AI চালিত স্মার্ট প্রত্যয়নপত্র ইঞ্জিন প্রস্তুতকারক।'
   );
   const [developerEmail, setDeveloperEmail] = useState(config.developerEmail || 'baheratailunion@gmail.com');
-  const [developerPhone, setDeveloperPhone] = useState(config.developerPhone || '01834333300');
-  const [developerWhatsapp, setDeveloperWhatsapp] = useState(config.developerWhatsappNumber || '01834333300');
-  const [developerFacebook, setDeveloperFacebook] = useState(config.developerFacebookUrl || 'https://facebook.com/jubaerhossen');
-  const [developerLinkedin, setDeveloperLinkedin] = useState(config.developerLinkedinUrl || 'https://linkedin.com/in/jubaerhossen');
+  const [developerPhone, setDeveloperPhone] = useState(config.developerPhone || '+8801834-333300');
+  const [developerWhatsapp, setDeveloperWhatsapp] = useState(config.developerWhatsappNumber || '+8801834-333300');
+  const [developerWhatsappUsername, setDeveloperWhatsappUsername] = useState(config.developerWhatsappUsername || 'Xobaer6090');
+  const [developerWhatsappUrl, setDeveloperWhatsappUrl] = useState(config.developerWhatsappUrl || 'https://wa.me/message/7PMRKZ6ZMPT2G1');
+  const [developerFacebook, setDeveloperFacebook] = useState(config.developerFacebookUrl || 'https://facebook.com/xobaer6090');
+  const [developerLinkedin, setDeveloperLinkedin] = useState(config.developerLinkedinUrl || 'https://linkedin.com/in/xobaer6090');
+  const [developerTiktok, setDeveloperTiktok] = useState(config.developerTiktokUrl || 'https://www.tiktok.com/@xobaer6090?_r=1&_t=ZS-98qqxpnGbVA');
+  const [developerInstagram, setDeveloperInstagram] = useState(config.developerInstagramUrl || 'https://www.instagram.com/xobaer6090?igsh=MWlua2h6YjQ2c2JmOA==');
+  const [developerGithubProfile, setDeveloperGithubProfile] = useState(config.developerGithubProfileUrl || 'https://github.com/inbox6090');
+  const [developerTwitter, setDeveloperTwitter] = useState(config.developerTwitterUrl || 'https://x.com/Xobaer6090');
+  const [developerWordpress, setDeveloperWordpress] = useState(config.developerWordpressUrl || 'https://xobaer.wordpress.com');
+  const [developerTelegramUrl, setDeveloperTelegramUrl] = useState(config.developerTelegramUrl || 'https://t.me/Xobaer6090');
+  const [developerTelegramUsername, setDeveloperTelegramUsername] = useState(config.developerTelegramUsername || 'Xobaer6090');
+  const [developerMessengerUrl, setDeveloperMessengerUrl] = useState(config.developerMessengerUrl || 'https://m.me/xobaer6090');
+  const [developerMessengerUsername, setDeveloperMessengerUsername] = useState(config.developerMessengerUsername || 'xobaer6090');
   const [photoUrl, setPhotoUrl] = useState(config.developerPhotoUrl || '');
 
   // Tech / Backup State
-  const [githubUrl, setGithubUrl] = useState(config.githubRepoUrl || 'https://github.com/baheratail-up/up-automation-system');
+  const [githubUrl, setGithubUrl] = useState(config.githubRepoUrl || 'https://github.com/inbox6090/UPSM-Baheratail');
   const [githubBranch, setGithubBranch] = useState(config.githubBranch || 'main');
   const [driveUrl, setDriveUrl] = useState(config.googleDriveBackupUrl || 'https://drive.google.com/drive/folders/16vXelYwApSFuFFru0Qkj1gaHCUwKZ-vz');
   const [mcpEndpoint, setMcpEndpoint] = useState(config.mcpEndpointUrl || 'https://api.baheratailup.gov.bd/v1/mcp');
@@ -79,8 +94,19 @@ export const DeveloperProfile: React.FC<DeveloperProfileProps> = ({ config, onUp
       if (config.developerEmail) setDeveloperEmail(config.developerEmail);
       if (config.developerPhone) setDeveloperPhone(config.developerPhone);
       if (config.developerWhatsappNumber) setDeveloperWhatsapp(config.developerWhatsappNumber);
+      if (config.developerWhatsappUsername) setDeveloperWhatsappUsername(config.developerWhatsappUsername);
+      if (config.developerWhatsappUrl) setDeveloperWhatsappUrl(config.developerWhatsappUrl);
       if (config.developerFacebookUrl) setDeveloperFacebook(config.developerFacebookUrl);
       if (config.developerLinkedinUrl) setDeveloperLinkedin(config.developerLinkedinUrl);
+      if (config.developerTiktokUrl) setDeveloperTiktok(config.developerTiktokUrl);
+      if (config.developerInstagramUrl) setDeveloperInstagram(config.developerInstagramUrl);
+      if (config.developerGithubProfileUrl) setDeveloperGithubProfile(config.developerGithubProfileUrl);
+      if (config.developerTwitterUrl) setDeveloperTwitter(config.developerTwitterUrl);
+      if (config.developerWordpressUrl) setDeveloperWordpress(config.developerWordpressUrl);
+      if (config.developerTelegramUrl) setDeveloperTelegramUrl(config.developerTelegramUrl);
+      if (config.developerTelegramUsername) setDeveloperTelegramUsername(config.developerTelegramUsername);
+      if (config.developerMessengerUrl) setDeveloperMessengerUrl(config.developerMessengerUrl);
+      if (config.developerMessengerUsername) setDeveloperMessengerUsername(config.developerMessengerUsername);
       if (config.developerPhotoUrl) setPhotoUrl(config.developerPhotoUrl);
       if (config.githubRepoUrl) setGithubUrl(config.githubRepoUrl);
       if (config.googleDriveBackupUrl) setDriveUrl(config.googleDriveBackupUrl);
@@ -144,8 +170,19 @@ export const DeveloperProfile: React.FC<DeveloperProfileProps> = ({ config, onUp
       developerEmail,
       developerPhone,
       developerWhatsappNumber: developerWhatsapp,
+      developerWhatsappUsername,
+      developerWhatsappUrl,
       developerFacebookUrl: developerFacebook,
       developerLinkedinUrl: developerLinkedin,
+      developerTiktokUrl: developerTiktok,
+      developerInstagramUrl: developerInstagram,
+      developerGithubProfileUrl: developerGithubProfile,
+      developerTwitterUrl: developerTwitter,
+      developerWordpressUrl: developerWordpress,
+      developerTelegramUrl,
+      developerTelegramUsername,
+      developerMessengerUrl,
+      developerMessengerUsername,
       developerPhotoUrl: photoUrl,
       githubRepoUrl: githubUrl,
       githubBranch,
@@ -351,57 +388,111 @@ Pushing commit to ${githubBranch}...`);
               </div>
 
               {/* Direct Helpline & Social Action Badges Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
                 {/* Helpline Phone */}
                 <a
-                  href={`tel:${developerPhone.replace(/[^0-9]/g, '')}`}
-                  className="p-3.5 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-2xl transition flex items-center gap-3 group shadow-2xs"
+                  href={`tel:${developerPhone.replace(/[^0-9+]/g, '')}`}
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-2xl transition flex items-center gap-2.5 group shadow-2xs"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-300 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
-                    <Phone className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-800 text-amber-300 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                    <Phone className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-emerald-800 block uppercase">জরুরী হেল্পলাইন ও কল</span>
+                    <span className="text-[9px] font-bold text-emerald-800 block uppercase tracking-tight">জরুরী কল</span>
                     <span className="text-xs font-black font-mono text-emerald-950 block truncate">{developerPhone}</span>
                   </div>
                 </a>
 
                 {/* WhatsApp Chat */}
                 <a
-                  href={`https://wa.me/${developerWhatsapp.replace(/[^0-9]/g, '')}`}
+                  href={developerWhatsappUrl || `https://wa.me/${developerWhatsapp.replace(/[^0-9]/g, '')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-3.5 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-2xl transition flex items-center gap-3 group shadow-2xs"
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-2xl transition flex items-center gap-2.5 group shadow-2xs"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
-                    <MessageSquare className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                    <MessageSquare className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-emerald-800 block uppercase">WhatsApp চ্যাট করুন</span>
-                    <span className="text-xs font-black font-mono text-emerald-950 block truncate">{developerWhatsapp}</span>
+                    <span className="text-[9px] font-bold text-emerald-800 block uppercase tracking-tight">WhatsApp</span>
+                    <span className="text-xs font-black font-mono text-emerald-950 block truncate">@{developerWhatsappUsername}</span>
                   </div>
                 </a>
+
+                {/* Telegram Chat */}
+                {developerTelegramUrl && (
+                  <a
+                    href={developerTelegramUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-3 bg-sky-50 hover:bg-sky-100/80 border border-sky-200 rounded-2xl transition flex items-center gap-2.5 group shadow-2xs"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                      <Send className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-bold text-sky-800 block uppercase tracking-tight">Telegram Chat</span>
+                      <span className="text-xs font-black font-mono text-sky-950 block truncate">@{developerTelegramUsername}</span>
+                    </div>
+                  </a>
+                )}
+
+                {/* Messenger Chat */}
+                {developerMessengerUrl && (
+                  <a
+                    href={developerMessengerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-3 bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200 rounded-2xl transition flex items-center gap-2.5 group shadow-2xs"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                      <MessageCircle className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-bold text-indigo-800 block uppercase tracking-tight">FB Messenger</span>
+                      <span className="text-xs font-black font-mono text-indigo-950 block truncate">@{developerMessengerUsername}</span>
+                    </div>
+                  </a>
+                )}
 
                 {/* Email Support */}
                 <a
                   href={`mailto:${developerEmail}`}
-                  className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition flex items-center gap-3 group shadow-2xs"
+                  className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition flex items-center gap-2.5 group shadow-2xs"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-amber-300 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
-                    <Mail className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-slate-800 text-amber-300 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                    <Mail className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-slate-500 block uppercase">ইমেইল যোগাযোগ</span>
+                    <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-tight">ইমেইল সংযোগ</span>
                     <span className="text-xs font-bold font-mono text-slate-800 block truncate">{developerEmail}</span>
                   </div>
                 </a>
+
+                {/* WordPress Website */}
+                {developerWordpress && (
+                  <a
+                    href={developerWordpress}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-2xl transition flex items-center gap-2.5 group shadow-2xs"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition">
+                      <Globe className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-bold text-amber-800 block uppercase tracking-tight">ওয়েবসাইট</span>
+                      <span className="text-xs font-bold font-mono text-amber-950 block truncate">xobaer.wordpress.com</span>
+                    </div>
+                  </a>
+                )}
               </div>
 
               {/* Social Media Channels Bar */}
               <div className="mt-5 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
                 <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   <Share2 className="w-4 h-4 text-emerald-700" />
-                  <span>ডেভেলপারের সোশ্যাল মিডিয়া পেজ ও লিঙ্কসমূহ:</span>
+                  <span>ডেভেলপারের অফিশিয়াল প্রোফাইল ও চ্যানেল লিঙ্কসমূহ:</span>
                 </span>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -414,6 +505,32 @@ Pushing commit to ${githubBranch}...`);
                     >
                       <Facebook className="w-3.5 h-3.5" />
                       <span>Facebook Profile</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerMessengerUrl && (
+                    <a
+                      href={developerMessengerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>FB Messenger</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerTelegramUrl && (
+                    <a
+                      href={developerTelegramUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Telegram Profile</span>
                       <ExternalLink className="w-3 h-3 opacity-70" />
                     </a>
                   )}
@@ -439,7 +556,74 @@ Pushing commit to ${githubBranch}...`);
                       className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
                     >
                       <Github className="w-3.5 h-3.5" />
-                      <span>GitHub Code Repository</span>
+                      <span>GitHub Repository</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerGithubProfile && (
+                    <a
+                      href={developerGithubProfile}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Code2 className="w-3.5 h-3.5 text-amber-300" />
+                      <span>GitHub Profile</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerTiktok && (
+                    <a
+                      href={developerTiktok}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-black hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs border border-slate-800"
+                    >
+                      <svg className="w-3.5 h-3.5 fill-current text-teal-400" viewBox="0 0 24 24">
+                        <path d="M12.525.02c1.31-.02 2.61.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72v4.28c-.89-.26-1.87-.12-2.67.36-.88.52-1.48 1.48-1.58 2.49-.07.83.21 1.68.77 2.3.69.77 1.74 1.13 2.76 1.01 1.02-.08 1.96-.68 2.45-1.58.33-.58.48-1.26.47-1.94-.01-4.63-.01-9.25-.01-13.88z" />
+                      </svg>
+                      <span>TikTok Profile</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerInstagram && (
+                    <a
+                      href={developerInstagram}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-95 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Instagram className="w-3.5 h-3.5" />
+                      <span>Instagram Profile</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerTwitter && (
+                    <a
+                      href={developerTwitter}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-slate-950 hover:bg-black text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs border border-slate-800"
+                    >
+                      <Twitter className="w-3.5 h-3.5 text-sky-400" />
+                      <span>X (Twitter)</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+
+                  {developerWordpress && (
+                    <a
+                      href={developerWordpress}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-sky-900 hover:bg-sky-950 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-amber-300" />
+                      <span>WordPress Site</span>
                       <ExternalLink className="w-3 h-3 opacity-70" />
                     </a>
                   )}
@@ -615,12 +799,132 @@ Pushing commit to ${githubBranch}...`);
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
+                  <div>
                     <label className="block font-bold text-slate-700 mb-1">LinkedIn প্রোফাইল লিংক:</label>
                     <input
                       type="text"
                       value={developerLinkedin}
                       onChange={(e) => setDeveloperLinkedin(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">GitHub Repo লিংক:</label>
+                    <input
+                      type="text"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">GitHub Profile লিংক:</label>
+                    <input
+                      type="text"
+                      value={developerGithubProfile}
+                      onChange={(e) => setDeveloperGithubProfile(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Telegram Profile URL:</label>
+                    <input
+                      type="text"
+                      value={developerTelegramUrl}
+                      onChange={(e) => setDeveloperTelegramUrl(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Telegram Username:</label>
+                    <input
+                      type="text"
+                      value={developerTelegramUsername}
+                      onChange={(e) => setDeveloperTelegramUsername(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Facebook Messenger URL:</label>
+                    <input
+                      type="text"
+                      value={developerMessengerUrl}
+                      onChange={(e) => setDeveloperMessengerUrl(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Facebook Messenger Username:</label>
+                    <input
+                      type="text"
+                      value={developerMessengerUsername}
+                      onChange={(e) => setDeveloperMessengerUsername(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">WhatsApp Username / Handle:</label>
+                    <input
+                      type="text"
+                      value={developerWhatsappUsername}
+                      onChange={(e) => setDeveloperWhatsappUsername(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">WhatsApp Direct Chat URL:</label>
+                    <input
+                      type="text"
+                      value={developerWhatsappUrl}
+                      onChange={(e) => setDeveloperWhatsappUrl(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">TikTok প্রোফাইল লিংক:</label>
+                    <input
+                      type="text"
+                      value={developerTiktok}
+                      onChange={(e) => setDeveloperTiktok(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Instagram প্রোফাইল লিংক:</label>
+                    <input
+                      type="text"
+                      value={developerInstagram}
+                      onChange={(e) => setDeveloperInstagram(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">X / Twitter প্রোফাইল লিংক:</label>
+                    <input
+                      type="text"
+                      value={developerTwitter}
+                      onChange={(e) => setDeveloperTwitter(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">WordPress ওয়েবসাইট লিংক:</label>
+                    <input
+                      type="text"
+                      value={developerWordpress}
+                      onChange={(e) => setDeveloperWordpress(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none"
                     />
                   </div>
@@ -647,6 +951,28 @@ Pushing commit to ${githubBranch}...`);
                       className="px-2.5 py-1 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition flex items-center gap-1"
                     >
                       <span>Facebook</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {developerMessengerUrl && (
+                    <a
+                      href={developerMessengerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 transition flex items-center gap-1"
+                    >
+                      <span>Messenger (@{developerMessengerUsername})</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {developerTelegramUrl && (
+                    <a
+                      href={developerTelegramUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 bg-sky-500 text-white rounded font-bold hover:bg-sky-600 transition flex items-center gap-1"
+                    >
+                      <span>Telegram (@{developerTelegramUsername})</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}

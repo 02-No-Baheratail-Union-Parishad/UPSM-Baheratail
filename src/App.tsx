@@ -219,6 +219,12 @@ export default function App() {
           <DeveloperProfile config={config} onUpdateConfig={setConfig} />
         )}
 
+        {activeTab === 'developer_control' && (
+          <AdminGuard allowedRoles={['developer', 'super_admin']} title="ডেভেলপার সিকিউরিটি কন্ট্রোল সেন্টার">
+            <DeveloperProfile config={config} onUpdateConfig={setConfig} />
+          </AdminGuard>
+        )}
+
         {activeTab === 'audit_trail' && (
           <AdminGuard allowedRoles={['super_admin', 'developer']} title="অ্যাক্টিভিটি অডিট ট্রেইল (Super Admin Only)">
             <ActivityAuditTrail config={config} onNavigateTab={handleNavigateTab} />

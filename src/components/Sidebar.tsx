@@ -21,13 +21,15 @@ import {
   ExternalLink,
   MapPin,
   Megaphone,
-  Activity
+  Activity,
+  Lock
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
   fetchPendingCertificatesCountFromFirebase, 
   subscribePendingCertificatesCount 
 } from '../firebase';
+import { AdminAuthModal } from './AdminAuthModal';
 
 interface SidebarProps {
   activeTab: string;
@@ -48,6 +50,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [pendingCount, setPendingCount] = useState<number>(propPendingCount ?? 0);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
+  // Track active developer / admin session
+  const [activeAdmin, setActiveAdmin] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('bup_active_admin_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleAuthChange = (e: CustomEvent) => {
+      setActiveAdmin(e.detail || null);
+    };
+    window.addEventListener('adminAuthChanged' as any, handleAuthChange);
+    return () => {
+      window.removeEventListener('adminAuthChanged' as any, handleAuthChange);
+    };
+  }, []);
+
+  const isDeveloper = React.useMemo(() => {
+    if (!activeAdmin) return false;
+    return ['developer', 'super_admin'].includes(activeAdmin.role);
+  }, [activeAdmin]);
 
   // Language state (bn / en)
   const [lang, setLang] = useState<'bn' | 'en'>(() => {
@@ -191,12 +219,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Settings 
     },
     { 
+      id: 'developer_control', 
+      label: lang === 'bn' ? '১৪. ডেভেলপার সিকিউরিটি অ্যান্ড কন্ট্রোল' : '14. Developer Security Control', 
+      icon: Lock, 
+      badge: lang === 'bn' ? 'এডমিন' : 'Admin' 
+    },
+    { 
       id: 'developer', 
-      label: lang === 'bn' ? '১৪. সিস্টেম ডেভেলপার ও ক্রিয়েটর' : '14. System Developer & Creator', 
+      label: lang === 'bn' ? '১৫. ডেভেলপার প্রোফাইল' : '15. Developer Profile', 
       icon: Code2, 
-      badge: lang === 'bn' ? 'প্রোফাইল' : 'Profile' 
+      badge: lang === 'bn' ? 'পাবলিক' : 'Public' 
     }
   ];
+
+  // Categories 11, 12, 13, 14 (audit_trail, admin_dashboard, admin, developer_control) are strictly visible ONLY to Developer
+  const visibleNavItems = navItems.filter((item) => {
+    if (['audit_trail', 'admin_dashboard', 'admin', 'developer_control'].includes(item.id)) {
+      return isDeveloper;
+    }
+    return true;
+  });
 
   const handleNavClick = (id: string) => {
     setActiveTab(id);
@@ -265,7 +307,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Mobile Nav Links list */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
@@ -325,6 +367,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Mobile Sidebar Footer */}
         <div className="p-3 bg-emerald-900/80 border-t border-emerald-800 text-[11px] space-y-2 shrink-0">
+          {!isDeveloper ? (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="w-full py-2 px-3 bg-gradient-to-r from-emerald-950 to-slate-900 hover:from-emerald-900 hover:to-slate-800 text-amber-300 font-black rounded-xl border border-amber-400/50 flex items-center justify-center gap-2 text-xs transition cursor-pointer shadow-md"
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span>ডেভেলপার লগইন (১১-১৪ ক্যাটাগরি)</span>
+            </button>
+          ) : (
+            <div className="p-2 bg-emerald-950/80 rounded-xl text-[10px] text-amber-300 flex items-center justify-between border border-amber-400/40">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Code2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                <span className="font-extrabold text-white truncate">{activeAdmin?.name || 'ডেভেলপার'}</span>
+              </div>
+              <span className="text-[9px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.5 rounded shrink-0">DEV</span>
+            </div>
+          )}
+
           <button
             onClick={toggleLanguage}
             className="w-full py-1.5 px-3 bg-emerald-950 hover:bg-emerald-800 text-amber-300 font-bold rounded-lg border border-emerald-700 flex items-center justify-center gap-2 transition cursor-pointer"
@@ -403,7 +463,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Desktop Navigation Links */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 
@@ -472,6 +532,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className={`p-3 bg-emerald-900/80 border-t border-emerald-800 text-xs shrink-0 ${isCollapsed ? 'p-2 text-center' : ''}`}>
           {!isCollapsed ? (
             <div className="space-y-2">
+              {!isDeveloper ? (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="w-full py-2 px-3 bg-gradient-to-r from-emerald-950 to-slate-900 hover:from-emerald-900 hover:to-slate-800 text-amber-300 font-black rounded-xl border border-amber-400/50 flex items-center justify-center gap-2 text-[11px] transition cursor-pointer shadow-md"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                  <span>ডেভেলপার লগইন (১১-১৪ ক্যাটাগরি)</span>
+                </button>
+              ) : (
+                <div className="p-2 bg-emerald-950/80 rounded-xl text-[10px] text-amber-300 flex items-center justify-between border border-amber-400/40">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Code2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span className="font-extrabold text-white truncate">{activeAdmin?.name || 'ডেভেলপার'}</span>
+                  </div>
+                  <span className="text-[9px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.5 rounded shrink-0">DEV</span>
+                </div>
+              )}
+
               <button
                 onClick={toggleLanguage}
                 className="w-full py-1.5 px-3 bg-emerald-950 hover:bg-emerald-800 text-amber-300 font-bold rounded-lg border border-emerald-700 flex items-center justify-center gap-1.5 text-xs transition cursor-pointer"
@@ -489,16 +567,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
           ) : (
-            <button
-              onClick={toggleLanguage}
-              className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto transition cursor-pointer"
-              title={lang === 'bn' ? 'Switch to English' : 'বাংলায় রূপান্তর'}
-            >
-              <Globe className="w-4 h-4 text-amber-300" />
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto transition cursor-pointer block"
+                title="ডেভেলপার / এডমিন লগইন"
+              >
+                <Lock className="w-4 h-4 text-amber-300" />
+              </button>
+              <button
+                onClick={toggleLanguage}
+                className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto transition cursor-pointer block"
+                title={lang === 'bn' ? 'Switch to English' : 'বাংলায় রূপান্তর'}
+              >
+                <Globe className="w-4 h-4 text-amber-300" />
+              </button>
+            </div>
           )}
         </div>
       </aside>
+
+      {/* Admin / Developer Authentication Modal */}
+      <AdminAuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </>
   );
 };
