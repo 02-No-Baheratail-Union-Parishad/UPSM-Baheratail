@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { HomePanel } from './components/HomePanel';
@@ -173,7 +174,7 @@ export default function App() {
                 <div className="bg-emerald-800 text-white p-4 rounded-xl shadow-md flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-base text-amber-300">🎉 প্রত্যয়নপত্র সফলভাবে প্রস্তুত করা হইয়াছে!</h3>
-                    <p className="text-xs text-emerald-100">নিচে প্রত্যয়নপত্রের পিডিএফ ভিউ, প্রিন্ট ও গুগল ডক লিংক দেওয়া হইয়াছে।</p>
+                    <p className="text-xs text-emerald-100">নিচে প্রত্যয়নপত্রের পিডিএফ ভিউ, প্রিন্ট ও গুগল ডক লিংক দে���য়া হইয়াছে।</p>
                   </div>
                   <button
                     onClick={() => setGeneratedCert(null)}
@@ -302,6 +303,9 @@ export default function App() {
         onClose={() => setIsAiAssistantOpen(false)}
         onNavigateTab={handleNavigateTab}
       />
+      
+      {/* Vercel Web Analytics */}
+      <Analytics />
     </div>
   );
 }
