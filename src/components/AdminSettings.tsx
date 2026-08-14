@@ -71,7 +71,9 @@ import { TemplateManager } from './TemplateManager';
 import { BackupManager } from './BackupManager';
 import { PendingApprovals } from './PendingApprovals';
 import { GoogleSheetsSyncModal } from './GoogleSheetsSyncModal';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, QrCode } from 'lucide-react';
+import { StyledQrCode } from './StyledQrCode';
+import { QrColorScheme } from '../utils/qrCodeGenerator';
 
 interface AdminSettingsProps {
   config: UnionParishadConfig;
@@ -2887,6 +2889,161 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ config, onUpdateCo
                       onChange={(e) => setFormData({ ...formData, bodyFontSize: parseInt(e.target.value) || 16 })}
                       className="w-full px-2.5 py-1.5 bg-emerald-900 border border-emerald-700 text-white rounded font-bold"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* QR Code Styling & Center UP Logo Embed Settings */}
+              <div className="md:col-span-2 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-5 rounded-2xl border border-emerald-700/60 shadow-md space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-800/80 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-emerald-500/20 text-emerald-300 rounded-lg border border-emerald-400/30">
+                      <QrCode className="w-5 h-5 text-amber-300" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                        <span>সনদের QR কোড স্টাইলিং ও অফিসিয়াল সিল এমবেড সেটিংস</span>
+                        <span className="px-2 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded text-[10px] font-bold">
+                          স্মার্ট সিকিউরিটি
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-emerald-200/80 font-medium">
+                        সকল সনদের স্বয়ংক্রিয় QR ভেরিফিকেশন কোডের কালার স্কিম নির্ধারণ ও সেন্টারে ইউনিয়ন পরিষদের সিল এমবেড করুন।
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    {/* Color Scheme */}
+                    <div>
+                      <label className="block text-emerald-200 font-bold mb-1">
+                        QR কোড কালার স্কিম (Color Scheme):
+                      </label>
+                      <select
+                        value={formData.qrColorScheme || 'govt-emerald'}
+                        onChange={(e) => setFormData({ ...formData, qrColorScheme: e.target.value as QrColorScheme })}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white rounded-xl font-bold focus:border-amber-400 focus:outline-none"
+                      >
+                        <option value="govt-emerald">১. সরকারি গাঢ় সবুজ (Govt Emerald)</option>
+                        <option value="classic-black">২. ক্লাসিক কালো (Monochrome Black)</option>
+                        <option value="emerald-gold">৩. রয়্যাল গোল্ড ও এমারেল্ড (Emerald & Gold)</option>
+                        <option value="govt-crimson">৪. সরকারি লাল ও সাদা (Govt Crimson)</option>
+                        <option value="navy-slate">৫. নেভি ব্লু (Deep Navy)</option>
+                        <option value="teal-cyan">৬. ডিজিটাল টিল (Digital Teal)</option>
+                        <option value="custom">৭. কাস্টম কালার প্যালেট (Custom Hex)</option>
+                      </select>
+                    </div>
+
+                    {/* Frame Style */}
+                    <div>
+                      <label className="block text-emerald-200 font-bold mb-1">
+                        QR ফ্রেম ও বর্ডার স্টাইল:
+                      </label>
+                      <select
+                        value={formData.qrFrameStyle || 'clean'}
+                        onChange={(e) => setFormData({ ...formData, qrFrameStyle: e.target.value as any })}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white rounded-xl font-bold focus:border-amber-400 focus:outline-none"
+                      >
+                        <option value="clean">ক্লিন বর্ডার (Clean Border)</option>
+                        <option value="double">ডাবল সিল ফ্রেম (Double Frame)</option>
+                        <option value="badge">ডিজিটাল ভেরিফায়েড ব্যাজ (Badge)</option>
+                        <option value="minimal">মিনিমাল নো-বর্ডার (Minimal)</option>
+                      </select>
+                    </div>
+
+                    {/* Embed Logo Toggle */}
+                    <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-white block">মাঝখানে ইউপি লোগো / সিল এমবেড</span>
+                        <span className="text-[10px] text-slate-400 block">QR কোডের সেন্টারে হাই-সিকিউরিটি ভেরিফিকেশন সিল</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.qrEmbedLogo !== false}
+                          onChange={(e) => setFormData({ ...formData, qrEmbedLogo: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                      </label>
+                    </div>
+
+                    {/* Logo Shape */}
+                    <div>
+                      <label className="block text-emerald-200 font-bold mb-1">
+                        এমবেডেড সিল শেপ:
+                      </label>
+                      <select
+                        value={formData.qrLogoShape || 'circle'}
+                        disabled={formData.qrEmbedLogo === false}
+                        onChange={(e) => setFormData({ ...formData, qrLogoShape: e.target.value as any })}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 text-white rounded-xl font-bold focus:border-amber-400 focus:outline-none disabled:opacity-40"
+                      >
+                        <option value="circle">গোলাকার সিল (Circle)</option>
+                        <option value="rounded">রাউন্ডেড স্কয়ার (Rounded Square)</option>
+                      </select>
+                    </div>
+
+                    {/* Custom Color Settings if selected */}
+                    {formData.qrColorScheme === 'custom' && (
+                      <div className="sm:col-span-2 pt-2 border-t border-slate-700/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between bg-slate-800/90 px-3 py-2 rounded-xl border border-slate-700">
+                          <span className="text-slate-300 font-semibold">QR প্যাটার্ন কালার (Dark):</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={formData.qrCustomDarkColor || '#064e3b'}
+                              onChange={(e) => setFormData({ ...formData, qrCustomDarkColor: e.target.value })}
+                              className="w-7 h-7 rounded border border-slate-600 bg-transparent cursor-pointer"
+                            />
+                            <span className="font-mono text-[11px] text-amber-300 font-bold">
+                              {formData.qrCustomDarkColor || '#064e3b'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between bg-slate-800/90 px-3 py-2 rounded-xl border border-slate-700">
+                          <span className="text-slate-300 font-semibold">QR ব্যাকগ্রাউন্ড কালার (Light):</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={formData.qrCustomLightColor || '#ffffff'}
+                              onChange={(e) => setFormData({ ...formData, qrCustomLightColor: e.target.value })}
+                              className="w-7 h-7 rounded border border-slate-600 bg-transparent cursor-pointer"
+                            />
+                            <span className="font-mono text-[11px] text-amber-300 font-bold">
+                              {formData.qrCustomLightColor || '#ffffff'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Real-time Visual QR Preview */}
+                  <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 flex flex-col items-center justify-center text-center space-y-2">
+                    <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>লাইভ QR প্রিভিউ</span>
+                    </span>
+                    <div className="p-2 bg-white rounded-xl shadow-inner inline-block">
+                      <StyledQrCode
+                        value={`${window.location.origin}/verify?memo=TEST-PREVIEW-2026`}
+                        colorScheme={formData.qrColorScheme || 'govt-emerald'}
+                        customDarkColor={formData.qrCustomDarkColor || '#064e3b'}
+                        customLightColor={formData.qrCustomLightColor || '#ffffff'}
+                        embedLogo={formData.qrEmbedLogo !== false}
+                        logoUrl={formData.logoUrl || '/baheratail_seal.svg'}
+                        logoShape={formData.qrLogoShape || 'circle'}
+                        frameStyle={formData.qrFrameStyle || 'clean'}
+                        size={88}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      প্রিন্টে ঠিক এই ডিজাইনের কোড প্রদর্শিত হইবে
+                    </span>
                   </div>
                 </div>
               </div>

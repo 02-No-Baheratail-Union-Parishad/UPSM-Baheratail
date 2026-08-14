@@ -143,6 +143,15 @@ export interface UnionParishadConfig {
   borderStyle?: 'double-green-red' | 'double-green' | 'single-green' | 'none';
   blankSealSize?: number; // Circle diameter in px (0 to hide)
   qrCodePosition?: 'left-bottom' | 'right-bottom';
+  // QR Code Advanced Styling Options
+  qrColorScheme?: 'classic-black' | 'govt-emerald' | 'emerald-gold' | 'govt-crimson' | 'navy-slate' | 'teal-cyan' | 'custom';
+  qrCustomDarkColor?: string;
+  qrCustomLightColor?: string;
+  qrEmbedLogo?: boolean;
+  qrLogoUrl?: string;
+  qrLogoShape?: 'circle' | 'rounded';
+  qrFrameStyle?: 'clean' | 'badge' | 'double' | 'minimal';
+  qrSize?: number;
   templateDocId: string;
   targetFolderId: string;
   sheetId: string;

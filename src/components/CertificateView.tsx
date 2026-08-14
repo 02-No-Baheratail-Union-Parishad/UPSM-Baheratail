@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { CertificateRecord, UnionParishadConfig } from '../types';
 import { formatBanglaDate, convertEnglishDateToBanglaFormatted, generateSecurityChecksum, toBengaliNumeral } from '../lib/utils';
+import { StyledQrCode } from './StyledQrCode';
+import { QrColorScheme, QR_COLOR_PRESETS } from '../utils/qrCodeGenerator';
 
 interface CertificateViewProps {
   certificate: CertificateRecord;
@@ -45,6 +47,14 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
   const [watermarkOpacity, setWatermarkOpacity] = useState<number>(config.watermarkOpacity || 0.08);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editableBodyText, setEditableBodyText] = useState(certificate.bodyText);
+
+  // QR Code Advanced Customization State
+  const [qrColorScheme, setQrColorScheme] = useState<QrColorScheme>(config.qrColorScheme || 'govt-emerald');
+  const [qrCustomDarkColor, setQrCustomDarkColor] = useState<string>(config.qrCustomDarkColor || '#064e3b');
+  const [qrCustomLightColor, setQrCustomLightColor] = useState<string>(config.qrCustomLightColor || '#ffffff');
+  const [qrEmbedLogo, setQrEmbedLogo] = useState<boolean>(config.qrEmbedLogo !== false);
+  const [qrLogoShape, setQrLogoShape] = useState<'circle' | 'rounded'>(config.qrLogoShape || 'circle');
+  const [qrFrameStyle, setQrFrameStyle] = useState<'clean' | 'badge' | 'double' | 'minimal'>(config.qrFrameStyle || 'clean');
 
   // A4 Print Optimization & Compact Mode State
   const [isCompactMode, setIsCompactMode] = useState<boolean>(true);
@@ -362,6 +372,114 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 <option value={85}>৮৫% (দীর্ঘ আবেদনের জন্য)</option>
                 <option value={80}>৮০% (অতিরিক্ত বড় টেবিলের জন্য)</option>
               </select>
+            </div>
+
+            {/* QR Code Styling & Logo Embedding Options */}
+            <div className="pt-3 border-t border-slate-800 col-span-full space-y-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-amber-300 font-bold text-xs flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>🔍 QR কোড স্টাইলিং ও ইউপি লোগো এমবেড (QR Code Visual Styling)</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  ক্রিপ্টোগ্রাফিক ভেরিফিকেশন ও অফিসিয়াল প্যাটার্ন
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                {/* QR Color Scheme Preset */}
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">রঙের স্কিম (Color Scheme):</label>
+                  <select
+                    value={qrColorScheme}
+                    onChange={(e) => setQrColorScheme(e.target.value as QrColorScheme)}
+                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 rounded focus:border-amber-400 font-bold"
+                  >
+                    <option value="govt-emerald">সবুজ (Govt Emerald)</option>
+                    <option value="classic-black">ক্লাসিক কালো (Monochrome Black)</option>
+                    <option value="emerald-gold">রয়্যাল গোল্ড ও এমারেল্ড (Emerald & Gold)</option>
+                    <option value="govt-crimson">লাল ও সাদা (Govt Crimson Red)</option>
+                    <option value="navy-slate">নেভি ব্লু (Deep Navy)</option>
+                    <option value="teal-cyan">ডিজিটাল টিল (Digital Teal)</option>
+                    <option value="custom">কাস্টম কালার (Custom Colors)</option>
+                  </select>
+                </div>
+
+                {/* QR Frame Style */}
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">ফ্রেম ও বর্ডার স্টাইল:</label>
+                  <select
+                    value={qrFrameStyle}
+                    onChange={(e) => setQrFrameStyle(e.target.value as any)}
+                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 rounded focus:border-amber-400 font-bold"
+                  >
+                    <option value="clean">১. ক্লিন বর্ডার (Clean Border)</option>
+                    <option value="double">২. ডাবল সিল ফ্রেম (Double Frame)</option>
+                    <option value="badge">৩. ডিজিটাল ভেরিফায়েড ব্যাজ (Badge)</option>
+                    <option value="minimal">৪. মিনিমাল নো-বর্ডার (Minimal)</option>
+                  </select>
+                </div>
+
+                {/* Logo Embed Toggle */}
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">সেন্টার লোগো এমবেড:</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <label className="inline-flex items-center gap-1.5 text-xs text-amber-300 font-bold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={qrEmbedLogo}
+                        onChange={(e) => setQrEmbedLogo(e.target.checked)}
+                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                      />
+                      <span>ইউপি সিল / লোগো এমবেড</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Logo Shape (if embed enabled) */}
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">এমবেডেড লোগোর শেপ:</label>
+                  <select
+                    value={qrLogoShape}
+                    disabled={!qrEmbedLogo}
+                    onChange={(e) => setQrLogoShape(e.target.value as any)}
+                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 rounded focus:border-amber-400 font-bold disabled:opacity-50"
+                  >
+                    <option value="circle">গোলাকার সিল (Circle)</option>
+                    <option value="rounded">রাউন্ডেড স্কয়ার (Rounded Square)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Custom Color Pickers if 'custom' is selected */}
+              {qrColorScheme === 'custom' && (
+                <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-center justify-between bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700">
+                    <span className="text-slate-300 font-semibold">QR প্যাটার্ন কালার (Dark):</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={qrCustomDarkColor}
+                        onChange={(e) => setQrCustomDarkColor(e.target.value)}
+                        className="w-7 h-7 rounded border border-slate-600 bg-transparent cursor-pointer"
+                      />
+                      <span className="font-mono text-[11px] text-amber-300 font-bold">{qrCustomDarkColor}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700">
+                    <span className="text-slate-300 font-semibold">QR ব্যাকগ্রাউন্ড কালার (Light):</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={qrCustomLightColor}
+                        onChange={(e) => setQrCustomLightColor(e.target.value)}
+                        className="w-7 h-7 rounded border border-slate-600 bg-transparent cursor-pointer"
+                      />
+                      <span className="font-mono text-[11px] text-amber-300 font-bold">{qrCustomLightColor}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Signature & Compact Mode Display Toggles */}
@@ -762,7 +880,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                 )}
 
                 {/* QR Code linked directly to Certificate Verification */}
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2.5 pt-1">
                   <a
                     href={realVerifyUrl}
                     target="_blank"
@@ -770,10 +888,17 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                     title="অনলাইন সত্যতা যাচাই করতে ক্লিক বা স্ক্যান করুন"
                     className="block group shrink-0"
                   >
-                    <img 
-                      src={qrImageUrl} 
-                      alt="QR Verification Link" 
-                      className="qr-code-img w-16 h-16 md:w-18 md:h-18 border-2 border-emerald-900 p-1 rounded-lg bg-white shadow-sm group-hover:scale-105 transition"
+                    <StyledQrCode
+                      value={realVerifyUrl}
+                      colorScheme={qrColorScheme}
+                      customDarkColor={qrCustomDarkColor}
+                      customLightColor={qrCustomLightColor}
+                      embedLogo={qrEmbedLogo}
+                      logoUrl={config.logoUrl || '/baheratail_seal.svg'}
+                      logoShape={qrLogoShape}
+                      frameStyle={qrFrameStyle}
+                      size={isCompactMode ? 72 : 84}
+                      className="group-hover:scale-105 transition-transform"
                     />
                   </a>
                   <div>
@@ -1161,7 +1286,17 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
 
                     <div className="mt-8 pt-3 border-t border-slate-300 flex justify-between items-end text-[10px]">
                       <div className="space-y-1">
-                        <img src={qrImageUrl} alt="QR" className="w-10 h-10 border border-emerald-900 p-0.5 bg-white rounded" />
+                        <StyledQrCode
+                          value={realVerifyUrl}
+                          colorScheme={qrColorScheme}
+                          customDarkColor={qrCustomDarkColor}
+                          customLightColor={qrCustomLightColor}
+                          embedLogo={qrEmbedLogo}
+                          logoUrl={config.logoUrl || '/baheratail_seal.svg'}
+                          logoShape={qrLogoShape}
+                          frameStyle={qrFrameStyle}
+                          size={44}
+                        />
                         <p className="text-[9px] text-slate-500">অনলাইন যাচাইকৃত</p>
                       </div>
 
