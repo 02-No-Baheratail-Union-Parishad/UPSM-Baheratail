@@ -171,11 +171,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
             <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white p-1 flex items-center justify-center shadow-md shrink-0">
               <img 
-                src={config.logoUrl} 
-                alt="BD Seal" 
+                src={config?.logoUrl || '/baheratail_seal.svg'} 
+                alt={config?.upName || "Union Parishad Logo"} 
                 className="w-9 h-9 md:w-10 md:h-10 object-contain"
                 onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== window.location.origin + '/baheratail_seal.svg') {
+                    target.src = '/baheratail_seal.svg';
+                  }
                 }}
               />
               <Building2 className="w-8 h-8 text-emerald-800" style={{ display: 'none' }} />

@@ -267,10 +267,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white p-0.5 shadow-md flex items-center justify-center shrink-0">
               <img 
-                src={config.logoUrl} 
-                alt="Logo" 
+                src={config?.logoUrl || '/baheratail_seal.svg'} 
+                alt={config?.upName || "Logo"} 
                 className="w-8 h-8 object-contain"
-                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== window.location.origin + '/baheratail_seal.svg') {
+                    target.src = '/baheratail_seal.svg';
+                  }
+                }}
               />
               <Building2 className="w-6 h-6 text-emerald-900" style={{ display: 'none' }} />
             </div>
@@ -416,10 +421,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <div className="w-10 h-10 rounded-full bg-white p-0.5 shadow-md flex items-center justify-center shrink-0">
               <img 
-                src={config.logoUrl} 
-                alt="Logo" 
+                src={config?.logoUrl || '/baheratail_seal.svg'} 
+                alt={config?.upName || "Logo"} 
                 className="w-8 h-8 object-contain"
-                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== window.location.origin + '/baheratail_seal.svg') {
+                    target.src = '/baheratail_seal.svg';
+                  }
+                }}
               />
               <Building2 className="w-6 h-6 text-emerald-900" style={{ display: 'none' }} />
             </div>

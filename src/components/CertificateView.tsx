@@ -408,9 +408,15 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
           style={{ opacity: watermarkOpacity }}
         >
           <img 
-            src={config.watermarkUrl || config.logoUrl} 
+            src={config?.watermarkUrl || config?.logoUrl || '/baheratail_seal.svg'} 
             alt="Watermark Seal" 
             className="w-80 h-80 md:w-96 md:h-96 object-contain"
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              if (target.src !== window.location.origin + '/baheratail_seal.svg') {
+                target.src = '/baheratail_seal.svg';
+              }
+            }}
           />
         </div>
 
@@ -459,9 +465,15 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                         {config.upazila}, {config.district}।
                       </p>
                       <img 
-                        src={config.logoUrl} 
-                        alt="Government / UP Logo" 
+                        src={config?.logoUrl || '/baheratail_seal.svg'} 
+                        alt={config?.upName || "Government / UP Logo"} 
                         className="cert-logo w-11 h-11 md:w-13 md:h-13 object-contain my-1 mx-auto"
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          if (target.src !== window.location.origin + '/baheratail_seal.svg') {
+                            target.src = '/baheratail_seal.svg';
+                          }
+                        }}
                       />
                     </div>
 
@@ -487,7 +499,17 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                     <h2 className="text-xl md:text-2xl font-black text-emerald-950 leading-tight">
                       {config.upName}
                     </h2>
-                    <img src={config.logoUrl} alt="Logo" className="w-14 h-14 md:w-16 md:h-16 object-contain my-1" />
+                    <img 
+                      src={config?.logoUrl || '/baheratail_seal.svg'} 
+                      alt={config?.upName || "Logo"} 
+                      className="w-14 h-14 md:w-16 md:h-16 object-contain my-1" 
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (target.src !== window.location.origin + '/baheratail_seal.svg') {
+                          target.src = '/baheratail_seal.svg';
+                        }
+                      }}
+                    />
                     <p className="text-xs font-bold text-emerald-900">{config.address}</p>
                   </div>
                 )}
@@ -504,7 +526,17 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
                     <div className="text-center flex flex-col items-center">
                       <p className="text-xs font-extrabold text-emerald-950">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</p>
                       <h2 className="text-lg md:text-xl font-black text-emerald-950">{config.upName}</h2>
-                      <img src={config.logoUrl} alt="Logo" className="w-12 h-12 object-contain my-1" />
+                      <img 
+                        src={config?.logoUrl || '/baheratail_seal.svg'} 
+                        alt={config?.upName || "Logo"} 
+                        className="w-12 h-12 object-contain my-1" 
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          if (target.src !== window.location.origin + '/baheratail_seal.svg') {
+                            target.src = '/baheratail_seal.svg';
+                          }
+                        }}
+                      />
                       <p className="text-[11px] font-bold text-emerald-900">{config.address}</p>
                     </div>
                     <div className="text-right text-xs space-y-0.5">
