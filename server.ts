@@ -8,6 +8,8 @@ import { CERTIFICATE_TYPES } from "./src/data/certificateTypes.js";
 import { DEFAULT_UP_CONFIG } from "./src/data/villages.js";
 import { generate30DayTrendData } from "./src/data/trendAnalytics.js";
 import { CertificateRecord, UnionParishadConfig, ApiKeyRecord, WebhookConfig, WebhookLogRecord } from "./src/types.js";
+import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
+import { getOrCreateUser, getAllUsers } from './src/db/users.ts';
 
 dotenv.config();
 
@@ -373,6 +375,30 @@ async function startServer() {
   // API Routes
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", app: upConfig.upName });
+  });
+
+  // Cloud SQL & Firebase User Sync
+  app.post("/api/users/sync", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user || !req.user.uid) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const user = await getOrCreateUser(req.user.uid, req.user.email || "", req.user.name || (req.body && req.body.name));
+      res.json({ success: true, user });
+    } catch (error: any) {
+      console.error("Failed to sync user:", error);
+      res.status(500).json({ error: error.message || "Failed to sync user" });
+    }
+  });
+
+  app.get("/api/users", requireAuth, async (_req: AuthRequest, res) => {
+    try {
+      const users = await getAllUsers();
+      res.json({ success: true, users });
+    } catch (error: any) {
+      console.error("Failed to fetch users:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch users" });
+    }
   });
 
   // Get certificate types list

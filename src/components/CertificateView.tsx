@@ -29,9 +29,10 @@ interface CertificateViewProps {
   certificate: CertificateRecord;
   config: UnionParishadConfig;
   onBack?: () => void;
+  onShareToGoogleChat?: (cert: CertificateRecord) => void;
 }
 
-export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, config, onBack }) => {
+export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, config, onBack, onShareToGoogleChat }) => {
   const [showHeaderInPrint, setShowHeaderInPrint] = useState(config.enableHeaderInPrint !== false);
   const [fontSize, setFontSize] = useState<number>(config.bodyFontSize || 16);
   const [headerStyle, setHeaderStyle] = useState<'tri-column' | 'classic' | 'centered'>(config.templateHeaderStyle || 'tri-column');
@@ -170,6 +171,18 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate, c
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Google Chat Share Button */}
+          {onShareToGoogleChat && (
+            <button
+              onClick={() => onShareToGoogleChat(certificate)}
+              className="px-3.5 py-2 bg-gradient-to-r from-teal-800 to-emerald-900 hover:from-teal-700 hover:to-emerald-800 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1.5 cursor-pointer border border-emerald-500/40"
+              title="ইউপি গুগল চ্যাট টিম স্পেসে সনদের অফিশিয়াল বিজ্ঞপ্তি পোস্ট করুন"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-amber-300" />
+              <span>গুগল চ্যাটে শেয়ার</span>
+            </button>
+          )}
+
           {/* WhatsApp Direct Send Button */}
           <button
             onClick={() => setIsWhatsAppModalOpen(true)}

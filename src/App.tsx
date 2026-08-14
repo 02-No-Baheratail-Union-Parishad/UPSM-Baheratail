@@ -20,6 +20,7 @@ import { NoticeBoardTicker } from './components/NoticeBoardTicker';
 import { AiCitizenAssistant } from './components/AiCitizenAssistant';
 import { Dashboard } from './components/Dashboard';
 import { AdminGuard } from './components/AdminGuard';
+import { GoogleChatPortal } from './components/GoogleChatPortal';
 import { fetchConfigFromFirebase } from './firebase';
 import { CertificateRecord, UnionParishadConfig, CitizenAccountRecord } from './types';
 import { DEFAULT_UP_CONFIG } from './data/villages';
@@ -30,6 +31,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [config, setConfig] = useState<UnionParishadConfig>(DEFAULT_UP_CONFIG);
   const [generatedCert, setGeneratedCert] = useState<CertificateRecord | null>(null);
+  const [chatSharedCertificate, setChatSharedCertificate] = useState<CertificateRecord | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
@@ -186,6 +188,10 @@ export default function App() {
                   certificate={generatedCert} 
                   config={config} 
                   onBack={() => setGeneratedCert(null)} 
+                  onShareToGoogleChat={(cert) => {
+                    setChatSharedCertificate(cert);
+                    setActiveTab('google_chat');
+                  }}
                 />
               </div>
             ) : (
@@ -197,6 +203,14 @@ export default function App() {
               />
             )}
           </div>
+        )}
+
+        {activeTab === 'google_chat' && (
+          <GoogleChatPortal 
+            config={config} 
+            initialCertificateToShare={chatSharedCertificate} 
+            onCertificateShared={() => setChatSharedCertificate(null)} 
+          />
         )}
 
         {activeTab === 'verify' && (

@@ -111,6 +111,7 @@ export interface UnionParishadConfig {
   district: string;
   address: string;
   phone?: string;
+  hotline?: string;
   email?: string;
   chairmanName: string;
   chairmanTitle: string;
@@ -320,4 +321,48 @@ export interface BackupSnapshot {
   driveFileId?: string;
   notes?: string;
 }
+
+export interface GoogleChatSpace {
+  name: string;
+  displayName?: string;
+  spaceType?: 'SPACE' | 'GROUP_CHAT' | 'DIRECT_MESSAGE' | string;
+  singleUserBotDm?: boolean;
+  threaded?: boolean;
+  spaceDetails?: {
+    description?: string;
+    guidelines?: string;
+  };
+  spaceHistoryState?: string;
+  createTime?: string;
+}
+
+export interface GoogleChatMessage {
+  name: string;
+  text?: string;
+  sender?: {
+    name?: string;
+    displayName?: string;
+    avatarUrl?: string;
+    type?: 'HUMAN' | 'BOT' | string;
+    email?: string;
+  };
+  createTime?: string;
+  formattedText?: string;
+  thread?: {
+    name?: string;
+  };
+}
+
+export interface GoogleChatMembership {
+  name: string;
+  state?: string;
+  role?: 'ROLE_MEMBER' | 'ROLE_MANAGER' | string;
+  member?: {
+    name?: string;
+    displayName?: string;
+    avatarUrl?: string;
+    type?: string;
+  };
+}
+
 

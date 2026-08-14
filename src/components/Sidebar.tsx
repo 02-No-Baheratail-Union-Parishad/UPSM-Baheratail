@@ -6,23 +6,24 @@ import {
   Settings, 
   Home, 
   Sparkles, 
-  Building2,
-  Code2,
-  UserCheck,
-  Layers,
-  Bell,
-  BarChart2,
-  Globe,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Phone,
-  HelpCircle,
-  ExternalLink,
-  MapPin,
-  Megaphone,
-  Activity,
-  Lock
+  Building2, 
+  Code2, 
+  UserCheck, 
+  Layers, 
+  Bell, 
+  BarChart2, 
+  Globe, 
+  ChevronLeft, 
+  ChevronRight, 
+  X, 
+  Phone, 
+  HelpCircle, 
+  ExternalLink, 
+  MapPin, 
+  Megaphone, 
+  Activity, 
+  Lock,
+  MessageSquare
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { 
@@ -203,30 +204,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: lang === 'bn' ? 'লাইভ' : 'Live' 
     },
     { 
+      id: 'google_chat', 
+      label: lang === 'bn' ? '১১. গুগল চ্যাট ও টিম স্পেস' : '11. Google Chat & Spaces', 
+      icon: MessageSquare, 
+      badge: lang === 'bn' ? 'ওয়ার্কস্পেস' : 'Workspace' 
+    },
+    { 
       id: 'audit_trail', 
-      label: lang === 'bn' ? '১১. অ্যাক্টিভিটি অডিট ট্রেইল' : '11. Activity Audit Trail', 
+      label: lang === 'bn' ? '১২. অ্যাক্টিভিটি অডিট ট্রেইল' : '12. Activity Audit Trail', 
       icon: Activity, 
       badge: lang === 'bn' ? 'সুপার এডমিন' : 'Super Admin' 
     },
     { 
       id: 'admin_dashboard', 
-      label: lang === 'bn' ? '১২. ইউজার ও পারমিশন রোল' : '12. Admin Users & Roles', 
+      label: lang === 'bn' ? '১৩. ইউজার ও পারমিশন রোল' : '13. Admin Users & Roles', 
       icon: ShieldCheck 
     },
     { 
       id: 'admin', 
-      label: lang === 'bn' ? '১৩. মাস্টার সেটআপ' : '13. Master Setup', 
+      label: lang === 'bn' ? '১৪. মাস্টার সেটআপ' : '14. Master Setup', 
       icon: Settings 
     },
     { 
       id: 'developer_control', 
-      label: lang === 'bn' ? '১৪. ডেভেলপার সিকিউরিটি অ্যান্ড কন্ট্রোল' : '14. Developer Security Control', 
+      label: lang === 'bn' ? '১৫. ডেভেলপার সিকিউরিটি অ্যান্ড কন্ট্রোল' : '15. Developer Security Control', 
       icon: Lock, 
       badge: lang === 'bn' ? 'এডমিন' : 'Admin' 
     },
     { 
       id: 'developer', 
-      label: lang === 'bn' ? '১৫. ডেভেলপার প্রোফাইল' : '15. Developer Profile', 
+      label: lang === 'bn' ? '১৬. ডেভেলপার প্রোফাইল' : '16. Developer Profile', 
       icon: Code2, 
       badge: lang === 'bn' ? 'পাবলিক' : 'Public' 
     }

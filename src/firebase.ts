@@ -38,6 +38,15 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
 googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+// Google Chat Scopes for Workspace collaboration
+googleProvider.addScope('https://www.googleapis.com/auth/chat.spaces');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.spaces.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.spaces.create');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.messages');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.messages.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.messages.create');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.memberships');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.memberships.readonly');
 
 // In-memory OAuth access token cache
 let cachedGoogleAccessToken: string | null = null;
