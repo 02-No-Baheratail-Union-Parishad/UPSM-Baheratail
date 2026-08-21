@@ -1892,6 +1892,33 @@ ${upConfig.defaultPromptPrefix}
       return res.status(400).json({ success: false, message: "কোনো বৈধ Webhook URL সেট করা নাই।" });
     }
 
+    let validatedTargetUrl: string;
+    try {
+      const parsed = new URL(targetUrl);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// Webhook URL অনুমোদিত।" });
+      }
+
+      const hostname = parsed.hostname.toLowerCase();
+      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+      const isPrivateIpv4 =
+        /^10\./.test(hostname) ||
+        /^127\./.test(hostname) ||
+        /^169\.254\./.test(hostname) ||
+        /^192\.168\./.test(hostname) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+      const isPrivateIpv6 =
+        /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+
+      if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
+        return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal Webhook URL অনুমোদিত নয়।" });
+      }
+
+      validatedTargetUrl = parsed.toString();
+    } catch {
+      return res.status(400).json({ success: false, message: "Webhook URL সঠিক ফরম্যাটে নেই।" });
+    }
+
     const sampleTestPayload = {
       event: "certificate.created",
       timestamp: new Date().toISOString(),
@@ -1922,7 +1949,7 @@ ${upConfig.defaultPromptPrefix}
       };
       if (secret) headers["X-UP-Webhook-Secret"] = secret;
 
-      const response = await fetch(targetUrl, {
+      const response = await fetch(validatedTargetUrl, {
         method: "POST",
         headers,
         body: JSON.stringify(sampleTestPayload),
