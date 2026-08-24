@@ -216,14 +216,17 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
             <span>প্রকাশিত নোটিশসমূহ ({notices.length})</span>
           </h4>
 
-          <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1" role="list">
             {notices.map((notice) => {
               const isSelected = activeNotice?.id === notice.id;
               return (
-                <div
+                <button
                   key={notice.id}
+                  type="button"
                   onClick={() => setActiveNotice(notice)}
-                  className={`p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 ${
+                  aria-pressed={isSelected}
+                  aria-label={`${notice.category}: ${notice.title}`}
+                  className={`w-full text-left p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                     isSelected
                       ? 'bg-emerald-50 border-emerald-500 shadow ring-1 ring-emerald-400'
                       : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
@@ -239,7 +242,7 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
                   <h5 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
                     {notice.title}
                   </h5>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -305,8 +308,10 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
                 <span>নতুন সরকারি নোটিশ পোস্ট করুন</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold"
+                aria-label="বন্ধ করুন"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
               >
                 ✕
               </button>
