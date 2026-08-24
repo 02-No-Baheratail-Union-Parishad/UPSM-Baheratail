@@ -319,6 +319,29 @@ function sanitizeString(str: string): string {
     .replace(/>/g, "&gt;");
 }
 
+// Rate Limiter Memory Store for Admin Routes
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+function adminRateLimiter(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const maxRequests = 100;
+
+  const record = rateLimitMap.get(ip);
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    return next();
+  }
+
+  if (record.count >= maxRequests) {
+    return res.status(429).json({ error: "Too many requests, please try again later." });
+  }
+
+  record.count += 1;
+  next();
+}
+
 function sanitizeInput(data: any): any {
   if (typeof data === "string") {
     // Preserve base64 image strings (e.g. NID image scans)
@@ -412,7 +435,7 @@ async function startServer() {
   });
 
   // Update Admin Config
-  app.post("/api/admin/config", requireAuth, (req, res) => {
+  app.post("/api/admin/config", adminRateLimiter, requireAuth, (req, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
@@ -1060,7 +1083,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Approve Certificate (One-click Chairman Action)
-  app.post("/api/admin/approve-cert", requireAuth, (req, res) => {
+  app.post("/api/admin/approve-cert", adminRateLimiter, requireAuth, (req, res) => {
     const { id, approvedBy } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1094,7 +1117,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Cancel Certificate (One-click Chairman Action)
-  app.post("/api/admin/cancel-cert", requireAuth, (req, res) => {
+  app.post("/api/admin/cancel-cert", adminRateLimiter, requireAuth, (req, res) => {
     const { id, cancelledBy, reason } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1124,7 +1147,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Batch Approve All Pending
-  app.post("/api/admin/batch-approve", requireAuth, (req, res) => {
+  app.post("/api/admin/batch-approve", adminRateLimiter, requireAuth, (req, res) => {
     const { approvedBy } = req.body;
     const now = new Date();
     const approvedByName = approvedBy || upConfig.chairmanName || "ইউপি চেয়ারম্যান";
@@ -1780,7 +1803,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Generate New API Access Key
-  app.post("/api/admin/api-keys", requireAuth, (req, res) => {
+  app.post("/api/admin/api-keys", adminRateLimiter, requireAuth, (req, res) => {
     const { name, permissions } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, message: "এপিআই কী-এর একটি নাম বা বর্ণনা প্রদান করুন।" });
@@ -1805,7 +1828,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Revoke / Delete API Access Key
-  app.delete("/api/admin/api-keys/:id", requireAuth, (req, res) => {
+  app.delete("/api/admin/api-keys/:id", adminRateLimiter, requireAuth, (req, res) => {
     const { id } = req.params;
     const index = apiKeyStore.findIndex(k => k.id === id);
 
@@ -1831,7 +1854,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Save / Add / Update Webhook Configuration
-  app.post("/api/admin/webhooks", requireAuth, (req, res) => {
+  app.post("/api/admin/webhooks", adminRateLimiter, requireAuth, (req, res) => {
     const { id, name, url, secret, events, enabled } = req.body;
 
     if (!url || !url.startsWith("http")) {
@@ -1872,7 +1895,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Delete Webhook Endpoint
-  app.delete("/api/admin/webhooks/:id", requireAuth, (req, res) => {
+  app.delete("/api/admin/webhooks/:id", adminRateLimiter, requireAuth, (req, res) => {
     const { id } = req.params;
     const idx = webhookStore.findIndex(w => w.id === id);
     if (idx !== -1) {
@@ -1884,7 +1907,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Test Ping Webhook Trigger
-  app.post("/api/admin/webhooks/test", requireAuth, async (req, res) => {
+  app.post("/api/admin/webhooks/test", adminRateLimiter, requireAuth, async (req, res) => {
     const { webhookId, url, secret } = req.body;
     const targetUrl = url || (webhookStore.find(w => w.id === webhookId)?.url) || upConfig.webhookUrl;
 
