@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Zap,
   Building2,
-  ChevronRight
+  ChevronRight,
+  Sliders
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { sanitizeInput } from '../utils/security';
@@ -34,11 +35,14 @@ interface ChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
+  mode?: string;
   suggestedAction?: {
     label: string;
     tab: string;
   };
 }
+
+export type OperatingMode = 'ASSIST MODE' | 'DATA MODE' | 'VERIFY MODE' | 'DRAFT MODE' | 'COPY-READY MODE';
 
 export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
   config,
@@ -46,14 +50,16 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
   onClose,
   onNavigateTab
 }) => {
+  const [selectedMode, setSelectedMode] = useState<OperatingMode>('DRAFT MODE');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome_1',
       sender: 'assistant',
-      text: `আসসালামু আলাইকুম! আমি **${config.upName}** এর স্মার্ট জেসিডি এআই সহকারী (Gemini AI Powered)। \n\nআমি আপনাকে ৪০+ প্রকার ডিজিটাল প্রত্যয়নপত্র, প্রয়োজনীয় কাগজপত্র, ভিজিএফ ও ভাতা কার্ড, ওয়ার্ড তথ্য বা অনলাইন যাচাইয়ে সহায়তা করতে পারি। আপনার যেকোনো প্রশ্ন লিখুন বা ভয়েস বাটনে চাপ দিয়ে কথা বলুন।`,
+      text: `আসসালামু আলাইকুম! আমি **${config.upName}**-এর অফিশিয়াল সার্ভিস অপারেটিং সিস্টেম এআই সহকারী (UPSM 2.0 Engine)। \n\nআমি আপনাকে ৪৭টি ডিজিটাল প্রত্যয়নপত্র জেনারেশন, তথ্য ভ্যালিডেশন, ওয়ারিশন টেবিল প্রস্তুত এবং অনলাইন সত্যায়নে সহায়তা করতে পারি।`,
       timestamp: new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }),
+      mode: 'DRAFT MODE',
       suggestedAction: {
-        label: 'নতুন আবেদন করুন',
+        label: 'নতুন সনদ ড্রাফট করুন',
         tab: 'create'
       }
     }
@@ -75,7 +81,7 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'bn-BD'; // Bengali language
+      recognition.lang = 'bn-BD';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -168,6 +174,7 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: query,
+          mode: selectedMode,
           history: messages.slice(-6).map((m) => ({
             role: m.sender === 'user' ? 'user' : 'model',
             parts: [{ text: m.text }]
@@ -180,7 +187,6 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
       let replyText = data.reply || 'দুঃখিত, কোনো উত্তর পাওয়া যায় নাই। পুনরায় চেষ্টা করুন।';
       let action: { label: string; tab: string } | undefined = undefined;
 
-      // Smart tab navigation triggers in assistant reply
       const lower = query.toLowerCase();
       if (lower.includes('আবেদন') || lower.includes('সনদ বানাব') || lower.includes('তৈরি')) {
         action = { label: 'সনদ ফরম খুলুন', tab: 'create' };
@@ -196,6 +202,7 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
         id: `bot_${Date.now()}`,
         sender: 'assistant',
         text: replyText,
+        mode: selectedMode,
         timestamp: new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }),
         suggestedAction: action
       };
@@ -216,9 +223,17 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
 
   const quickPrompts = [
     'ওয়ারিশ সনদের জন্য কী কী ফাইল লাগবে?',
-    'চারিত্রিক সনদ পাওয়ার সরকারি ফি কত?',
-    'আমার সনদের অনলাইন সত্যতা কীভাবে যাচাই করব?',
-    'ইউপি চেয়ারম্যান ও সচিবের সাথে যোগাযোগের সময়?'
+    'ট্রেড লাইসেন্স ও চারিত্রিক সনদের সরকারি ফি কত?',
+    'বহেড়াতৈল ইউনিয়নের ২০টি গ্রামের তালিকা',
+    'অনলাইন যাচাইকরণের স্মারক নম্বর পরীক্ষা'
+  ];
+
+  const operatingModes: OperatingMode[] = [
+    'ASSIST MODE',
+    'DATA MODE',
+    'VERIFY MODE',
+    'DRAFT MODE',
+    'COPY-READY MODE'
   ];
 
   if (!isOpen) return null;
@@ -235,14 +250,14 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-base text-white leading-tight">
-                  স্মার্ট ইউপি Gemini AI নাগরিক সহকারী
+                  UPSM 2.0 Gemini AI চালিত প্রশাসনিক সহকারী
                 </h3>
                 <span className="bg-emerald-800 text-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-700">
-                  Live
+                  Live Engine
                 </span>
               </div>
               <p className="text-[11px] text-emerald-200">
-                {config.upName} — ৪০+ ডিজিটাল সেবার এআই তথ্য প্রদানকারী
+                {config.upName} (সখিপুর, টাঙ্গাইল) — ৪৭টি সনদ ও অটোমেশন চালিত
               </p>
             </div>
           </div>
@@ -266,11 +281,33 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
           </div>
         </div>
 
+        {/* Operating Modes Selection Bar */}
+        <div className="bg-emerald-950 px-3 py-2 border-b border-emerald-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 text-white">
+          <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1 whitespace-nowrap mr-1">
+            <Sliders className="w-3.5 h-3.5 text-amber-400" />
+            <span>অপারেটিং মোড:</span>
+          </span>
+          {operatingModes.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setSelectedMode(m)}
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition whitespace-nowrap shrink-0 cursor-pointer ${
+                selectedMode === m
+                  ? 'bg-amber-400 text-emerald-950 border-amber-300 shadow-sm'
+                  : 'bg-emerald-900/60 text-emerald-200 border-emerald-700 hover:bg-emerald-800'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
         {/* Quick Prompts Bar */}
         <div className="bg-slate-50 border-b border-slate-200 p-2.5 px-4 overflow-x-auto flex items-center gap-2 no-scrollbar shrink-0">
           <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap flex items-center gap-1">
             <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>দ্রুত প্রশ্ন:</span>
+            <span>দ্রুত কমান্ড:</span>
           </span>
           {quickPrompts.map((p, idx) => (
             <button
@@ -293,7 +330,6 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
                 m.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
               }`}
             >
-              {/* Avatar */}
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold shadow ${
                   m.sender === 'user'
@@ -304,7 +340,6 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
                 {m.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
 
-              {/* Message Box */}
               <div
                 className={`p-4 rounded-2xl space-y-2 text-xs md:text-sm leading-relaxed shadow-sm ${
                   m.sender === 'user'
@@ -312,11 +347,16 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
                     : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                 }`}
               >
+                {m.mode && m.sender === 'assistant' && (
+                  <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 uppercase tracking-wider mb-1">
+                    {m.mode}
+                  </span>
+                )}
+
                 <div className="whitespace-pre-wrap font-sans">
                   {m.text}
                 </div>
 
-                {/* Optional Text-to-Speech button for assistant */}
                 {m.sender === 'assistant' && (
                   <div className="pt-1 flex items-center justify-between border-t border-slate-100 text-[10px] text-slate-400">
                     <button
@@ -330,7 +370,6 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
                   </div>
                 )}
 
-                {/* Suggested Navigation Action Button */}
                 {m.suggestedAction && onNavigateTab && (
                   <div className="pt-2">
                     <button
@@ -356,7 +395,7 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
               </div>
               <div className="bg-white p-3 rounded-2xl border border-slate-200 text-slate-500 text-xs flex items-center gap-2 shadow-sm">
                 <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
-                <span>Gemini AI তথ্য বিশ্লেষণ ও উত্তর প্রস্তুত করিতেছে...</span>
+                <span>[{selectedMode}] তথ্য বিশ্লেষণ ও প্রমিত বাংলা ড্রাফট প্রস্তুত হইতেছে...</span>
               </div>
             </div>
           )}
@@ -369,7 +408,7 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
           {isListening && (
             <div className="bg-amber-50 border border-amber-300 rounded-xl p-2 text-center text-xs text-amber-900 font-bold animate-pulse flex items-center justify-center gap-2">
               <Mic className="w-4 h-4 text-red-600 animate-bounce" />
-              <span>আপনার কথা রেকর্ড করা হইতেছে... স্পষ্টভাবে বাংলায় প্রশ্ন বলুন।</span>
+              <span>আপনার কথা রেকর্ড করা হইতেছে... স্পষ্টভাবে বাংলায় বলুন।</span>
             </div>
           )}
 
@@ -394,7 +433,7 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSendMessage();
               }}
-              placeholder="বাংলায় আপনার প্রশ্ন বা সেবা সম্পর্কে টাইপ করুন..."
+              placeholder={`[${selectedMode}] টাইপ করুন বা কমান্ড দিন...`}
               className="flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs md:text-sm text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition"
             />
 
