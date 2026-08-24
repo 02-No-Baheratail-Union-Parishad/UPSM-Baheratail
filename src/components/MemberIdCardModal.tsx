@@ -411,7 +411,7 @@ export const MemberIdCardModal: React.FC<MemberIdCardModalProps> = ({
                         {config.upName} — যাচাইকরণ তথ্য
                       </p>
                       <p className="text-[9px] text-slate-300">
-                        স্থায়ী কার্যালয়: {config.upAddress || 'সখিপুর, টাঙ্গাইল'}
+                        স্থায়ী কার্যালয়: {config.address || 'সখিপুর, টাঙ্গাইল'}
                       </p>
                     </div>
 

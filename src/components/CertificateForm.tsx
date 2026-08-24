@@ -387,7 +387,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
           tables: sanitizedTablesData
         },
         customNote: sanitizeInput(customNote),
-        highThinking: sanitizeInput(highThinking),
+        highThinking: highThinking,
         feeAmount: currentFee,
         paymentMethod,
         trxId: sanitizeInput(trxId.trim()),
@@ -448,7 +448,7 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
   );
 
   const declarationCompleted = Boolean(
-    paymentMethod === 'Cash' || (paymentMethod !== 'Cash' && trxId.trim().length >= 3)
+    (paymentMethod as string) === 'Cash' || ((paymentMethod as string) !== 'Cash' && trxId.trim().length >= 3)
   );
 
   const handleStepClick = (stepId: 'personal' | 'details' | 'declaration') => {

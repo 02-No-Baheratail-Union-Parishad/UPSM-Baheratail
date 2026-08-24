@@ -321,14 +321,17 @@ export interface BackupSnapshot {
   id: string;
   filename: string;
   timestamp: string;
-  archiveFolderId: string;
-  sheetId: string;
+  archiveFolderId?: string;
+  sheetId?: string;
   recordsCount: number;
   sizeKb?: number;
   status: 'completed' | 'in_progress' | 'failed';
   downloadUrl?: string;
   driveFileId?: string;
   notes?: string;
+  storagePath?: string;
+  source?: string;
+  collections?: Record<string, number>;
 }
 
 export interface GoogleChatSpace {
