@@ -230,6 +230,27 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
     loadCitizens();
   }, []);
 
+  // Memoized summary stats calculations in a single O(N) pass to prevent O(3N) re-computations on live search typing
+  const { maleCount, femaleCount, beneficiaryCount } = useMemo(() => {
+    let maleCount = 0;
+    let femaleCount = 0;
+    let beneficiaryCount = 0;
+
+    for (let i = 0; i < citizens.length; i++) {
+      const c = citizens[i];
+      if (c.gender === 'পুরুষ') {
+        maleCount++;
+      } else if (c.gender === 'মহিলা') {
+        femaleCount++;
+      }
+      if (c.totalCertificates > 0) {
+        beneficiaryCount++;
+      }
+    }
+
+    return { maleCount, femaleCount, beneficiaryCount };
+  }, [citizens]);
+
   // Real-time filtering logic
   const filteredCitizens = useMemo(() => {
     return citizens.filter((c) => {
@@ -371,21 +392,21 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">পুরুষ নাগরিক</p>
           <p className="text-xl font-bold text-slate-800 mt-1">
-            {citizens.filter(c => c.gender === 'পুরুষ').length} জন
+            {maleCount} জন
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">মহিলা নাগরিক</p>
           <p className="text-xl font-bold text-slate-800 mt-1">
-            {citizens.filter(c => c.gender === 'মহিলা').length} জন
+            {femaleCount} জন
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">সনদ সুবিধাভোগী</p>
           <p className="text-xl font-bold text-emerald-700 mt-1">
-            {citizens.filter(c => c.totalCertificates > 0).length} জন
+            {beneficiaryCount} জন
           </p>
         </div>
       </div>

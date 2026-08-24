@@ -1,0 +1,3 @@
+## 2026-08-24 - Unmemoized Array Iterations in React Body Cause Input Typing Lag
+**Learning:** In React components with live search inputs (e.g. `CitizenMasterRegister`), unmemoized array calculations (`citizens.filter(...)`) in the component render body execute on every keystroke as state updates, causing main-thread lag. Combining multiple filters into a single pass (`useMemo`) over the source array prevents $O(K \times N)$ redundant work.
+**Action:** When source dataset arrays are filtered for live inputs, ensure overview metrics and summary stats derived from the full dataset are wrapped in `useMemo` with only the dataset as a dependency.
