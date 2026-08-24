@@ -30,12 +30,14 @@ interface AdminAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdminAuthenticated?: (user: AdminUserRecord | null) => void;
+  onSuccess?: () => void;
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   isOpen,
   onClose,
-  onAdminAuthenticated
+  onAdminAuthenticated,
+  onSuccess
 }) => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [adminRecord, setAdminRecord] = useState<AdminUserRecord | null>(null);
@@ -125,6 +127,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
     localStorage.setItem('bup_active_admin_session', JSON.stringify(rec));
     window.dispatchEvent(new CustomEvent('adminAuthChanged', { detail: rec }));
     if (onAdminAuthenticated) onAdminAuthenticated(rec);
+    if (onSuccess) onSuccess();
     setSuccessMsg(`✓ সফলভাবে ${name} (${designation}) হিসেবে লগইন হইয়াছে!`);
     setTimeout(() => {
       setSuccessMsg(null);
@@ -148,6 +151,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
       localStorage.setItem('bup_active_admin_session', JSON.stringify(rec));
       window.dispatchEvent(new CustomEvent('adminAuthChanged', { detail: rec }));
       if (onAdminAuthenticated) onAdminAuthenticated(rec);
+      if (onSuccess) onSuccess();
       setSuccessMsg('✓ মাস্টার পিন যাচাই সফল! চেয়ারম্যান হিসেবে লগইন সম্পন্ন।');
       setTimeout(() => {
         setSuccessMsg(null);

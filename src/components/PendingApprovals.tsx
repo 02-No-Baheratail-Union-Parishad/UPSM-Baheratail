@@ -501,7 +501,7 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
 
             {pendingList.length > 0 && (
               <button
-                onClick={handleBatchApprove}
+                onClick={() => handleBatchApprove()}
                 disabled={loading}
                 className="px-4 py-2 bg-emerald-900 hover:bg-emerald-950 text-amber-300 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
               >
