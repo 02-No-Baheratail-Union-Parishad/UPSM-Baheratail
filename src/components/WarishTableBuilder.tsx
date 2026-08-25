@@ -97,8 +97,9 @@ export const WarishTableBuilder: React.FC<WarishTableBuilderProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveRow(rIdx)}
-                      className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition cursor-pointer"
+                      className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition cursor-pointer focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
                       title="মুছুন"
+                      aria-label={`মুছুন - সারি ${toBengaliNumeral(rIdx + 1)}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
