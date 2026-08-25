@@ -411,8 +411,8 @@ async function startServer() {
     res.json({ config: upConfig });
   });
 
-  // Update Admin Config
-  app.post("/api/admin/config", (req, res) => {
+  // Update Admin Config (Requires Admin Authentication)
+  app.post("/api/admin/config", requireAuth, (req, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
