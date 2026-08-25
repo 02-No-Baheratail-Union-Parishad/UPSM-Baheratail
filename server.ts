@@ -9,6 +9,7 @@ import { DEFAULT_UP_CONFIG } from "./src/data/villages.js";
 import { generate30DayTrendData } from "./src/data/trendAnalytics.js";
 import { CertificateRecord, UnionParishadConfig, ApiKeyRecord, WebhookConfig, WebhookLogRecord } from "./src/types.js";
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
+import { rateLimiter } from './src/middleware/rateLimiter.ts';
 import { getOrCreateUser, getAllUsers } from './src/db/users.ts';
 
 dotenv.config();
@@ -411,8 +412,8 @@ async function startServer() {
     res.json({ config: upConfig });
   });
 
-  // Update Admin Config
-  app.post("/api/admin/config", (req, res) => {
+  // Update Admin Config (Requires Admin Authentication & Rate Limiting)
+  app.post("/api/admin/config", rateLimiter, requireAuth, (req, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
