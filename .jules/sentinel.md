@@ -1,4 +1,0 @@
-## 2026-08-05 - Webhook Endpoint SSRF Vulnerability Prevention
-**Vulnerability:** The `/api/admin/webhooks/test` endpoint checked for localhost and basic RFC 1918 private IPv4 subnets, but missed reserved IPv4 ranges (such as `0.0.0.0/8`, `100.64.0.0/10` Carrier-Grade NAT, `192.0.0.0/24`, `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`, and multicast/reserved `224.0.0.0/4` - `255.255.255.255`) as well as IPv6 unspecified addresses (`::`).
-**Learning:** Incomplete IP address validation in Webhook test functionality can allow attackers to perform Server-Side Request Forgery (SSRF) against internal services, cloud metadata endpoints, or local network interfaces.
-**Prevention:** Ensure Webhook target URL hostname checking explicitly checks all reserved, private, CGNAT, loopback, and multicast ranges for both IPv4 and IPv6 protocols before making HTTP requests.
