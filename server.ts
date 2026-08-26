@@ -1900,15 +1900,23 @@ ${upConfig.defaultPromptPrefix}
       }
 
       const hostname = parsed.hostname.toLowerCase();
-      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+      const cleanHost = hostname.replace(/^\[|\]$/g, "");
+      const isLocalhost = cleanHost === "localhost" || cleanHost === "127.0.0.1" || cleanHost === "::1" || cleanHost === "0.0.0.0" || cleanHost === "::";
       const isPrivateIpv4 =
-        /^10\./.test(hostname) ||
-        /^127\./.test(hostname) ||
-        /^169\.254\./.test(hostname) ||
-        /^192\.168\./.test(hostname) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+        /^0\./.test(cleanHost) ||
+        /^10\./.test(cleanHost) ||
+        /^127\./.test(cleanHost) ||
+        /^169\.254\./.test(cleanHost) ||
+        /^192\.168\./.test(cleanHost) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(cleanHost) ||
+        /^100\.(6[4-9]|[7-9]\d|1[0-1]\d|12[0-7])\./.test(cleanHost) ||
+        /^(192\.0\.0|192\.0\.2|198\.51\.100|203\.0\.113)\./.test(cleanHost) ||
+        /^(22[4-9]|23\d|24\d|25[0-5])\./.test(cleanHost);
       const isPrivateIpv6 =
-        /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+        /^(fc|fd)/i.test(cleanHost) ||
+        /^fe80:/i.test(cleanHost) ||
+        /^::ffff:(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|0\.)/i.test(cleanHost) ||
+        cleanHost === "::";
 
       if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
         return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal Webhook URL অনুমোদিত নয়।" });
