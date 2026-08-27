@@ -187,7 +187,8 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
+          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          aria-label="নতুন সরকারি নোটিশ প্রকাশ করুন"
         >
           <Plus className="w-4 h-4" />
           <span>নতুন নোটিশ প্রকাশ করুন</span>
@@ -222,8 +223,17 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               return (
                 <div
                   key={notice.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-selected={isSelected}
                   onClick={() => setActiveNotice(notice)}
-                  className={`p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveNotice(notice);
+                    }
+                  }}
+                  className={`p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
                     isSelected
                       ? 'bg-emerald-50 border-emerald-500 shadow ring-1 ring-emerald-400'
                       : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
@@ -262,7 +272,8 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
 
                 <button
                   onClick={() => handlePrintNotice(activeNotice)}
-                  className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  aria-label={`${activeNotice.title} নোটিশ প্রিন্ট করুন`}
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>প্রিন্ট নোটিশ</span>
@@ -306,7 +317,8 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                aria-label="মোডাল বন্ধ করুন"
               >
                 ✕
               </button>

@@ -1,0 +1,3 @@
+## 2026-03-30 - Notice Board & Interactive List Keyboard Navigation
+**Learning:** Interactive card list items in government portals (like notice items) were clickable only via mouse clicks (`onClick`), rendering them inaccessible to screen readers and keyboard users. Adding `role="button"`, `tabIndex={0}`, `aria-selected`, and an `onKeyDown` handler (Enter / Space keys) alongside `focus-visible` outline rings ensures seamless keyboard navigation without degrading visual aesthetics.
+**Action:** Always provide explicit keyboard accessibility (`role="button"`, `tabIndex={0}`, `onKeyDown` supporting Enter & Space) and `focus-visible:ring-2` focus states on custom interactive list items.
