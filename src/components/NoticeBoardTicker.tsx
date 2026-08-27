@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Bell, 
   Megaphone, 
@@ -76,6 +76,11 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<NoticeItem['category']>('জরুরি নোটিশ');
   const [newContent, setNewContent] = useState('');
+
+  // Memoize ticker marquee string concatenation to avoid re-mapping on unrelated state changes (e.g. typing in modal)
+  const marqueeText = useMemo(() => {
+    return notices.map((n) => `[${n.category}] ${n.title} — ${n.date}`).join('  |  ');
+  }, [notices]);
 
   const handleAddNotice = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,7 +207,7 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
         </span>
         <div className="overflow-hidden whitespace-nowrap flex-1">
           <p className="animate-marquee inline-block font-sans text-xs">
-            📢 {notices.map((n) => `[${n.category}] ${n.title} — ${n.date}`).join('  |  ')}
+            📢 {marqueeText}
           </p>
         </div>
       </div>
