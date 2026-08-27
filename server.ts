@@ -411,8 +411,8 @@ async function startServer() {
     res.json({ config: upConfig });
   });
 
-  // Update Admin Config
-  app.post("/api/admin/config", (req, res) => {
+  // Security: Require authentication for updating administrative configuration
+  app.post("/api/admin/config", requireAuth, (req, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
@@ -1059,8 +1059,8 @@ ${upConfig.defaultPromptPrefix}
     });
   });
 
-  // Approve Certificate (One-click Chairman Action)
-  app.post("/api/admin/approve-cert", (req, res) => {
+  // Security: Require authentication for approving official certificates
+  app.post("/api/admin/approve-cert", requireAuth, (req, res) => {
     const { id, approvedBy } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1093,8 +1093,8 @@ ${upConfig.defaultPromptPrefix}
     });
   });
 
-  // Cancel Certificate (One-click Chairman Action)
-  app.post("/api/admin/cancel-cert", (req, res) => {
+  // Security: Require authentication for cancelling official certificates
+  app.post("/api/admin/cancel-cert", requireAuth, (req, res) => {
     const { id, cancelledBy, reason } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1123,8 +1123,8 @@ ${upConfig.defaultPromptPrefix}
     });
   });
 
-  // Batch Approve All Pending
-  app.post("/api/admin/batch-approve", (req, res) => {
+  // Security: Require authentication for batch approving official certificates
+  app.post("/api/admin/batch-approve", requireAuth, (req, res) => {
     const { approvedBy } = req.body;
     const now = new Date();
     const approvedByName = approvedBy || upConfig.chairmanName || "ইউপি চেয়ারম্যান";
