@@ -230,6 +230,24 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
     loadCitizens();
   }, []);
 
+  // Memoized single-pass summary statistics calculation to avoid 3x array filtering on re-renders
+  const citizenStats = useMemo(() => {
+    let maleCount = 0;
+    let femaleCount = 0;
+    let beneficiariesCount = 0;
+    for (let i = 0; i < citizens.length; i++) {
+      const c = citizens[i];
+      if (c.gender === 'পুরুষ') maleCount++;
+      else if (c.gender === 'মহিলা') femaleCount++;
+      if (c.totalCertificates > 0) beneficiariesCount++;
+    }
+    return {
+      male: maleCount,
+      female: femaleCount,
+      beneficiaries: beneficiariesCount,
+    };
+  }, [citizens]);
+
   // Real-time filtering logic
   const filteredCitizens = useMemo(() => {
     return citizens.filter((c) => {
@@ -371,21 +389,21 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">পুরুষ নাগরিক</p>
           <p className="text-xl font-bold text-slate-800 mt-1">
-            {citizens.filter(c => c.gender === 'পুরুষ').length} জন
+            {citizenStats.male} জন
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">মহিলা নাগরিক</p>
           <p className="text-xl font-bold text-slate-800 mt-1">
-            {citizens.filter(c => c.gender === 'মহিলা').length} জন
+            {citizenStats.female} জন
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">সনদ সুবিধাভোগী</p>
           <p className="text-xl font-bold text-emerald-700 mt-1">
-            {citizens.filter(c => c.totalCertificates > 0).length} জন
+            {citizenStats.beneficiaries} জন
           </p>
         </div>
       </div>
