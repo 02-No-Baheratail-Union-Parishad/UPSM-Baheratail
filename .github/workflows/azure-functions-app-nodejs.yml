@@ -35,7 +35,7 @@ jobs:
     environment: dev
     steps:
     - name: 'Checkout GitHub Action'
-      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+      uses: actions/checkout@v4
 
     # If you want to use Azure RBAC instead of Publish Profile, then uncomment the task below
     # - name: 'Login via Azure CLI'
@@ -44,7 +44,7 @@ jobs:
     #     creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }} # set up AZURE_RBAC_CREDENTIALS secrets in your repository
 
     - name: Setup Node ${{ env.NODE_VERSION }} Environment
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.2.0
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
 
@@ -58,7 +58,7 @@ jobs:
         popd
 
     - name: 'Run Azure Functions Action'
-      uses: Azure/functions-action@c5060b3b8bb1ebbcb531abd00c822ecbaa8ea656 # v1
+      uses: Azure/functions-action@v1
       id: fa
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
