@@ -358,6 +358,28 @@ async function startServer() {
 
   app.use(express.json({ limit: "20mb" }));
 
+  // Simple Rate Limiting Middleware for Admin Endpoints
+  const adminRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+  const adminRateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || "global";
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000; // 15 minutes
+    const maxRequests = 100;
+
+    const record = adminRateLimitStore.get(ip);
+    if (!record || now > record.resetTime) {
+      adminRateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
+      return next();
+    }
+
+    if (record.count >= maxRequests) {
+      return res.status(429).json({ error: "Too many administrative requests. Please try again later." });
+    }
+
+    record.count += 1;
+    next();
+  };
+
   // 2. Security Middleware: Input Sanitization Layer
   app.use((req, _res, next) => {
     if (req.body) {
@@ -412,7 +434,7 @@ async function startServer() {
   });
 
   // Update Admin Config
-  app.post("/api/admin/config", requireAuth, (req, res) => {
+  app.post("/api/admin/config", requireAuth, adminRateLimiter, (req, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
@@ -1060,7 +1082,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Approve Certificate (One-click Chairman Action)
-  app.post("/api/admin/approve-cert", requireAuth, (req, res) => {
+  app.post("/api/admin/approve-cert", requireAuth, adminRateLimiter, (req, res) => {
     const { id, approvedBy } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1094,7 +1116,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Cancel Certificate (One-click Chairman Action)
-  app.post("/api/admin/cancel-cert", requireAuth, (req, res) => {
+  app.post("/api/admin/cancel-cert", requireAuth, adminRateLimiter, (req, res) => {
     const { id, cancelledBy, reason } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1124,7 +1146,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Batch Approve All Pending
-  app.post("/api/admin/batch-approve", requireAuth, (req, res) => {
+  app.post("/api/admin/batch-approve", requireAuth, adminRateLimiter, (req, res) => {
     const { approvedBy } = req.body;
     const now = new Date();
     const approvedByName = approvedBy || upConfig.chairmanName || "ইউপি চেয়ারম্যান";
@@ -1404,7 +1426,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Create Backup Snapshot to Archive Drive Folder & Primary Google Sheet
-  app.post("/api/admin/backup", requireAuth, async (req, res) => {
+  app.post("/api/admin/backup", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const { archiveFolderId, notes } = req.body;
       const folder = archiveFolderId || upConfig.archiveFolderId || upConfig.targetFolderId || "DRIVE_ARCHIVE_FOLDER_ID";
@@ -1625,7 +1647,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Restore Database from Snapshot
-  app.post("/api/admin/restore", requireAuth, (req, res) => {
+  app.post("/api/admin/restore", requireAuth, adminRateLimiter, (req, res) => {
     try {
       const { backupId, backupData } = req.body;
       let targetData = backupData;
@@ -1780,7 +1802,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Generate New API Access Key
-  app.post("/api/admin/api-keys", requireAuth, (req, res) => {
+  app.post("/api/admin/api-keys", requireAuth, adminRateLimiter, (req, res) => {
     const { name, permissions } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, message: "এপিআই কী-এর একটি নাম বা বর্ণনা প্রদান করুন।" });
@@ -1805,7 +1827,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Revoke / Delete API Access Key
-  app.delete("/api/admin/api-keys/:id", requireAuth, (req, res) => {
+  app.delete("/api/admin/api-keys/:id", requireAuth, adminRateLimiter, (req, res) => {
     const { id } = req.params;
     const index = apiKeyStore.findIndex(k => k.id === id);
 
@@ -1831,7 +1853,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Save / Add / Update Webhook Configuration
-  app.post("/api/admin/webhooks", requireAuth, (req, res) => {
+  app.post("/api/admin/webhooks", requireAuth, adminRateLimiter, (req, res) => {
     const { id, name, url, secret, events, enabled } = req.body;
 
     if (!url || !url.startsWith("http")) {
@@ -1872,7 +1894,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Delete Webhook Endpoint
-  app.delete("/api/admin/webhooks/:id", requireAuth, (req, res) => {
+  app.delete("/api/admin/webhooks/:id", requireAuth, adminRateLimiter, (req, res) => {
     const { id } = req.params;
     const idx = webhookStore.findIndex(w => w.id === id);
     if (idx !== -1) {
