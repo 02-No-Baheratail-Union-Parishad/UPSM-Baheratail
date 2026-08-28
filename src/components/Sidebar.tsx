@@ -589,6 +589,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setIsAuthModalOpen(true)}
                 className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto transition cursor-pointer block"
                 title="ডেভেলপার / এডমিন লগইন"
+                aria-label="ডেভেলপার / এডমিন লগইন"
               >
                 <Lock className="w-4 h-4 text-amber-300" />
               </button>
@@ -596,6 +597,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={toggleLanguage}
                 className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto transition cursor-pointer block"
                 title={lang === 'bn' ? 'Switch to English' : 'বাংলায় রূপান্তর'}
+                aria-label={lang === 'bn' ? 'Switch to English' : 'বাংলায় রূপান্তর'}
               >
                 <Globe className="w-4 h-4 text-amber-300" />
               </button>
