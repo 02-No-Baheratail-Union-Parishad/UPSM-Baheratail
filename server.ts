@@ -358,6 +358,28 @@ async function startServer() {
 
   app.use(express.json({ limit: "20mb" }));
 
+  // Simple Rate Limiting Middleware for Admin Endpoints
+  const adminRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+  const adminRateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || "global";
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000; // 15 minutes
+    const maxRequests = 100;
+
+    const record = adminRateLimitStore.get(ip);
+    if (!record || now > record.resetTime) {
+      adminRateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
+      return next();
+    }
+
+    if (record.count >= maxRequests) {
+      return res.status(429).json({ error: "Too many administrative requests. Please try again later." });
+    }
+
+    record.count += 1;
+    next();
+  };
+
   // 2. Security Middleware: Input Sanitization Layer
   app.use((req, _res, next) => {
     if (req.body) {
@@ -410,28 +432,6 @@ async function startServer() {
   app.get("/api/admin/config", (_req, res) => {
     res.json({ config: upConfig });
   });
-
-  // Simple Rate Limiting Middleware for Admin Endpoints
-  const adminRateLimitStore = new Map<string, { count: number; resetTime: number }>();
-  const adminRateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const ip = req.ip || req.socket.remoteAddress || "global";
-    const now = Date.now();
-    const windowMs = 15 * 60 * 1000; // 15 minutes
-    const maxRequests = 100;
-
-    const record = adminRateLimitStore.get(ip);
-    if (!record || now > record.resetTime) {
-      adminRateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
-      return next();
-    }
-
-    if (record.count >= maxRequests) {
-      return res.status(429).json({ error: "Too many administrative requests. Please try again later." });
-    }
-
-    record.count += 1;
-    next();
-  };
 
   // Update Admin Config
   app.post("/api/admin/config", requireAuth, adminRateLimiter, (req, res) => {
