@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   Search, 
@@ -22,8 +22,8 @@ interface CitizenLogsProps {
   config: UnionParishadConfig;
 }
 
-export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
-  const [logs, setLogs] = useState<CertificateRecord[]>([]);
+const CitizenLogsComponent: React.FC<CitizenLogsProps> = ({ config }) => {
+  const [rawLogs, setRawLogs] = useState<CertificateRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWard, setSelectedWard] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('সব ধরন');
@@ -32,17 +32,18 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
   const [selectedCert, setSelectedCert] = useState<CertificateRecord | null>(null);
   const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
 
+  // Performance Optimization: Fetch all logs once on mount/manual refresh
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const url = `/api/admin/logs?ward=${encodeURIComponent(selectedWard)}&category=${encodeURIComponent(selectedCategory)}&search=${encodeURIComponent(searchQuery)}`;
+      const url = '/api/admin/logs';
       const res = await fetch(url);
       const data = await res.json();
       let serverLogs: CertificateRecord[] = data.logs || [];
 
       const fbLogs = await fetchCertificatesFromFirebase();
       
-      // Merge unique records
+      // Merge unique records into map
       const logMap = new Map<string, CertificateRecord>();
       [...serverLogs, ...fbLogs].forEach(item => {
         if (item.memoNo && !logMap.has(item.memoNo)) {
@@ -50,30 +51,7 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
         }
       });
 
-      let merged = Array.from(logMap.values());
-
-      // Apply client-side filters if needed
-      if (selectedWard) {
-        merged = merged.filter(c => c.citizen && c.citizen.wardNo === selectedWard);
-      }
-      if (selectedCategory && selectedCategory !== 'সব ধরন') {
-        merged = merged.filter(c => c.category === selectedCategory || c.typeLabel === selectedCategory);
-      }
-      if (selectedCertType && selectedCertType !== 'সকল সনদের ধরন') {
-        merged = merged.filter(c => c.typeLabel === selectedCertType);
-      }
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        merged = merged.filter(c => 
-          c.memoNo.toLowerCase().includes(q) ||
-          (c.typeLabel && c.typeLabel.toLowerCase().includes(q)) ||
-          (c.citizen && c.citizen.name.toLowerCase().includes(q)) ||
-          (c.citizen && c.citizen.nid && c.citizen.nid.includes(q)) ||
-          (c.citizen && c.citizen.village && c.citizen.village.toLowerCase().includes(q))
-        );
-      }
-
-      setLogs(merged);
+      setRawLogs(Array.from(logMap.values()));
     } catch (e) {
       console.error('Error fetching logs:', e);
     } finally {
@@ -83,7 +61,39 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
 
   useEffect(() => {
     fetchLogs();
-  }, [selectedWard, selectedCategory, selectedCertType, searchQuery]);
+  }, []);
+
+  // Performance Optimization: Memoize client-side filtering to avoid redundant fetch calls and re-renders on every keystroke
+  const logs = useMemo(() => {
+    return rawLogs.filter(c => {
+      if (selectedWard && (!c.citizen || c.citizen.wardNo !== selectedWard)) {
+        return false;
+      }
+      if (selectedCategory && selectedCategory !== 'সব ধরন') {
+        if (c.category !== selectedCategory && c.typeLabel !== selectedCategory) {
+          return false;
+        }
+      }
+      if (selectedCertType && selectedCertType !== 'সকল সনদের ধরন') {
+        if (c.typeLabel !== selectedCertType) {
+          return false;
+        }
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchMemo = c.memoNo && c.memoNo.toLowerCase().includes(q);
+        const matchType = c.typeLabel && c.typeLabel.toLowerCase().includes(q);
+        const matchName = c.citizen && c.citizen.name && c.citizen.name.toLowerCase().includes(q);
+        const matchNid = c.citizen && c.citizen.nid && c.citizen.nid.includes(q);
+        const matchVillage = c.citizen && c.citizen.village && c.citizen.village.toLowerCase().includes(q);
+
+        if (!matchMemo && !matchType && !matchName && !matchNid && !matchVillage) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [rawLogs, selectedWard, selectedCategory, selectedCertType, searchQuery]);
 
   const handleExportCsv = () => {
     window.open('/api/admin/export', '_blank');
@@ -276,3 +286,5 @@ export const CitizenLogs: React.FC<CitizenLogsProps> = ({ config }) => {
     </div>
   );
 };
+
+export const CitizenLogs = React.memo(CitizenLogsComponent);
