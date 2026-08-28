@@ -12,7 +12,8 @@ import {
   CheckCircle2, 
   Building2, 
   Award, 
-  AlertCircle 
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { UnionParishadConfig } from '../types';
 import { sanitizeInput } from '../utils/security';
@@ -306,9 +307,10 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="মোডাল বন্ধ করুন"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
