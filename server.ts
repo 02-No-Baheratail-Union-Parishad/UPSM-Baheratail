@@ -412,7 +412,7 @@ async function startServer() {
   });
 
   // Update Admin Config
-  app.post("/api/admin/config", (req, res) => {
+  app.post("/api/admin/config", requireAuth, (req, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
@@ -1060,7 +1060,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Approve Certificate (One-click Chairman Action)
-  app.post("/api/admin/approve-cert", (req, res) => {
+  app.post("/api/admin/approve-cert", requireAuth, (req, res) => {
     const { id, approvedBy } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1094,7 +1094,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Cancel Certificate (One-click Chairman Action)
-  app.post("/api/admin/cancel-cert", (req, res) => {
+  app.post("/api/admin/cancel-cert", requireAuth, (req, res) => {
     const { id, cancelledBy, reason } = req.body;
     const certIndex = certificateStore.findIndex(c => c.id === id || c.memoNo === id);
 
@@ -1124,7 +1124,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Batch Approve All Pending
-  app.post("/api/admin/batch-approve", (req, res) => {
+  app.post("/api/admin/batch-approve", requireAuth, (req, res) => {
     const { approvedBy } = req.body;
     const now = new Date();
     const approvedByName = approvedBy || upConfig.chairmanName || "ইউপি চেয়ারম্যান";
@@ -1404,7 +1404,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Create Backup Snapshot to Archive Drive Folder & Primary Google Sheet
-  app.post("/api/admin/backup", async (req, res) => {
+  app.post("/api/admin/backup", requireAuth, async (req, res) => {
     try {
       const { archiveFolderId, notes } = req.body;
       const folder = archiveFolderId || upConfig.archiveFolderId || upConfig.targetFolderId || "DRIVE_ARCHIVE_FOLDER_ID";
@@ -1625,7 +1625,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Restore Database from Snapshot
-  app.post("/api/admin/restore", (req, res) => {
+  app.post("/api/admin/restore", requireAuth, (req, res) => {
     try {
       const { backupId, backupData } = req.body;
       let targetData = backupData;
@@ -1780,7 +1780,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Generate New API Access Key
-  app.post("/api/admin/api-keys", (req, res) => {
+  app.post("/api/admin/api-keys", requireAuth, (req, res) => {
     const { name, permissions } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, message: "এপিআই কী-এর একটি নাম বা বর্ণনা প্রদান করুন।" });
@@ -1805,7 +1805,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Revoke / Delete API Access Key
-  app.delete("/api/admin/api-keys/:id", (req, res) => {
+  app.delete("/api/admin/api-keys/:id", requireAuth, (req, res) => {
     const { id } = req.params;
     const index = apiKeyStore.findIndex(k => k.id === id);
 
@@ -1831,7 +1831,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Save / Add / Update Webhook Configuration
-  app.post("/api/admin/webhooks", (req, res) => {
+  app.post("/api/admin/webhooks", requireAuth, (req, res) => {
     const { id, name, url, secret, events, enabled } = req.body;
 
     if (!url || !url.startsWith("http")) {
@@ -1872,7 +1872,7 @@ ${upConfig.defaultPromptPrefix}
   });
 
   // Delete Webhook Endpoint
-  app.delete("/api/admin/webhooks/:id", (req, res) => {
+  app.delete("/api/admin/webhooks/:id", requireAuth, (req, res) => {
     const { id } = req.params;
     const idx = webhookStore.findIndex(w => w.id === id);
     if (idx !== -1) {
