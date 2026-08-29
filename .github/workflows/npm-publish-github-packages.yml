@@ -11,8 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/setup-node@60ed048686623609f3968f5673d4380e92276536 # v4.0.3
         with:
           node-version: 20
       - run: npm ci
@@ -25,8 +25,8 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/setup-node@60ed048686623609f3968f5673d4380e92276536 # v4.0.3
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com/
