@@ -47,7 +47,7 @@ service cloud.firestore {
       // Allow create and update for app forms and approval workflow
       allow create, update: if true;
       // Deletion restricted to admins
-      allow delete: if isAdmin() || true;
+      allow delete: if isAdmin();
     }
 
     // -------------------- CITIZEN MASTER DATABASE --------------------
@@ -65,20 +65,21 @@ service cloud.firestore {
     }
 
     match /configs/secrets/{docId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
     // -------------------- RESTRICTED ADMINISTRATIVE COLLECTIONS --------------------
     match /apiKeys/{docId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
     match /webhooks/{docId} {
-      allow read, write: if true;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
     match /backups/{docId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
   }
 }
