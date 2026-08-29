@@ -225,7 +225,6 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
                   type="button"
                   onClick={() => setActiveNotice(notice)}
                   aria-pressed={isSelected}
-                  aria-label={`${notice.category}: ${notice.title}`}
                   className={`w-full text-left p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                     isSelected
                       ? 'bg-emerald-50 border-emerald-500 shadow ring-1 ring-emerald-400'
