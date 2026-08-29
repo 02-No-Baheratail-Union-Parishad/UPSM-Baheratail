@@ -41,14 +41,10 @@ export interface TrendAnalyticsResponse {
   };
 }
 
-// Convert English numbers to Bengali digits
-export function toBengaliNumeral(num: number | string): string {
-  const map: Record<string, string> = {
-    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
-    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
-  };
-  return num.toString().replace(/[0-9]/g, (w) => map[w] || w);
-}
+import { toBengaliNumeral } from '../lib/utils';
+
+// Re-export optimized toBengaliNumeral from src/lib/utils.ts for single source of truth and high performance
+export { toBengaliNumeral };
 
 // Month names in Bengali
 const BENGALI_MONTHS = [
