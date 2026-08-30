@@ -1183,15 +1183,26 @@ ${upConfig.defaultPromptPrefix}
         }
         const rawHostname = parsed.hostname.toLowerCase();
         const hostname = rawHostname.replace(/^\[|\]$/g, "");
-        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "::";
+        const isLocalhost =
+          hostname === "localhost" ||
+          hostname === "127.0.0.1" ||
+          hostname === "0.0.0.0" ||
+          hostname === "0" ||
+          hostname === "::1" ||
+          hostname === "::";
+
         const isPrivateIpv4 =
           /^10\./.test(hostname) ||
           /^127\./.test(hostname) ||
+          /^0\./.test(hostname) ||
           /^169\.254\./.test(hostname) ||
           /^192\.168\./.test(hostname) ||
           /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+
         const isPrivateIpv6 =
-          /^(fc|fd)/i.test(hostname) || /^fe80:/i.test(hostname);
+          /^(fc|fd)/i.test(hostname) ||
+          /^fe80:/i.test(hostname) ||
+          /^(::ffff:)?(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|0\.|169\.254\.)/i.test(hostname);
 
         if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
           return res.status(400).json({
