@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   CheckCircle2,
   XCircle,
@@ -218,41 +218,49 @@ export const PendingApprovals: React.FC<PendingApprovalsProps> = ({ config, onCe
     }
   };
 
-  // Derive dynamic unique categories and certificate types from CERTIFICATE_TYPES & pendingList
-  const categoriesList = Array.from(
-    new Set([
-      'সব ক্যাটাগরি',
-      ...CERTIFICATE_CATEGORIES.filter(c => c !== 'সব ধরন'),
-      ...pendingList.map(item => item.category).filter(Boolean)
-    ])
-  );
+  // PERFORMANCE OPTIMIZATION (Bolt ⚡): Memoize dynamic categories and certificate types lists
+  // Prevents re-building Sets and iterating pendingList array on every un-related state change (modals, inputs, loading states)
+  const categoriesList = useMemo(() => {
+    return Array.from(
+      new Set([
+        'সব ক্যাটাগরি',
+        ...CERTIFICATE_CATEGORIES.filter(c => c !== 'সব ধরন'),
+        ...pendingList.map(item => item.category).filter(Boolean)
+      ])
+    );
+  }, [pendingList]);
 
-  const certTypesList = Array.from(
-    new Set([
-      'সব সনদের ধরন',
-      ...CERTIFICATE_TYPES.map(t => t.label),
-      ...pendingList.map(item => item.typeLabel).filter(Boolean)
-    ])
-  );
+  const certTypesList = useMemo(() => {
+    return Array.from(
+      new Set([
+        'সব সনদের ধরন',
+        ...CERTIFICATE_TYPES.map(t => t.label),
+        ...pendingList.map(item => item.typeLabel).filter(Boolean)
+      ])
+    );
+  }, [pendingList]);
 
-  // Filter pending items
-  const filteredList = pendingList.filter(item => {
+  // PERFORMANCE OPTIMIZATION (Bolt ⚡): Memoize filtered pending list computation
+  // Avoids running linear string matching across all items on un-related renders
+  const filteredList = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      item.citizen.name.toLowerCase().includes(q) ||
-      item.memoNo.toLowerCase().includes(q) ||
-      (item.citizen.nid && item.citizen.nid.includes(q)) ||
-      (item.citizen.mobile && item.citizen.mobile.includes(q)) ||
-      item.citizen.village.toLowerCase().includes(q) ||
-      item.typeLabel.toLowerCase().includes(q);
+    return pendingList.filter(item => {
+      const matchesSearch =
+        !q ||
+        item.citizen.name.toLowerCase().includes(q) ||
+        item.memoNo.toLowerCase().includes(q) ||
+        (item.citizen.nid && item.citizen.nid.includes(q)) ||
+        (item.citizen.mobile && item.citizen.mobile.includes(q)) ||
+        item.citizen.village.toLowerCase().includes(q) ||
+        item.typeLabel.toLowerCase().includes(q);
 
-    const matchesWard = selectedWard === 'সব ওয়ার্ড' || item.citizen.wardNo === selectedWard;
-    const matchesCategory = selectedCategory === 'সব ক্যাটাগরি' || item.category === selectedCategory;
-    const matchesCertType = selectedCertType === 'সব সনদের ধরন' || item.typeLabel === selectedCertType;
+      const matchesWard = selectedWard === 'সব ওয়ার্ড' || item.citizen.wardNo === selectedWard;
+      const matchesCategory = selectedCategory === 'সব ক্যাটাগরি' || item.category === selectedCategory;
+      const matchesCertType = selectedCertType === 'সব সনদের ধরন' || item.typeLabel === selectedCertType;
 
-    return matchesSearch && matchesWard && matchesCategory && matchesCertType;
-  });
+      return matchesSearch && matchesWard && matchesCategory && matchesCertType;
+    });
+  }, [pendingList, searchQuery, selectedWard, selectedCategory, selectedCertType]);
 
   const isFilterActive =
     searchQuery.trim() !== '' ||
