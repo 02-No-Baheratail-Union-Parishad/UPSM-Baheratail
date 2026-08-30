@@ -1166,10 +1166,43 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/apps-script-sync", async (req, res) => {
     try {
       const targetUrl = req.body.webAppUrl || upConfig.appsScriptUrl;
-      if (!targetUrl || !targetUrl.startsWith("http")) {
+      if (!targetUrl || typeof targetUrl !== "string") {
         return res.status(400).json({
           success: false,
           message: "Google Apps Script WebApp URL পাওয়া যায়নি। অনুগ্রহ করে WebApp URL প্রদান করুন।"
+        });
+      }
+
+      try {
+        const parsed = new URL(targetUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return res.status(400).json({
+            success: false,
+            message: "শুধুমাত্র http:// বা https:// WebApp URL অনুমোদিত।"
+          });
+        }
+        const rawHostname = parsed.hostname.toLowerCase();
+        const hostname = rawHostname.replace(/^\[|\]$/g, "");
+        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "::";
+        const isPrivateIpv4 =
+          /^10\./.test(hostname) ||
+          /^127\./.test(hostname) ||
+          /^169\.254\./.test(hostname) ||
+          /^192\.168\./.test(hostname) ||
+          /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+        const isPrivateIpv6 =
+          /^(fc|fd)/i.test(hostname) || /^fe80:/i.test(hostname);
+
+        if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
+          return res.status(400).json({
+            success: false,
+            message: "নিরাপত্তাজনিত কারণে private/internal WebApp URL অনুমোদিত নয়।"
+          });
+        }
+      } catch {
+        return res.status(400).json({
+          success: false,
+          message: "WebApp URL সঠিক ফরম্যাটে নেই।"
         });
       }
 
