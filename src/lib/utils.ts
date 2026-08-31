@@ -4,24 +4,35 @@ export function cn(...inputs: ClassValue[]) {
   return inputs.filter(Boolean).join(" ");
 }
 
+// Module-level static maps to avoid re-allocating lookup objects on every numeral conversion
+const ENGLISH_TO_BENGALI_MAP: Record<string, string> = {
+  '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+  '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+};
+
+const BENGALI_TO_ENGLISH_MAP: Record<string, string> = {
+  '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+  '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
+};
+
+/**
+ * Converts English digits (0-9) to Bengali numerals (০-৯).
+ * Optimized with static module-level map to prevent unnecessary object allocations in render cycles.
+ */
 export function toBengaliNumeral(str: string | number | undefined | null): string {
   if (str === undefined || str === null || str === '') return '';
-  const englishDigits: Record<string, string> = {
-    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
-    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
-  };
-  return str.toString().replace(/[0-9]/g, (w) => englishDigits[w] || w);
+  return str.toString().replace(/[0-9]/g, (w) => ENGLISH_TO_BENGALI_MAP[w] || w);
 }
 
 export const convertToBengaliDigits = toBengaliNumeral;
 
+/**
+ * Converts Bengali digits (০-৯) to English numerals (0-9).
+ * Optimized with static module-level map to prevent unnecessary object allocations.
+ */
 export function toEnglishNumeral(str: string | number | undefined | null): string {
   if (str === undefined || str === null || str === '') return '';
-  const bengaliDigits: Record<string, string> = {
-    '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
-    '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
-  };
-  return str.toString().replace(/[০-৯]/g, (w) => bengaliDigits[w] || w);
+  return str.toString().replace(/[০-৯]/g, (w) => BENGALI_TO_ENGLISH_MAP[w] || w);
 }
 
 export const BANGLA_GREGORIAN_MONTHS = [
