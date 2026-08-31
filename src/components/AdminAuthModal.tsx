@@ -212,7 +212,9 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
         <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-6 relative overflow-hidden">
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer"
+            aria-label="মোডাল বন্ধ করুন"
+            title="বন্ধ করুন"
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-300"
           >
             <X className="w-5 h-5" />
           </button>

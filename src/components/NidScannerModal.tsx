@@ -77,7 +77,9 @@ export const NidScannerModal: React.FC<NidScannerModalProps> = ({ isOpen, onClos
           </div>
           <button 
             onClick={onClose} 
-            className="text-emerald-200 hover:text-white p-1 rounded-full hover:bg-emerald-800 transition cursor-pointer"
+            aria-label="মোডাল বন্ধ করুন"
+            title="বন্ধ করুন"
+            className="text-emerald-200 hover:text-white p-1 rounded-full hover:bg-emerald-800 transition cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-300"
           >
             <X className="w-5 h-5" />
           </button>
@@ -97,7 +99,9 @@ export const NidScannerModal: React.FC<NidScannerModalProps> = ({ isOpen, onClos
                   <img src={frontImage} alt="Front NID" className="w-full h-28 object-cover rounded-lg" />
                   <button 
                     onClick={() => setFrontImage(null)}
-                    className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full shadow hover:bg-red-700"
+                    aria-label="সামনের ছবি মুছুন"
+                    title="সামনের ছবি মুছুন"
+                    className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full shadow hover:bg-red-700 cursor-pointer focus-visible:ring-2 focus-visible:ring-red-400"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -124,7 +128,9 @@ export const NidScannerModal: React.FC<NidScannerModalProps> = ({ isOpen, onClos
                   <img src={backImage} alt="Back NID" className="w-full h-28 object-cover rounded-lg" />
                   <button 
                     onClick={() => setBackImage(null)}
-                    className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full shadow hover:bg-red-700"
+                    aria-label="পিছনের ছবি মুছুন"
+                    title="পিছনের ছবি মুছুন"
+                    className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full shadow hover:bg-red-700 cursor-pointer focus-visible:ring-2 focus-visible:ring-red-400"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

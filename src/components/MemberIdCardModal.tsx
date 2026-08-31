@@ -153,7 +153,9 @@ export const MemberIdCardModal: React.FC<MemberIdCardModalProps> = ({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 text-emerald-200 flex items-center justify-center transition cursor-pointer"
+            aria-label="মোডাল বন্ধ করুন"
+            title="বন্ধ করুন"
+            className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 text-emerald-200 flex items-center justify-center transition cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-300"
           >
             <X className="w-5 h-5" />
           </button>
