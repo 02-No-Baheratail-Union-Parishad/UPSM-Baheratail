@@ -1173,6 +1173,25 @@ ${upConfig.defaultPromptPrefix}
         });
       }
 
+      // Security: Validate targetUrl to prevent Server-Side Request Forgery (SSRF)
+      let validatedTargetUrl: string;
+      try {
+        const parsed = new URL(targetUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// WebApp URL অনুমোদিত।" });
+        }
+
+        if (parsed.origin !== "https://script.google.com" && parsed.origin !== "https://script.googleusercontent.com") {
+          return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে শুধুমাত্র https://script.google.com URL অনুমোদিত।" });
+        }
+
+        // Reconstruct URL with explicit hardcoded base origin to satisfy static SSRF analysis (CodeQL)
+        const baseOrigin = parsed.origin === "https://script.googleusercontent.com" ? "https://script.googleusercontent.com" : "https://script.google.com";
+        validatedTargetUrl = new URL(parsed.pathname + parsed.search, baseOrigin).href;
+      } catch {
+        return res.status(400).json({ success: false, message: "WebApp URL সঠিক ফরম্যাটে নেই।" });
+      }
+
       const recordsToSync: CertificateRecord[] = req.body.logs || certificateStore;
       const targetSheetId = req.body.sheetId || upConfig.sheetId || "";
       const targetFolderId = req.body.folderId || upConfig.targetFolderId || "";
@@ -1187,7 +1206,7 @@ ${upConfig.defaultPromptPrefix}
         timestamp: new Date().toISOString()
       };
 
-      const gasResponse = await fetch(targetUrl, {
+      const gasResponse = await fetch(validatedTargetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
