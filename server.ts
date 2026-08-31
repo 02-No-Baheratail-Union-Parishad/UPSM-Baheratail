@@ -1173,6 +1173,34 @@ ${upConfig.defaultPromptPrefix}
         });
       }
 
+      // Security: Validate targetUrl to prevent Server-Side Request Forgery (SSRF)
+      let validatedTargetUrl: string;
+      try {
+        const parsed = new URL(targetUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// WebApp URL অনুমোদিত।" });
+        }
+
+        const hostname = parsed.hostname.toLowerCase();
+        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+        const isPrivateIpv4 =
+          /^10\./.test(hostname) ||
+          /^127\./.test(hostname) ||
+          /^169\.254\./.test(hostname) ||
+          /^192\.168\./.test(hostname) ||
+          /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+        const isPrivateIpv6 =
+          /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+
+        if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
+          return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal WebApp URL অনুমোদিত নয়।" });
+        }
+
+        validatedTargetUrl = parsed.toString();
+      } catch {
+        return res.status(400).json({ success: false, message: "WebApp URL সঠিক ফরম্যাটে নেই।" });
+      }
+
       const recordsToSync: CertificateRecord[] = req.body.logs || certificateStore;
       const targetSheetId = req.body.sheetId || upConfig.sheetId || "";
       const targetFolderId = req.body.folderId || upConfig.targetFolderId || "";
@@ -1187,7 +1215,7 @@ ${upConfig.defaultPromptPrefix}
         timestamp: new Date().toISOString()
       };
 
-      const gasResponse = await fetch(targetUrl, {
+      const gasResponse = await fetch(validatedTargetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
