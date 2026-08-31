@@ -306,7 +306,9 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold"
+                aria-label="মোডাল বন্ধ করুন"
+                title="বন্ধ করুন"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-600"
               >
                 ✕
               </button>
