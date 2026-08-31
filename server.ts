@@ -1215,7 +1215,8 @@ ${upConfig.defaultPromptPrefix}
         timestamp: new Date().toISOString()
       };
 
-      const gasResponse = await fetch(validatedTargetUrl, {
+      const validatedUrlObj = new URL(validatedTargetUrl);
+      const gasResponse = await fetch(validatedUrlObj.href, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
