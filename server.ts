@@ -1182,18 +1182,14 @@ ${upConfig.defaultPromptPrefix}
         }
 
         const hostname = parsed.hostname.toLowerCase();
-        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-        const isPrivateIpv4 =
-          /^10\./.test(hostname) ||
-          /^127\./.test(hostname) ||
-          /^169\.254\./.test(hostname) ||
-          /^192\.168\./.test(hostname) ||
-          /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-        const isPrivateIpv6 =
-          /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+        const isAllowedGoogleHost =
+          hostname === "script.google.com" ||
+          hostname === "script.googleusercontent.com" ||
+          hostname.endsWith(".google.com") ||
+          hostname.endsWith(".googleusercontent.com");
 
-        if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
-          return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal WebApp URL অনুমোদিত নয়।" });
+        if (!isAllowedGoogleHost) {
+          return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে শুধুমাত্র Google Apps Script (script.google.com) URL অনুমোদিত।" });
         }
 
         validatedTargetUrl = parsed.toString();
