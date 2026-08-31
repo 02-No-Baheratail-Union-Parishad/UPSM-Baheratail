@@ -1181,18 +1181,13 @@ ${upConfig.defaultPromptPrefix}
           return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// WebApp URL অনুমোদিত।" });
         }
 
-        const hostname = parsed.hostname.toLowerCase();
-        const isAllowedGoogleHost =
-          hostname === "script.google.com" ||
-          hostname === "script.googleusercontent.com" ||
-          hostname.endsWith(".google.com") ||
-          hostname.endsWith(".googleusercontent.com");
-
-        if (!isAllowedGoogleHost) {
-          return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে শুধুমাত্র Google Apps Script (script.google.com) URL অনুমোদিত।" });
+        if (parsed.origin !== "https://script.google.com" && parsed.origin !== "https://script.googleusercontent.com") {
+          return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে শুধুমাত্র https://script.google.com URL অনুমোদিত।" });
         }
 
-        validatedTargetUrl = parsed.toString();
+        // Reconstruct URL with explicit hardcoded base origin to satisfy static SSRF analysis (CodeQL)
+        const baseOrigin = parsed.origin === "https://script.googleusercontent.com" ? "https://script.googleusercontent.com" : "https://script.google.com";
+        validatedTargetUrl = new URL(parsed.pathname + parsed.search, baseOrigin).href;
       } catch {
         return res.status(400).json({ success: false, message: "WebApp URL সঠিক ফরম্যাটে নেই।" });
       }
@@ -1211,8 +1206,7 @@ ${upConfig.defaultPromptPrefix}
         timestamp: new Date().toISOString()
       };
 
-      const validatedUrlObj = new URL(validatedTargetUrl);
-      const gasResponse = await fetch(validatedUrlObj.href, {
+      const gasResponse = await fetch(validatedTargetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
