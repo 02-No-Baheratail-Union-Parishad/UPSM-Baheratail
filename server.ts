@@ -372,6 +372,27 @@ async function startServer() {
     next();
   });
 
+  // 3. Security Middleware: In-Memory Rate Limiting
+  const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+  const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000; // 15 minute window
+    const maxRequests = 100;
+
+    const record = rateLimitMap.get(ip);
+    if (!record || now > record.resetTime) {
+      rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+      return next();
+    }
+
+    record.count += 1;
+    if (record.count > maxRequests) {
+      return res.status(429).json({ error: "Too many requests, please try again later." });
+    }
+    next();
+  };
+
   // API Routes
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", app: upConfig.upName });
@@ -412,8 +433,8 @@ async function startServer() {
   });
 
   // Update Admin Config
-  // Security: Require authentication to prevent unauthorized configuration updates (e.g., modifying API keys or Webhook URLs)
-  app.post("/api/admin/config", requireAuth, (req: AuthRequest, res) => {
+  // Security: Require authentication and rate limiting to prevent unauthorized or brute-force configuration updates
+  app.post("/api/admin/config", rateLimiter, requireAuth, (req: AuthRequest, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
