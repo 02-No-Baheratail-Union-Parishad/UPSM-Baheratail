@@ -41,13 +41,15 @@ export interface TrendAnalyticsResponse {
   };
 }
 
+// Static digit conversion lookup map
+const DIGIT_MAP: Record<string, string> = {
+  '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+  '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+};
+
 // Convert English numbers to Bengali digits
 export function toBengaliNumeral(num: number | string): string {
-  const map: Record<string, string> = {
-    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
-    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
-  };
-  return num.toString().replace(/[0-9]/g, (w) => map[w] || w);
+  return num.toString().replace(/[0-9]/g, (w) => DIGIT_MAP[w] || w);
 }
 
 // Month names in Bengali
