@@ -1,0 +1,3 @@
+## 2025-05-18 - Single-pass stats aggregation and static object hoisting in civic dashboards
+**Learning:** In interactive tables with live filtering (like `CitizenMasterRegister`), multiple unmemoized `.filter()` calls run on every single keypress, multiplying array iterations ($O(3n)$ per keypress). Additionally, frequent Bengali/English numeral translations (`toBengaliNumeral`) allocated lookup dictionaries on every call.
+**Action:** Memoize dashboard statistics in a single pass using `useMemo` ($O(n)$) and hoist digit lookup maps to module scope to eliminate memory allocation overhead during string transformations.
