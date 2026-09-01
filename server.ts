@@ -412,7 +412,8 @@ async function startServer() {
   });
 
   // Update Admin Config
-  app.post("/api/admin/config", (req, res) => {
+  // Security: Require authentication to prevent unauthorized configuration updates (e.g., modifying API keys or Webhook URLs)
+  app.post("/api/admin/config", requireAuth, (req: AuthRequest, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       upConfig = { ...upConfig, ...newConfig };
