@@ -1,0 +1,4 @@
+## 2026-08-05 - SSRF in Administrative Webhook and Integration Endpoints
+**Vulnerability:** Outbound HTTP request endpoints (e.g. `/api/admin/apps-script-sync`, `/api/admin/webhooks`, and `dispatchWebhooks`) accepted arbitrary user-provided URLs without validating if they targeted internal loopback or private network IP ranges.
+**Learning:** While endpoint-specific inline validation was added to `/api/admin/webhooks/test`, other integration routes performing `fetch()` lacked centralized SSRF validation, leaving internal services vulnerable to SSRF scanning and data exfiltration.
+**Prevention:** Always route outbound webhooks and integration URL validations through `isSafeExternalUrl()` in `src/utils/security.ts` to block internal loopback (127.0.0.1, localhost, ::1), private IPv4 subnets (10.x, 172.16-31.x, 192.168.x), link-local addresses (169.254.x), and non-HTTP(S) protocols across all handlers.
