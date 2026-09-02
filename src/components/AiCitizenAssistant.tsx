@@ -253,13 +253,15 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
                 setMessages([messages[0]]);
               }}
               title="চ্যাট রিসেট করুন"
-              className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 transition cursor-pointer"
+              aria-label="চ্যাট রিসেট করুন"
+              className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-amber-300 text-emerald-200 transition cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition cursor-pointer"
+              aria-label="সহকারী অপশন বন্ধ করুন"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-amber-300 text-white transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -377,7 +379,8 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
             <button
               onClick={toggleListening}
               disabled={isLoading}
-              className={`p-3 rounded-2xl transition cursor-pointer shadow flex items-center justify-center shrink-0 ${
+              aria-label={isListening ? 'রেকর্ডিং থামান' : 'বাংলা ভয়েস টাইপিং শুরু করুন'}
+              className={`p-3 rounded-2xl transition cursor-pointer shadow flex items-center justify-center shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                 isListening
                   ? 'bg-red-600 text-white animate-pulse'
                   : 'bg-slate-100 hover:bg-emerald-100 text-emerald-800 border border-slate-300'
@@ -389,19 +392,21 @@ export const AiCitizenAssistant: React.FC<AiCitizenAssistantProps> = ({
 
             <input
               type="text"
+              aria-label="বার্তা বা প্রশ্ন লিখুন"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSendMessage();
               }}
               placeholder="বাংলায় আপনার প্রশ্ন বা সেবা সম্পর্কে টাইপ করুন..."
-              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs md:text-sm text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition"
+              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs md:text-sm text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white focus-visible:ring-2 focus-visible:ring-emerald-600 transition"
             />
 
             <button
               onClick={() => handleSendMessage()}
               disabled={isLoading || !inputText.trim()}
-              className="p-3 bg-emerald-800 hover:bg-emerald-900 text-amber-300 rounded-2xl transition cursor-pointer disabled:opacity-50 shadow shrink-0"
+              aria-label="বার্তা পাঠান"
+              className="p-3 bg-emerald-800 hover:bg-emerald-900 focus-visible:ring-2 focus-visible:ring-amber-400 text-amber-300 rounded-2xl transition cursor-pointer disabled:opacity-50 shadow shrink-0"
             >
               <Send className="w-5 h-5" />
             </button>
