@@ -57,3 +57,39 @@ export function sanitizeObject<T>(data: T, maxStringLength: number = 2000): T {
   return data;
 }
 
+/**
+ * Validates external URLs to prevent Server-Side Request Forgery (SSRF).
+ * Blocks internal loopback, private IPv4/IPv6 subnets, link-local addresses,
+ * and non-HTTP(S) protocols.
+ */
+export function isSafeExternalUrl(urlString: string): boolean {
+  if (!urlString || typeof urlString !== "string") return false;
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    const isLocalhost =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1" ||
+      hostname === "::";
+
+    const isPrivateIpv4 =
+      /^10\./.test(hostname) ||
+      /^127\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname) ||
+      /^0\./.test(hostname);
+
+    const isPrivateIpv6 =
+      /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+
+    return !(isLocalhost || isPrivateIpv4 || isPrivateIpv6);
+  } catch {
+    return false;
+  }
+}
