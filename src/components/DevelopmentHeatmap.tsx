@@ -252,6 +252,10 @@ const HISTORICAL_GROWTH_DATA = [
   { year: '২০২৬ (বর্তমান)', education: 84, healthcare: 79, infrastructure: 81, digitalServices: 92 },
 ];
 
+// D3 Color Interpolator initialized once at module scope to avoid creating
+// interpolator functions and parsing hex color strings repeatedly inside render loops.
+const COLOR_INTERPOLATOR = d3.interpolateRgbBasis(['#ffe4e6', '#fef08a', '#a7f3d0', '#059669', '#064e3b']);
+
 export const DevelopmentHeatmap: React.FC<DevelopmentHeatmapProps> = ({ config }) => {
   const [wardData, setWardData] = useState<WardDevelopmentData[]>(INITIAL_WARD_DATA);
   const [selectedWard, setSelectedWard] = useState<WardDevelopmentData | null>(null);
@@ -260,11 +264,10 @@ export const DevelopmentHeatmap: React.FC<DevelopmentHeatmapProps> = ({ config }
   const [simulatedBudget, setSimulatedBudget] = useState<{ ward: string; category: string; amount: number } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Color scale powered by D3
+  // Color scale powered by static D3 interpolator
   // Low (<75): Amber/Rose, Mid (75-85): Emerald light, High (>85): Rich Emerald Green
   const getColorForScore = (score: number) => {
-    const colorInterpolator = d3.interpolateRgbBasis(['#ffe4e6', '#fef08a', '#a7f3d0', '#059669', '#064e3b']);
-    return colorInterpolator(score / 100);
+    return COLOR_INTERPOLATOR(score / 100);
   };
 
   const getTextColorForScore = (score: number) => {
