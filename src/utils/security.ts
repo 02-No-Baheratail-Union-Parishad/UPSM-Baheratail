@@ -70,23 +70,52 @@ export function isSafeExternalUrl(urlString: string): boolean {
       return false;
     }
     const hostname = parsed.hostname.toLowerCase();
+    const cleanHostname = hostname.replace(/^\[|\]$/g, "");
+
+    // Check integer or hex IP representations (e.g. 2130706433 or 0x7f000001)
+    let ipInt: number | null = null;
+    if (/^\d+$/.test(cleanHostname)) {
+      ipInt = parseInt(cleanHostname, 10);
+    } else if (/^0x[0-9a-f]+$/i.test(cleanHostname)) {
+      ipInt = parseInt(cleanHostname, 16);
+    }
+
+    if (ipInt !== null && !isNaN(ipInt)) {
+      // 0.0.0.0/8
+      if (ipInt >= 0 && ipInt <= 16777215) return false;
+      // 10.0.0.0/8
+      if (ipInt >= 167772160 && ipInt <= 184549375) return false;
+      // 127.0.0.0/8
+      if (ipInt >= 2130706432 && ipInt <= 2147483647) return false;
+      // 169.254.0.0/16
+      if (ipInt >= 2851995648 && ipInt <= 2852061183) return false;
+      // 172.16.0.0/12
+      if (ipInt >= 2886729728 && ipInt <= 2887778303) return false;
+      // 192.168.0.0/16
+      if (ipInt >= 3232235520 && ipInt <= 3232301055) return false;
+    }
+
     const isLocalhost =
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "0.0.0.0" ||
-      hostname === "::1" ||
-      hostname === "::";
+      cleanHostname === "localhost" ||
+      cleanHostname === "127.0.0.1" ||
+      cleanHostname === "0.0.0.0" ||
+      cleanHostname === "::1" ||
+      cleanHostname === "::" ||
+      cleanHostname === "0:0:0:0:0:0:0:1" ||
+      cleanHostname === "0:0:0:0:0:0:0:0";
 
     const isPrivateIpv4 =
-      /^10\./.test(hostname) ||
-      /^127\./.test(hostname) ||
-      /^169\.254\./.test(hostname) ||
-      /^192\.168\./.test(hostname) ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname) ||
-      /^0\./.test(hostname);
+      /^10\./.test(cleanHostname) ||
+      /^127\./.test(cleanHostname) ||
+      /^169\.254\./.test(cleanHostname) ||
+      /^192\.168\./.test(cleanHostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(cleanHostname) ||
+      /^0\./.test(cleanHostname);
 
     const isPrivateIpv6 =
-      /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+      /^(fc|fd)/i.test(cleanHostname) ||
+      /^fe80:/i.test(cleanHostname) ||
+      /^::ffff:/i.test(cleanHostname);
 
     return !(isLocalhost || isPrivateIpv4 || isPrivateIpv6);
   } catch {
