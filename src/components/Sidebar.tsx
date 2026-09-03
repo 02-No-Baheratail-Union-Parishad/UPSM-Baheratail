@@ -456,8 +456,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Desktop Collapse / Expand Toggle Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`p-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-emerald-200 hover:text-white transition cursor-pointer shrink-0 ${isCollapsed ? 'mt-1' : ''}`}
+            className={`p-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-emerald-200 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none transition cursor-pointer shrink-0 ${isCollapsed ? 'mt-1' : ''}`}
             title={isCollapsed ? 'সাইডবার প্রসারিত করুন' : 'সাইডবার গুটিয়ে রাখুন'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
@@ -587,15 +588,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="space-y-2">
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto transition cursor-pointer block"
+                className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none transition cursor-pointer block"
                 title="ডেভেলপার / এডমিন লগইন"
+                aria-label="ডেভেলপার / এডমিন লগইন"
               >
                 <Lock className="w-4 h-4 text-amber-300" />
               </button>
               <button
                 onClick={toggleLanguage}
-                className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto transition cursor-pointer block"
+                className="p-2 bg-emerald-950 hover:bg-emerald-800 text-amber-300 rounded-lg border border-emerald-700 mx-auto focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none transition cursor-pointer block"
                 title={lang === 'bn' ? 'Switch to English' : 'বাংলায় রূপান্তর'}
+                aria-label={lang === 'bn' ? 'Switch to English' : 'বাংলায় রূপান্তর'}
               >
                 <Globe className="w-4 h-4 text-amber-300" />
               </button>
