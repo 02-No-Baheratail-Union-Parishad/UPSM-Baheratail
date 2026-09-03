@@ -57,3 +57,36 @@ export function sanitizeObject<T>(data: T, maxStringLength: number = 2000): T {
   return data;
 }
 
+/**
+ * Validates whether a URL uses http/https scheme and does not target internal/private IP ranges or localhost (SSRF Protection).
+ */
+export function isSafeUrl(urlStr: string): boolean {
+  if (!urlStr || typeof urlStr !== "string") return false;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    const isLocalhost =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "0.0.0.0";
+    const isPrivateIpv4 =
+      /^10\./.test(hostname) ||
+      /^127\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+    const isPrivateIpv6 =
+      /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+
+    if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}

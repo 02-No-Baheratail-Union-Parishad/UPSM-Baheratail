@@ -10,6 +10,7 @@ import { generate30DayTrendData } from "./src/data/trendAnalytics.js";
 import { CertificateRecord, UnionParishadConfig, ApiKeyRecord, WebhookConfig, WebhookLogRecord } from "./src/types.js";
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
 import { getOrCreateUser, getAllUsers } from './src/db/users.ts';
+import { isSafeUrl } from './src/utils/security.ts';
 
 dotenv.config();
 
@@ -64,6 +65,23 @@ async function dispatchWebhooks(event: 'certificate.created' | 'certificate.appr
 
   for (const hook of targets) {
     try {
+      if (!isSafeUrl(hook.url)) {
+        const logRecord: WebhookLogRecord = {
+          id: `whlog_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          webhookName: hook.name,
+          url: hook.url,
+          event,
+          payloadSummary: `${event} -> Memo: ${data.memoNo || data.nid || 'N/A'}`,
+          status: 'failed',
+          httpStatus: 0,
+          timestamp,
+          error: 'SSRF protection blocked private or invalid webhook URL'
+        };
+        webhookLogStore.unshift(logRecord);
+        if (webhookLogStore.length > 50) webhookLogStore.pop();
+        continue;
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
 
@@ -1166,10 +1184,10 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/apps-script-sync", async (req, res) => {
     try {
       const targetUrl = req.body.webAppUrl || upConfig.appsScriptUrl;
-      if (!targetUrl || !targetUrl.startsWith("http")) {
+      if (!targetUrl || !isSafeUrl(targetUrl)) {
         return res.status(400).json({
           success: false,
-          message: "Google Apps Script WebApp URL পাওয়া যায়নি। অনুগ্রহ করে WebApp URL প্রদান করুন।"
+          message: "Google Apps Script WebApp URL পাওয়া যায়নি বা অকার্যকর/নিরাপত্তাজনিত কারণে গ্রহণযোগ্য নয়।"
         });
       }
 
@@ -1834,8 +1852,8 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/webhooks", (req, res) => {
     const { id, name, url, secret, events, enabled } = req.body;
 
-    if (!url || !url.startsWith("http")) {
-      return res.status(400).json({ success: false, message: "একটি বৈধ Webhook URL প্রদান করুন (http:// বা https://)।" });
+    if (!url || !isSafeUrl(url)) {
+      return res.status(400).json({ success: false, message: "একটি বৈধ এবং নিরাপদ Webhook URL (http:// বা https://) প্রদান করুন।" });
     }
 
     if (id) {
@@ -1888,36 +1906,11 @@ ${upConfig.defaultPromptPrefix}
     const { webhookId, url, secret } = req.body;
     const targetUrl = url || (webhookStore.find(w => w.id === webhookId)?.url) || upConfig.webhookUrl;
 
-    if (!targetUrl) {
-      return res.status(400).json({ success: false, message: "কোনো বৈধ Webhook URL সেট করা নাই।" });
+    if (!targetUrl || !isSafeUrl(targetUrl)) {
+      return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে অবৈধ বা private/internal Webhook URL অনুমোদিত নয়।" });
     }
 
-    let validatedTargetUrl: string;
-    try {
-      const parsed = new URL(targetUrl);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// Webhook URL অনুমোদিত।" });
-      }
-
-      const hostname = parsed.hostname.toLowerCase();
-      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-      const isPrivateIpv4 =
-        /^10\./.test(hostname) ||
-        /^127\./.test(hostname) ||
-        /^169\.254\./.test(hostname) ||
-        /^192\.168\./.test(hostname) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-      const isPrivateIpv6 =
-        /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
-
-      if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
-        return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal Webhook URL অনুমোদিত নয়।" });
-      }
-
-      validatedTargetUrl = parsed.toString();
-    } catch {
-      return res.status(400).json({ success: false, message: "Webhook URL সঠিক ফরম্যাটে নেই।" });
-    }
+    const validatedTargetUrl = targetUrl;
 
     const sampleTestPayload = {
       event: "certificate.created",
