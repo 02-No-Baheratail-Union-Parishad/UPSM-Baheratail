@@ -230,14 +230,38 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
     loadCitizens();
   }, []);
 
-  // Real-time filtering logic
+  // Performance Optimization: Compute summary statistics in a single O(n) pass
+  // instead of multiple array .filter() calls during every component render.
+  const stats = useMemo(() => {
+    let maleCount = 0;
+    let femaleCount = 0;
+    let beneficiaryCount = 0;
+
+    for (let i = 0; i < citizens.length; i++) {
+      const c = citizens[i];
+      if (c.gender === 'পুরুষ') maleCount++;
+      else if (c.gender === 'মহিলা') femaleCount++;
+
+      if (c.totalCertificates > 0) beneficiaryCount++;
+    }
+
+    return {
+      maleCount,
+      femaleCount,
+      beneficiaryCount,
+    };
+  }, [citizens]);
+
+  // Performance Optimization: Normalize search string once before iterating
+  // and memoize the filtered list to avoid O(N * fields) string transformations on unrelated re-renders.
   const filteredCitizens = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
     return citizens.filter((c) => {
       if (selectedWard && c.wardNo !== selectedWard) return false;
       if (selectedVillage && c.village !== selectedVillage) return false;
       if (selectedGender !== 'সব' && c.gender !== selectedGender) return false;
 
-      const q = searchQuery.trim().toLowerCase();
       if (!q) return true;
 
       const matchNid = (c.nid && c.nid.toLowerCase().includes(q)) || (c.birthNo && c.birthNo.toLowerCase().includes(q));
@@ -371,21 +395,21 @@ export const CitizenMasterRegister: React.FC<CitizenMasterRegisterProps> = ({
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">পুরুষ নাগরিক</p>
           <p className="text-xl font-bold text-slate-800 mt-1">
-            {citizens.filter(c => c.gender === 'পুরুষ').length} জন
+            {stats.maleCount} জন
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">মহিলা নাগরিক</p>
           <p className="text-xl font-bold text-slate-800 mt-1">
-            {citizens.filter(c => c.gender === 'মহিলা').length} জন
+            {stats.femaleCount} জন
           </p>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <p className="text-[11px] text-slate-500 font-semibold">সনদ সুবিধাভোগী</p>
           <p className="text-xl font-bold text-emerald-700 mt-1">
-            {citizens.filter(c => c.totalCertificates > 0).length} জন
+            {stats.beneficiaryCount} জন
           </p>
         </div>
       </div>
