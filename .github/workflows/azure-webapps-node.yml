@@ -34,10 +34,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@60ed15e541711094f2f41371cdc10f42d1ed7882 # v4.1.0
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
@@ -49,7 +49,7 @@ jobs:
         npm run test --if-present
 
     - name: Upload artifact for deployment job
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@604373da63d1ed2a2521e4c084f728c3a9926868 # v4.1.7
       with:
         name: node-app
         path: .
@@ -65,13 +65,13 @@ jobs:
 
     steps:
     - name: Download artifact from build job
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa236bbd2417a86cf1be833ef1f2f8149e917d50 # v4.1.8
       with:
         name: node-app
 
     - name: 'Deploy to Azure WebApp'
       id: deploy-to-webapp
-      uses: azure/webapps-deploy@v2
+      uses: azure/webapps-deploy@28211b9ec0e3860ef82c2b74052f551b9e67a7fa # v2.0.0
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
