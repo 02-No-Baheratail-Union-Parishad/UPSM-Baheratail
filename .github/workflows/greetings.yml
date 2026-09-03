@@ -9,7 +9,7 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-    - uses: actions/first-interaction@111753177651c51e0ccf351e9447e447953b0542 # v1.3.0
+    - uses: actions/first-interaction@v1.3.0
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         issue-message: "Message that will be displayed on users' first issue"
