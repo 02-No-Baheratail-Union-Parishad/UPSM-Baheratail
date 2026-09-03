@@ -153,8 +153,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             {/* Top Bar Language Toggle Button */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-[11px] font-bold rounded-full border border-emerald-700 transition cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-[11px] font-bold rounded-full border border-emerald-700 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none transition cursor-pointer active:scale-95"
               title={t('languageToggleTitle')}
+              aria-label={t('languageToggleTitle')}
             >
               <Globe className="w-3.5 h-3.5 text-amber-300" />
               <span className={lang === 'bn' ? 'text-amber-300 font-extrabold underline' : 'text-emerald-300'}>বাংলা</span>
@@ -211,8 +212,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           {/* Dark / Light Mode Toggle Button */}
           <button
             onClick={toggleDarkMode}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 transition cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none transition cursor-pointer active:scale-95"
             title={isDarkMode ? 'লাইট মোডে পরিবর্তন করুন' : 'ডার্ক মোডে পরিবর্তন করুন'}
+            aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {isDarkMode ? (
               <>
