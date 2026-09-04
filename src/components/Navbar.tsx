@@ -153,8 +153,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             {/* Top Bar Language Toggle Button */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-[11px] font-bold rounded-full border border-emerald-700 transition cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-[11px] font-bold rounded-full border border-emerald-700 transition cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
               title={t('languageToggleTitle')}
+              aria-label={t('languageToggleTitle')}
             >
               <Globe className="w-3.5 h-3.5 text-amber-300" />
               <span className={lang === 'bn' ? 'text-amber-300 font-extrabold underline' : 'text-emerald-300'}>বাংলা</span>
@@ -168,7 +169,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
       {/* Main Header Brand Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center justify-between w-full md:w-auto">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('home')}
+            className="flex items-center gap-3 text-left cursor-pointer rounded-lg p-1 transition hover:bg-emerald-800/50 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+            aria-label={`${config.upName} - ${t('govtTitle')}`}
+          >
             <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white p-1 flex items-center justify-center shadow-md shrink-0">
               <img 
                 src={config?.logoUrl || '/baheratail_seal.svg'} 
@@ -191,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
                 <span>{config.address}</span>
               </p>
             </div>
-          </div>
+          </button>
 
           {/* Mobile Hamburger Toggle Button */}
           {onToggleMobileSidebar && (
@@ -211,8 +217,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           {/* Dark / Light Mode Toggle Button */}
           <button
             onClick={toggleDarkMode}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 transition cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 transition cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             title={isDarkMode ? 'লাইট মোডে পরিবর্তন করুন' : 'ডার্ক মোডে পরিবর্তন করুন'}
+            aria-label={isDarkMode ? (lang === 'bn' ? 'লাইট মোডে পরিবর্তন করুন' : 'Switch to light mode') : (lang === 'bn' ? 'ডার্ক মোডে পরিবর্তন করুন' : 'Switch to dark mode')}
+            aria-pressed={isDarkMode}
           >
             {isDarkMode ? (
               <>
@@ -230,8 +238,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           {/* Language Toggle Pill in Quick Action Bar */}
           <button
             onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 transition cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-800 text-amber-300 text-xs font-bold rounded-lg border border-emerald-700 transition cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             title={t('languageToggleTitle')}
+            aria-label={t('languageToggleTitle')}
           >
             <Globe className="w-4 h-4 text-amber-300" />
             <span>{lang === 'bn' ? 'English (EN)' : 'বাংলা (BN)'}</span>
@@ -240,12 +249,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
           {/* Chairman Pending Approval Notification Button */}
           <button
             onClick={() => setActiveTab('pending')}
-            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
               pendingCount > 0
                 ? 'bg-amber-400/10 border-amber-400 text-amber-300 hover:bg-amber-400/20'
                 : 'bg-emerald-950/60 border-emerald-700 text-emerald-200 hover:bg-emerald-800'
             }`}
             title={t('chairmanApproval')}
+            aria-label={`${t('chairmanApproval')}: ${pendingCount}`}
           >
             <div className="relative">
               <Bell className={`w-4 h-4 ${pendingCount > 0 ? 'text-amber-300 animate-bounce' : 'text-emerald-300'}`} />
