@@ -35,6 +35,29 @@ const webhookStore: WebhookConfig[] = [];
 // Webhook Delivery Log History
 const webhookLogStore: WebhookLogRecord[] = [];
 
+/**
+ * Security: SSRF Prevention Helper
+ * Validates Webhook URLs to ensure http/https protocols and reject private/internal IP ranges.
+ */
+function isSafePublicUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0") return false;
+    const isPrivateIpv4 =
+      /^10\./.test(hostname) ||
+      /^127\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+    const isPrivateIpv6 = /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+    return !isPrivateIpv4 && !isPrivateIpv6;
+  } catch {
+    return false;
+  }
+}
+
 // Webhook Event Dispatcher Helper
 async function dispatchWebhooks(event: 'certificate.created' | 'certificate.approved' | 'certificate.cancelled' | 'citizen.registered', data: any) {
   const activeHooks = webhookStore.filter(w => w.enabled && w.events.includes(event));
@@ -63,6 +86,10 @@ async function dispatchWebhooks(event: 'certificate.created' | 'certificate.appr
   };
 
   for (const hook of targets) {
+    if (!isSafePublicUrl(hook.url)) {
+      console.warn(`[SSRF Prevention] Skipped dispatch to restricted webhook URL: ${hook.url}`);
+      continue;
+    }
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -1834,8 +1861,8 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/webhooks", (req, res) => {
     const { id, name, url, secret, events, enabled } = req.body;
 
-    if (!url || !url.startsWith("http")) {
-      return res.status(400).json({ success: false, message: "একটি বৈধ Webhook URL প্রদান করুন (http:// বা https://)।" });
+    if (!url || !isSafePublicUrl(url)) {
+      return res.status(400).json({ success: false, message: "একটি বৈধ এবং নিরাপদ পাবলিক Webhook URL (http:// বা https://) প্রদান করুন।" });
     }
 
     if (id) {
@@ -1888,36 +1915,11 @@ ${upConfig.defaultPromptPrefix}
     const { webhookId, url, secret } = req.body;
     const targetUrl = url || (webhookStore.find(w => w.id === webhookId)?.url) || upConfig.webhookUrl;
 
-    if (!targetUrl) {
-      return res.status(400).json({ success: false, message: "কোনো বৈধ Webhook URL সেট করা নাই।" });
+    if (!targetUrl || !isSafePublicUrl(targetUrl)) {
+      return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal বা অকার্যকর Webhook URL অনুমোদিত নয়।" });
     }
 
-    let validatedTargetUrl: string;
-    try {
-      const parsed = new URL(targetUrl);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// Webhook URL অনুমোদিত।" });
-      }
-
-      const hostname = parsed.hostname.toLowerCase();
-      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-      const isPrivateIpv4 =
-        /^10\./.test(hostname) ||
-        /^127\./.test(hostname) ||
-        /^169\.254\./.test(hostname) ||
-        /^192\.168\./.test(hostname) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-      const isPrivateIpv6 =
-        /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
-
-      if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
-        return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal Webhook URL অনুমোদিত নয়।" });
-      }
-
-      validatedTargetUrl = parsed.toString();
-    } catch {
-      return res.status(400).json({ success: false, message: "Webhook URL সঠিক ফরম্যাটে নেই।" });
-    }
+    const validatedTargetUrl = targetUrl;
 
     const sampleTestPayload = {
       event: "certificate.created",
