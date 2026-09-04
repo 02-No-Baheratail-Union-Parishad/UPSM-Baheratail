@@ -1,0 +1,3 @@
+## 2026-03-31 - Header Brand Elements & Toggle Controls Accessibility
+**Learning:** In React administrative applications, header brand logo containers and collapse toggle controls are often rendered as clickable `<div>` elements without ARIA attributes or focus visible styles, making them completely invisible to screen reader users and unusable for keyboard-only navigation.
+**Action:** Always wrap clickable logo headers in semantic `<button type="button">` elements with explicit `aria-label` and `focus-visible:ring-2` styling, and provide `aria-pressed` / `aria-expanded` attributes on theme and layout toggle controls.

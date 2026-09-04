@@ -421,12 +421,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Desktop Sidebar Top Logo & Brand */}
         <div className={`p-4 bg-emerald-900/90 border-b border-emerald-800 flex items-center justify-between shrink-0 ${isCollapsed ? 'px-3 justify-center' : ''}`}>
-          <div 
+          <button
+            type="button"
             onClick={() => handleNavClick('home')}
-            className="flex items-center gap-3 cursor-pointer min-w-0"
+            className="flex items-center gap-3 text-left cursor-pointer min-w-0 rounded-lg p-1 transition hover:bg-emerald-800/50 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             title={config.upName}
+            aria-label={config.upName}
           >
-            <div className="w-10 h-10 rounded-full bg-white p-0.5 shadow-md flex items-center justify-center shrink-0">
+            <span className="w-10 h-10 rounded-full bg-white p-0.5 shadow-md flex items-center justify-center shrink-0">
               <img 
                 src={config?.logoUrl || '/baheratail_seal.svg'} 
                 alt={config?.upName || "Logo"} 
@@ -439,25 +441,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
               />
               <Building2 className="w-6 h-6 text-emerald-900" style={{ display: 'none' }} />
-            </div>
+            </span>
 
             {!isCollapsed && (
-              <div className="min-w-0">
-                <h2 className="font-black text-sm text-amber-300 truncate leading-tight">
+              <span className="min-w-0 flex flex-col text-left">
+                <span className="font-black text-sm text-amber-300 truncate leading-tight block">
                   {config.upName}
-                </h2>
-                <p className="text-[11px] text-emerald-200 truncate">
+                </span>
+                <span className="text-[11px] text-emerald-200 truncate block">
                   স্মার্ট পোর্টাল
-                </p>
-              </div>
+                </span>
+              </span>
             )}
-          </div>
+          </button>
 
           {/* Desktop Collapse / Expand Toggle Button */}
           <button
+            type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`p-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-emerald-200 hover:text-white transition cursor-pointer shrink-0 ${isCollapsed ? 'mt-1' : ''}`}
+            className={`p-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-emerald-200 hover:text-white transition cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${isCollapsed ? 'mt-1' : ''}`}
             title={isCollapsed ? 'সাইডবার প্রসারিত করুন' : 'সাইডবার গুটিয়ে রাখুন'}
+            aria-label={isCollapsed ? (lang === 'bn' ? 'সাইডবার প্রসারিত করুন' : 'Expand sidebar') : (lang === 'bn' ? 'সাইডবার গুটিয়ে রাখুন' : 'Collapse sidebar')}
+            aria-expanded={!isCollapsed}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
