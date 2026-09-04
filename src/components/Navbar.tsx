@@ -175,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
             className="flex items-center gap-3 text-left cursor-pointer rounded-lg p-1 transition hover:bg-emerald-800/50 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             aria-label={`${config.upName} - ${t('govtTitle')}`}
           >
-            <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white p-1 flex items-center justify-center shadow-md shrink-0">
+            <span className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white p-1 flex items-center justify-center shadow-md shrink-0">
               <img 
                 src={config?.logoUrl || '/baheratail_seal.svg'} 
                 alt={config?.upName || "Union Parishad Logo"} 
@@ -188,15 +188,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, config,
                 }}
               />
               <Building2 className="w-8 h-8 text-emerald-800" style={{ display: 'none' }} />
-            </div>
-            <div>
-              <h1 className="text-lg md:text-2xl font-bold tracking-tight text-white leading-tight">
+            </span>
+            <span className="flex flex-col text-left">
+              <span className="text-lg md:text-2xl font-bold tracking-tight text-white leading-tight block">
                 {config.upName}
-              </h1>
-              <p className="text-xs md:text-sm text-emerald-200 flex items-center gap-1">
+              </span>
+              <span className="text-xs md:text-sm text-emerald-200 flex items-center gap-1">
                 <span>{config.address}</span>
-              </p>
-            </div>
+              </span>
+            </span>
           </button>
 
           {/* Mobile Hamburger Toggle Button */}
