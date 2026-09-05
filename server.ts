@@ -35,6 +35,38 @@ const webhookStore: WebhookConfig[] = [];
 // Webhook Delivery Log History
 const webhookLogStore: WebhookLogRecord[] = [];
 
+/**
+ * Security: SSRF Prevention for Webhooks
+ * Validates that webhook URLs use http/https protocols and do not resolve to local or private IP address ranges.
+ */
+function isSafeWebhookUrl(urlStr: string): { safe: boolean; reason?: string } {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { safe: false, reason: "Only http:// and https:// protocols are permitted." };
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0";
+    const isPrivateIpv4 =
+      /^10\./.test(hostname) ||
+      /^127\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+    const isPrivateIpv6 =
+      /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
+
+    if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
+      return { safe: false, reason: "Internal or private network addresses are restricted." };
+    }
+
+    return { safe: true };
+  } catch {
+    return { safe: false, reason: "Invalid URL format." };
+  }
+}
+
 // Webhook Event Dispatcher Helper
 async function dispatchWebhooks(event: 'certificate.created' | 'certificate.approved' | 'certificate.cancelled' | 'citizen.registered', data: any) {
   const activeHooks = webhookStore.filter(w => w.enabled && w.events.includes(event));
@@ -63,6 +95,10 @@ async function dispatchWebhooks(event: 'certificate.created' | 'certificate.appr
   };
 
   for (const hook of targets) {
+    if (!isSafeWebhookUrl(hook.url).safe) {
+      console.warn(`[SSRF Security] Skipped unsafe webhook dispatch to target: ${hook.url}`);
+      continue;
+    }
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -1834,8 +1870,13 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/webhooks", (req, res) => {
     const { id, name, url, secret, events, enabled } = req.body;
 
-    if (!url || !url.startsWith("http")) {
+    if (!url || typeof url !== "string") {
       return res.status(400).json({ success: false, message: "একটি বৈধ Webhook URL প্রদান করুন (http:// বা https://)।" });
+    }
+
+    const urlCheck = isSafeWebhookUrl(url);
+    if (!urlCheck.safe) {
+      return res.status(400).json({ success: false, message: `নিরাপত্তাজনিত কারণে Webhook URL গ্রহণযোগ্য নয়: ${urlCheck.reason}` });
     }
 
     if (id) {
@@ -1892,32 +1933,11 @@ ${upConfig.defaultPromptPrefix}
       return res.status(400).json({ success: false, message: "কোনো বৈধ Webhook URL সেট করা নাই।" });
     }
 
-    let validatedTargetUrl: string;
-    try {
-      const parsed = new URL(targetUrl);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// Webhook URL অনুমোদিত।" });
-      }
-
-      const hostname = parsed.hostname.toLowerCase();
-      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-      const isPrivateIpv4 =
-        /^10\./.test(hostname) ||
-        /^127\./.test(hostname) ||
-        /^169\.254\./.test(hostname) ||
-        /^192\.168\./.test(hostname) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-      const isPrivateIpv6 =
-        /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
-
-      if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
-        return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal Webhook URL অনুমোদিত নয়।" });
-      }
-
-      validatedTargetUrl = parsed.toString();
-    } catch {
-      return res.status(400).json({ success: false, message: "Webhook URL সঠিক ফরম্যাটে নেই।" });
+    const urlCheck = isSafeWebhookUrl(targetUrl);
+    if (!urlCheck.safe) {
+      return res.status(400).json({ success: false, message: `নিরাপত্তাজনিত কারণে private/internal বা অবৈধ Webhook URL অনুমোদিত নয়: ${urlCheck.reason}` });
     }
+    let validatedTargetUrl: string = targetUrl;
 
     const sampleTestPayload = {
       event: "certificate.created",
