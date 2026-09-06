@@ -44,7 +44,7 @@ jobs:
     #     creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }} # set up AZURE_RBAC_CREDENTIALS secrets in your repository
 
     - name: Setup Node ${{ env.NODE_VERSION }} Environment
-      uses: actions/setup-node@39370e39704100d3d5fba2748ad956f1082531d0 # v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: ${{ env.NODE_VERSION }}
 
