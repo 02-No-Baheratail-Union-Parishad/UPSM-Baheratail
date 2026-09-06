@@ -1,0 +1,3 @@
+## 2026-03-30 - Module-scoped lookup tables for high-frequency string/numeral formatting
+**Learning:** High-frequency utility functions (such as Bengali/English digit converters used across tables and dates) create inline object literal mappings and RegExp objects on every invocation. When called hundreds or thousands of times during render cycles, this triggers unnecessary memory allocations and GC pressure.
+**Action:** Always define digit lookup dictionaries and conversion regular expressions at module scope as static constants when writing formatting utilities used across the component hierarchy.
