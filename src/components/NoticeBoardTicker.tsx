@@ -222,8 +222,18 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               return (
                 <div
                   key={notice.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-selected={isSelected}
+                  aria-label={`নোটিশ দেখুন: ${notice.title}`}
                   onClick={() => setActiveNotice(notice)}
-                  className={`p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveNotice(notice);
+                    }
+                  }}
+                  className={`p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                     isSelected
                       ? 'bg-emerald-50 border-emerald-500 shadow ring-1 ring-emerald-400'
                       : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
@@ -306,7 +316,8 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold"
+                aria-label="বন্ধ করুন"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
               >
                 ✕
               </button>
@@ -314,23 +325,30 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
 
             <form onSubmit={handleAddNotice} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">নোটিশের শিরোনাম:</label>
+                <label htmlFor="notice-title-input" className="block font-bold text-slate-700 mb-1">
+                  নোটিশের শিরোনাম <span className="text-red-500">*</span>:
+                </label>
                 <input
+                  id="notice-title-input"
                   type="text"
                   required
+                  aria-required="true"
                   placeholder="যেমন: ২০২৬-২০২৭ সালের ইউপি কর আদায় ক্যাম্পাইন"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-emerald-600"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">ক্যাটাগরি:</label>
+                <label htmlFor="notice-category-select" className="block font-bold text-slate-700 mb-1">
+                  ক্যাটাগরি <span className="text-red-500">*</span>:
+                </label>
                 <select
+                  id="notice-category-select"
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-emerald-600 font-bold"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 font-bold"
                 >
                   <option value="জরুরি নোটিশ">জরুরি নোটিশ</option>
                   <option value="ভিজিএফ ও সামাজিক ভাতা">ভিজিএফ ও সামাজিক ভাতা</option>
@@ -341,14 +359,18 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">নোটিশের বিষয়বস্তু:</label>
+                <label htmlFor="notice-content-textarea" className="block font-bold text-slate-700 mb-1">
+                  নোটিশের বিষয়বস্তু <span className="text-red-500">*</span>:
+                </label>
                 <textarea
+                  id="notice-content-textarea"
                   required
+                  aria-required="true"
                   rows={5}
                   placeholder="নোটিশের সম্পূর্ণ বিবরণী বাংলায় টাইপ করুন..."
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-emerald-600"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600"
                 />
               </div>
 
