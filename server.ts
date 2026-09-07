@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import net from "net";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -319,6 +320,87 @@ function sanitizeString(str: string): string {
     .replace(/>/g, "&gt;");
 }
 
+/**
+ * Helper to check if an IP address string (IPv4 or IPv6) is private, loopback, link-local, or non-routable.
+ */
+function isPrivateOrLoopbackIP(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true;
+    const [a, b] = parts;
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const normalized = ip.toLowerCase();
+    if (normalized === '::1' || normalized === '::') return true;
+    if (normalized.startsWith('fe80:') || normalized.startsWith('fc00:') || normalized.startsWith('fd00:')) return true;
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Security: External URL & SSRF Validation Helper
+ * Ensures URLs use http/https protocols and blocks requests to internal, private, or loopback network addresses.
+ */
+function validateExternalUrl(targetUrl: string | undefined | null): { valid: boolean; url?: string; error?: string } {
+  if (!targetUrl || typeof targetUrl !== "string") {
+    return { valid: false, error: "URL প্রদান করা আবশ্যক।" };
+  }
+
+  try {
+    const parsed = new URL(targetUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { valid: false, error: "শুধুমাত্র http:// বা https:// URL অনুমোদিত।" };
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+      return { valid: false, error: "নিরাপত্তাজনিত কারণে private/internal URL (SSRF prevention) অনুমোদিত নয়।" };
+    }
+
+    if (net.isIP(hostname)) {
+      if (isPrivateOrLoopbackIP(hostname)) {
+        return { valid: false, error: "নিরাপত্তাজনিত কারণে private/internal URL (SSRF prevention) অনুমোদিত নয়।" };
+      }
+    } else if (/^(0x[0-9a-f]+|\d+|0[0-7]+)(\.(0x[0-9a-f]+|\d+|0[0-7]+)){0,3}$/i.test(hostname)) {
+      return { valid: false, error: "নিরাপত্তাজনিত কারণে private/internal URL (SSRF prevention) অনুমোদিত নয়।" };
+    }
+
+    return { valid: true, url: parsed.toString() };
+  } catch {
+    return { valid: false, error: "URL সঠিক ফরম্যাটে নেই।" };
+  }
+}
+
+/**
+ * Security: Dedicated Google Apps Script WebApp URL & SSRF Validator
+ * Restricts outgoing Google Apps Script WebApp sync calls strictly to authorized Google domains
+ * (script.google.com, .google.com, script.googleusercontent.com, .googleusercontent.com).
+ */
+function validateGoogleAppsScriptUrl(targetUrl: string | undefined | null): { valid: boolean; url?: string; error?: string } {
+  if (!targetUrl || typeof targetUrl !== "string") {
+    return { valid: false, error: "Google Apps Script URL প্রদান করা আবশ্যক।" };
+  }
+
+  const trimmed = targetUrl.trim();
+  const lower = trimmed.toLowerCase();
+  if (!lower.startsWith("https://script.google.com/") && !lower.startsWith("https://script.googleusercontent.com/")) {
+    return {
+      valid: false,
+      error: "Google Apps Script WebApp URL অবশ্যই https://script.google.com/ বা https://script.googleusercontent.com/ দিয়ে শুরু হইতে হইবে।"
+    };
+  }
+
+  return validateExternalUrl(trimmed);
+}
+
 function sanitizeInput(data: any): any {
   if (typeof data === "string") {
     // Preserve base64 image strings (e.g. NID image scans)
@@ -415,6 +497,18 @@ async function startServer() {
   app.post("/api/admin/config", (req, res) => {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
+      if (newConfig.appsScriptUrl) {
+        const check = validateGoogleAppsScriptUrl(newConfig.appsScriptUrl);
+        if (!check.valid) {
+          return res.status(400).json({ error: "Apps Script URL: " + check.error });
+        }
+      }
+      if (newConfig.webhookUrl) {
+        const check = validateExternalUrl(newConfig.webhookUrl);
+        if (!check.valid) {
+          return res.status(400).json({ error: "Webhook URL: " + check.error });
+        }
+      }
       upConfig = { ...upConfig, ...newConfig };
       res.json({ success: true, config: upConfig });
     } else {
@@ -1165,12 +1259,18 @@ ${upConfig.defaultPromptPrefix}
   // Google Apps Script WebApp Sync Endpoint (No OAuth popup required)
   app.post("/api/admin/apps-script-sync", async (req, res) => {
     try {
-      const targetUrl = req.body.webAppUrl || upConfig.appsScriptUrl;
-      if (!targetUrl || !targetUrl.startsWith("http")) {
+      const rawUrl = req.body.webAppUrl || upConfig.appsScriptUrl;
+      const urlCheck = validateGoogleAppsScriptUrl(rawUrl);
+      if (!urlCheck.valid || !urlCheck.url) {
         return res.status(400).json({
           success: false,
-          message: "Google Apps Script WebApp URL পাওয়া যায়নি। অনুগ্রহ করে WebApp URL প্রদান করুন।"
+          message: urlCheck.error || "Google Apps Script WebApp URL পাওয়া যায়নি বা এটি অকার্যকর।"
         });
+      }
+
+      const targetUrl = urlCheck.url;
+      if (!targetUrl.startsWith("https://script.google.com/") && !targetUrl.startsWith("https://script.googleusercontent.com/")) {
+        return res.status(400).json({ success: false, message: "Google Apps Script URL অনুমোদিত নয়।" });
       }
 
       const recordsToSync: CertificateRecord[] = req.body.logs || certificateStore;
@@ -1240,26 +1340,32 @@ ${upConfig.defaultPromptPrefix}
       // If no Google OAuth token is provided, attempt Apps Script WebApp sync if available
       if (!accessToken) {
         if (upConfig.appsScriptUrl) {
-          try {
-            const gasRes = await fetch(upConfig.appsScriptUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "SYNC_CERTIFICATES",
-                sheetId: targetSpreadsheetId,
-                logs: recordsToSync
-              })
-            });
-            const gasData = await gasRes.json().catch(() => ({}));
-            return res.json({
-              success: true,
-              spreadsheetId: targetSpreadsheetId || gasData.spreadsheetId,
-              spreadsheetUrl: gasData.spreadsheetUrl || (targetSpreadsheetId ? `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/edit` : `https://drive.google.com`),
-              rowsSynced: recordsToSync.length,
-              message: gasData.message || `সফলভাবে ${recordsToSync.length} টি রেকর্ড Google Apps Script WebApp-এর মাধ্যমে সিঙ্ক করা হয়েছে!`
-            });
-          } catch (gasErr: any) {
-            console.warn("Apps Script fallback error:", gasErr);
+          const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
+          if (check.valid && check.url) {
+            const targetUrl = check.url;
+            if (targetUrl.startsWith("https://script.google.com/") || targetUrl.startsWith("https://script.googleusercontent.com/")) {
+              try {
+                const gasRes = await fetch(targetUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "SYNC_CERTIFICATES",
+                    sheetId: targetSpreadsheetId,
+                    logs: recordsToSync
+                  })
+                });
+                const gasData = await gasRes.json().catch(() => ({}));
+                return res.json({
+                  success: true,
+                  spreadsheetId: targetSpreadsheetId || gasData.spreadsheetId,
+                  spreadsheetUrl: gasData.spreadsheetUrl || (targetSpreadsheetId ? `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/edit` : `https://drive.google.com`),
+                  rowsSynced: recordsToSync.length,
+                  message: gasData.message || `সফলভাবে ${recordsToSync.length} টি রেকর্ড Google Apps Script WebApp-এর মাধ্যমে সিঙ্ক করা হয়েছে!`
+                });
+              } catch (gasErr: any) {
+                console.warn("Apps Script fallback error:", gasErr);
+              }
+            }
           }
         }
 
@@ -1442,19 +1548,25 @@ ${upConfig.defaultPromptPrefix}
 
       // Try triggering Google Apps Script to copy Google Sheet to Archive folder if WebApp URL is present
       if (upConfig.appsScriptUrl) {
-        try {
-          fetch(upConfig.appsScriptUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "BACKUP_SNAPSHOT",
-              targetFolderId: folder,
-              sheetId: upConfig.sheetId,
-              backupName: filename
-            })
-          }).catch(err => console.warn("Apps Script backup webhook trigger warning:", err));
-        } catch (e) {
-          console.warn("Apps Script backup call error:", e);
+        const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
+        if (check.valid && check.url) {
+          const targetUrl = check.url;
+          if (targetUrl.startsWith("https://script.google.com/") || targetUrl.startsWith("https://script.googleusercontent.com/")) {
+            try {
+              fetch(targetUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "BACKUP_SNAPSHOT",
+                  targetFolderId: folder,
+                  sheetId: upConfig.sheetId,
+                  backupName: filename
+                })
+              }).catch(err => console.warn("Apps Script backup webhook trigger warning:", err));
+            } catch (e) {
+              console.warn("Apps Script backup call error:", e);
+            }
+          }
         }
       }
 
@@ -1730,20 +1842,26 @@ ${upConfig.defaultPromptPrefix}
 
       // Trigger Google Apps Script Webhook if configured
       if (upConfig.appsScriptUrl) {
-        try {
-          fetch(upConfig.appsScriptUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "MANUAL_SHEET_SNAPSHOT",
-              targetFolderId: targetFolder,
-              sheetId: upConfig.sheetId,
-              snapshotFilename,
-              timestamp: now.toISOString()
-            })
-          }).catch(err => console.warn("Apps Script manual snapshot trigger warning:", err));
-        } catch (e) {
-          console.warn("Apps Script trigger error:", e);
+        const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
+        if (check.valid && check.url) {
+          const targetUrl = check.url;
+          if (targetUrl.startsWith("https://script.google.com/") || targetUrl.startsWith("https://script.googleusercontent.com/")) {
+            try {
+              fetch(targetUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "MANUAL_SHEET_SNAPSHOT",
+                  targetFolderId: targetFolder,
+                  sheetId: upConfig.sheetId,
+                  snapshotFilename,
+                  timestamp: now.toISOString()
+                })
+              }).catch(err => console.warn("Apps Script manual snapshot trigger warning:", err));
+            } catch (e) {
+              console.warn("Apps Script trigger error:", e);
+            }
+          }
         }
       }
 
