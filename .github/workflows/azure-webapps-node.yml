@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-    - uses: pnpm/action-setup@a3252b78c470c02df07e9d7263222d3cc03e3012 # v4.0.0
+    - uses: pnpm/action-setup@0c17529a66aca453f9227af23103ed11469b1e47 # v4.0.0
       with:
         version: 10
 
@@ -32,6 +32,7 @@ jobs:
       run: |
         pnpm install --frozen-lockfile
         pnpm run build --if-present
+        pnpm run test --if-present
 
     - name: Upload artifact for deployment job
       uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0

@@ -385,33 +385,20 @@ function validateExternalUrl(targetUrl: string | undefined | null): { valid: boo
  * (script.google.com, .google.com, script.googleusercontent.com, .googleusercontent.com).
  */
 function validateGoogleAppsScriptUrl(targetUrl: string | undefined | null): { valid: boolean; url?: string; error?: string } {
-  const baseCheck = validateExternalUrl(targetUrl);
-  if (!baseCheck.valid || !baseCheck.url) {
-    return baseCheck;
+  if (!targetUrl || typeof targetUrl !== "string") {
+    return { valid: false, error: "Google Apps Script URL প্রদান করা আবশ্যক।" };
   }
 
-  try {
-    const parsed = new URL(baseCheck.url);
-    const host = parsed.hostname.toLowerCase();
-    const isGoogleHost =
-      host === "script.google.com" ||
-      host.endsWith(".script.google.com") ||
-      host === "script.googleusercontent.com" ||
-      host.endsWith(".googleusercontent.com") ||
-      host === "docs.google.com" ||
-      host.endsWith(".google.com");
-
-    if (!isGoogleHost) {
-      return {
-        valid: false,
-        error: "Google Apps Script WebApp URL অবশ্যই script.google.com বা google.com ডোমেইনের হইতে হইবে।"
-      };
-    }
-
-    return { valid: true, url: parsed.toString() };
-  } catch {
-    return { valid: false, error: "URL সঠিক ফরম্যাটে নেই।" };
+  const trimmed = targetUrl.trim();
+  const lower = trimmed.toLowerCase();
+  if (!lower.startsWith("https://script.google.com/") && !lower.startsWith("https://script.googleusercontent.com/")) {
+    return {
+      valid: false,
+      error: "Google Apps Script WebApp URL অবশ্যই https://script.google.com/ বা https://script.googleusercontent.com/ দিয়ে শুরু হইতে হইবে।"
+    };
   }
+
+  return validateExternalUrl(trimmed);
 }
 
 function sanitizeInput(data: any): any {
@@ -1281,7 +1268,10 @@ ${upConfig.defaultPromptPrefix}
         });
       }
 
-      const targetUrl = new URL(urlCheck.url).toString();
+      const targetUrl = urlCheck.url;
+      if (!targetUrl.startsWith("https://script.google.com/") && !targetUrl.startsWith("https://script.googleusercontent.com/")) {
+        return res.status(400).json({ success: false, message: "Google Apps Script URL অনুমোদিত নয়।" });
+      }
 
       const recordsToSync: CertificateRecord[] = req.body.logs || certificateStore;
       const targetSheetId = req.body.sheetId || upConfig.sheetId || "";
@@ -1352,27 +1342,29 @@ ${upConfig.defaultPromptPrefix}
         if (upConfig.appsScriptUrl) {
           const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
           if (check.valid && check.url) {
-            try {
-              const targetUrl = new URL(check.url).toString();
-              const gasRes = await fetch(targetUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  action: "SYNC_CERTIFICATES",
-                  sheetId: targetSpreadsheetId,
-                  logs: recordsToSync
-                })
-              });
-              const gasData = await gasRes.json().catch(() => ({}));
-              return res.json({
-                success: true,
-                spreadsheetId: targetSpreadsheetId || gasData.spreadsheetId,
-                spreadsheetUrl: gasData.spreadsheetUrl || (targetSpreadsheetId ? `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/edit` : `https://drive.google.com`),
-                rowsSynced: recordsToSync.length,
-                message: gasData.message || `সফলভাবে ${recordsToSync.length} টি রেকর্ড Google Apps Script WebApp-এর মাধ্যমে সিঙ্ক করা হয়েছে!`
-              });
-            } catch (gasErr: any) {
-              console.warn("Apps Script fallback error:", gasErr);
+            const targetUrl = check.url;
+            if (targetUrl.startsWith("https://script.google.com/") || targetUrl.startsWith("https://script.googleusercontent.com/")) {
+              try {
+                const gasRes = await fetch(targetUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "SYNC_CERTIFICATES",
+                    sheetId: targetSpreadsheetId,
+                    logs: recordsToSync
+                  })
+                });
+                const gasData = await gasRes.json().catch(() => ({}));
+                return res.json({
+                  success: true,
+                  spreadsheetId: targetSpreadsheetId || gasData.spreadsheetId,
+                  spreadsheetUrl: gasData.spreadsheetUrl || (targetSpreadsheetId ? `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/edit` : `https://drive.google.com`),
+                  rowsSynced: recordsToSync.length,
+                  message: gasData.message || `সফলভাবে ${recordsToSync.length} টি রেকর্ড Google Apps Script WebApp-এর মাধ্যমে সিঙ্ক করা হয়েছে!`
+                });
+              } catch (gasErr: any) {
+                console.warn("Apps Script fallback error:", gasErr);
+              }
             }
           }
         }
@@ -1558,20 +1550,22 @@ ${upConfig.defaultPromptPrefix}
       if (upConfig.appsScriptUrl) {
         const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
         if (check.valid && check.url) {
-          try {
-            const targetUrl = new URL(check.url).toString();
-            fetch(targetUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "BACKUP_SNAPSHOT",
-                targetFolderId: folder,
-                sheetId: upConfig.sheetId,
-                backupName: filename
-              })
-            }).catch(err => console.warn("Apps Script backup webhook trigger warning:", err));
-          } catch (e) {
-            console.warn("Apps Script backup call error:", e);
+          const targetUrl = check.url;
+          if (targetUrl.startsWith("https://script.google.com/") || targetUrl.startsWith("https://script.googleusercontent.com/")) {
+            try {
+              fetch(targetUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "BACKUP_SNAPSHOT",
+                  targetFolderId: folder,
+                  sheetId: upConfig.sheetId,
+                  backupName: filename
+                })
+              }).catch(err => console.warn("Apps Script backup webhook trigger warning:", err));
+            } catch (e) {
+              console.warn("Apps Script backup call error:", e);
+            }
           }
         }
       }
@@ -1850,21 +1844,23 @@ ${upConfig.defaultPromptPrefix}
       if (upConfig.appsScriptUrl) {
         const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
         if (check.valid && check.url) {
-          try {
-            const targetUrl = new URL(check.url).toString();
-            fetch(targetUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "MANUAL_SHEET_SNAPSHOT",
-                targetFolderId: targetFolder,
-                sheetId: upConfig.sheetId,
-                snapshotFilename,
-                timestamp: now.toISOString()
-              })
-            }).catch(err => console.warn("Apps Script manual snapshot trigger warning:", err));
-          } catch (e) {
-            console.warn("Apps Script trigger error:", e);
+          const targetUrl = check.url;
+          if (targetUrl.startsWith("https://script.google.com/") || targetUrl.startsWith("https://script.googleusercontent.com/")) {
+            try {
+              fetch(targetUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "MANUAL_SHEET_SNAPSHOT",
+                  targetFolderId: targetFolder,
+                  sheetId: upConfig.sheetId,
+                  snapshotFilename,
+                  timestamp: now.toISOString()
+                })
+              }).catch(err => console.warn("Apps Script manual snapshot trigger warning:", err));
+            } catch (e) {
+              console.warn("Apps Script trigger error:", e);
+            }
           }
         }
       }
