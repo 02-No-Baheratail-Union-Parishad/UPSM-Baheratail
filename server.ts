@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import net from "net";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -320,6 +321,30 @@ function sanitizeString(str: string): string {
 }
 
 /**
+ * Helper to check if an IP address string (IPv4 or IPv6) is private, loopback, link-local, or non-routable.
+ */
+function isPrivateOrLoopbackIP(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true;
+    const [a, b] = parts;
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const normalized = ip.toLowerCase();
+    if (normalized === '::1' || normalized === '::') return true;
+    if (normalized.startsWith('fe80:') || normalized.startsWith('fc00:') || normalized.startsWith('fd00:')) return true;
+    return false;
+  }
+  return false;
+}
+
+/**
  * Security: External URL & SSRF Validation Helper
  * Ensures URLs use http/https protocols and blocks requests to internal, private, or loopback network addresses.
  */
@@ -335,18 +360,52 @@ function validateExternalUrl(targetUrl: string | undefined | null): { valid: boo
     }
 
     const hostname = parsed.hostname.toLowerCase();
-    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-    const isPrivateIpv4 =
-      /^10\./.test(hostname) ||
-      /^127\./.test(hostname) ||
-      /^169\.254\./.test(hostname) ||
-      /^192\.168\./.test(hostname) ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-    const isPrivateIpv6 =
-      /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
 
-    if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) {
       return { valid: false, error: "নিরাপত্তাজনিত কারণে private/internal URL (SSRF prevention) অনুমোদিত নয়।" };
+    }
+
+    if (net.isIP(hostname)) {
+      if (isPrivateOrLoopbackIP(hostname)) {
+        return { valid: false, error: "নিরাপত্তাজনিত কারণে private/internal URL (SSRF prevention) অনুমোদিত নয়।" };
+      }
+    } else if (/^(0x[0-9a-f]+|\d+|0[0-7]+)(\.(0x[0-9a-f]+|\d+|0[0-7]+)){0,3}$/i.test(hostname)) {
+      return { valid: false, error: "নিরাপত্তাজনিত কারণে private/internal URL (SSRF prevention) অনুমোদিত নয়।" };
+    }
+
+    return { valid: true, url: parsed.toString() };
+  } catch {
+    return { valid: false, error: "URL সঠিক ফরম্যাটে নেই।" };
+  }
+}
+
+/**
+ * Security: Dedicated Google Apps Script WebApp URL & SSRF Validator
+ * Restricts outgoing Google Apps Script WebApp sync calls strictly to authorized Google domains
+ * (script.google.com, .google.com, script.googleusercontent.com, .googleusercontent.com).
+ */
+function validateGoogleAppsScriptUrl(targetUrl: string | undefined | null): { valid: boolean; url?: string; error?: string } {
+  const baseCheck = validateExternalUrl(targetUrl);
+  if (!baseCheck.valid || !baseCheck.url) {
+    return baseCheck;
+  }
+
+  try {
+    const parsed = new URL(baseCheck.url);
+    const host = parsed.hostname.toLowerCase();
+    const isGoogleHost =
+      host === "script.google.com" ||
+      host.endsWith(".script.google.com") ||
+      host === "script.googleusercontent.com" ||
+      host.endsWith(".googleusercontent.com") ||
+      host === "docs.google.com" ||
+      host.endsWith(".google.com");
+
+    if (!isGoogleHost) {
+      return {
+        valid: false,
+        error: "Google Apps Script WebApp URL অবশ্যই script.google.com বা google.com ডোমেইনের হইতে হইবে।"
+      };
     }
 
     return { valid: true, url: parsed.toString() };
@@ -452,7 +511,7 @@ async function startServer() {
     const newConfig = req.body;
     if (newConfig && typeof newConfig === 'object') {
       if (newConfig.appsScriptUrl) {
-        const check = validateExternalUrl(newConfig.appsScriptUrl);
+        const check = validateGoogleAppsScriptUrl(newConfig.appsScriptUrl);
         if (!check.valid) {
           return res.status(400).json({ error: "Apps Script URL: " + check.error });
         }
@@ -1214,7 +1273,7 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/apps-script-sync", async (req, res) => {
     try {
       const rawUrl = req.body.webAppUrl || upConfig.appsScriptUrl;
-      const urlCheck = validateExternalUrl(rawUrl);
+      const urlCheck = validateGoogleAppsScriptUrl(rawUrl);
       if (!urlCheck.valid || !urlCheck.url) {
         return res.status(400).json({
           success: false,
@@ -1290,18 +1349,18 @@ ${upConfig.defaultPromptPrefix}
       // If no Google OAuth token is provided, attempt Apps Script WebApp sync if available
       if (!accessToken) {
         if (upConfig.appsScriptUrl) {
-          const check = validateExternalUrl(upConfig.appsScriptUrl);
+          const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
           if (check.valid && check.url) {
             try {
               const gasRes = await fetch(check.url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "SYNC_CERTIFICATES",
-                sheetId: targetSpreadsheetId,
-                logs: recordsToSync
-              })
-            });
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "SYNC_CERTIFICATES",
+                  sheetId: targetSpreadsheetId,
+                  logs: recordsToSync
+                })
+              });
               const gasData = await gasRes.json().catch(() => ({}));
               return res.json({
                 success: true,
@@ -1495,19 +1554,22 @@ ${upConfig.defaultPromptPrefix}
 
       // Try triggering Google Apps Script to copy Google Sheet to Archive folder if WebApp URL is present
       if (upConfig.appsScriptUrl) {
-        try {
-          fetch(upConfig.appsScriptUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "BACKUP_SNAPSHOT",
-              targetFolderId: folder,
-              sheetId: upConfig.sheetId,
-              backupName: filename
-            })
-          }).catch(err => console.warn("Apps Script backup webhook trigger warning:", err));
-        } catch (e) {
-          console.warn("Apps Script backup call error:", e);
+        const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
+        if (check.valid && check.url) {
+          try {
+            fetch(check.url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "BACKUP_SNAPSHOT",
+                targetFolderId: folder,
+                sheetId: upConfig.sheetId,
+                backupName: filename
+              })
+            }).catch(err => console.warn("Apps Script backup webhook trigger warning:", err));
+          } catch (e) {
+            console.warn("Apps Script backup call error:", e);
+          }
         }
       }
 
@@ -1783,20 +1845,23 @@ ${upConfig.defaultPromptPrefix}
 
       // Trigger Google Apps Script Webhook if configured
       if (upConfig.appsScriptUrl) {
-        try {
-          fetch(upConfig.appsScriptUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "MANUAL_SHEET_SNAPSHOT",
-              targetFolderId: targetFolder,
-              sheetId: upConfig.sheetId,
-              snapshotFilename,
-              timestamp: now.toISOString()
-            })
-          }).catch(err => console.warn("Apps Script manual snapshot trigger warning:", err));
-        } catch (e) {
-          console.warn("Apps Script trigger error:", e);
+        const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
+        if (check.valid && check.url) {
+          try {
+            fetch(check.url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "MANUAL_SHEET_SNAPSHOT",
+                targetFolderId: targetFolder,
+                sheetId: upConfig.sheetId,
+                snapshotFilename,
+                timestamp: now.toISOString()
+              })
+            }).catch(err => console.warn("Apps Script manual snapshot trigger warning:", err));
+          } catch (e) {
+            console.warn("Apps Script trigger error:", e);
+          }
         }
       }
 
