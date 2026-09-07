@@ -1280,7 +1280,8 @@ ${upConfig.defaultPromptPrefix}
           message: urlCheck.error || "Google Apps Script WebApp URL পাওয়া যায়নি বা এটি অকার্যকর।"
         });
       }
-      const targetUrl = urlCheck.url;
+
+      const targetUrl = new URL(urlCheck.url).toString();
 
       const recordsToSync: CertificateRecord[] = req.body.logs || certificateStore;
       const targetSheetId = req.body.sheetId || upConfig.sheetId || "";
@@ -1352,7 +1353,8 @@ ${upConfig.defaultPromptPrefix}
           const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
           if (check.valid && check.url) {
             try {
-              const gasRes = await fetch(check.url, {
+              const targetUrl = new URL(check.url).toString();
+              const gasRes = await fetch(targetUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -1557,7 +1559,8 @@ ${upConfig.defaultPromptPrefix}
         const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
         if (check.valid && check.url) {
           try {
-            fetch(check.url, {
+            const targetUrl = new URL(check.url).toString();
+            fetch(targetUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -1848,7 +1851,8 @@ ${upConfig.defaultPromptPrefix}
         const check = validateGoogleAppsScriptUrl(upConfig.appsScriptUrl);
         if (check.valid && check.url) {
           try {
-            fetch(check.url, {
+            const targetUrl = new URL(check.url).toString();
+            fetch(targetUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
