@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Sparkles, 
   Search, 
@@ -180,16 +180,25 @@ export const CertificateForm: React.FC<CertificateFormProps> = ({
     }
   };
 
-  // Filtered types list
-  const filteredTypes = CERTIFICATE_TYPES.filter((type) => {
-    const matchesCategory = selectedCategory === 'সব ধরন' || type.category === selectedCategory;
-    const matchesSearch =
-      type.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      type.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  // Performance Optimization: Memoize certificate catalog filtering to prevent
+  // expensive array iteration and string lowercasing operations on every keystroke/re-render.
+  const filteredTypes = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    return CERTIFICATE_TYPES.filter((type) => {
+      const matchesCategory = selectedCategory === 'সব ধরন' || type.category === selectedCategory;
+      if (!matchesCategory) return false;
+      if (!query) return true;
+      return (
+        type.label.toLowerCase().includes(query) ||
+        type.category.toLowerCase().includes(query)
+      );
+    });
+  }, [selectedCategory, searchQuery]);
 
-  const selectedTypeObj = CERTIFICATE_TYPES.find((t) => t.key === selectedTypeKey) || CERTIFICATE_TYPES[0];
+  // Performance Optimization: Memoize active certificate type lookup.
+  const selectedTypeObj = useMemo(() => {
+    return CERTIFICATE_TYPES.find((t) => t.key === selectedTypeKey) || CERTIFICATE_TYPES[0];
+  }, [selectedTypeKey]);
 
   // Helper for final village & post office
   const getFinalVillage = () => (villageSelect === 'OTHER' ? villageOther.trim() : villageSelect);
