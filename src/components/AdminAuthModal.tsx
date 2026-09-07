@@ -205,14 +205,20 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-auth-modal-title"
+    >
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden relative space-y-0">
         
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-6 relative overflow-hidden">
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer"
+            aria-label="বন্ধ করুন"
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-amber-300 focus:outline-none text-white rounded-full transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -225,7 +231,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               <span className="text-[10px] uppercase font-black tracking-widest text-amber-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-amber-400/30">
                 Google Firebase Auth & Role Security
               </span>
-              <h2 className="text-xl font-black text-white mt-0.5">
+              <h2 id="admin-auth-modal-title" className="text-xl font-black text-white mt-0.5">
                 এডমিন প্যানেল সাইন ইন
               </h2>
               <p className="text-xs text-emerald-100">
