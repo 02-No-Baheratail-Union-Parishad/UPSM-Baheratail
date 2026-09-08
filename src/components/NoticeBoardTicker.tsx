@@ -187,7 +187,9 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
+          aria-expanded={showAddModal}
+          aria-haspopup="dialog"
+          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-amber-300 focus:outline-none"
         >
           <Plus className="w-4 h-4" />
           <span>নতুন নোটিশ প্রকাশ করুন</span>
@@ -222,8 +224,17 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               return (
                 <div
                   key={notice.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${notice.category}: ${notice.title}, প্রকাশের তারিখ ${notice.date}`}
                   onClick={() => setActiveNotice(notice)}
-                  className={`p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveNotice(notice);
+                    }
+                  }}
+                  className={`p-3.5 rounded-2xl border transition cursor-pointer space-y-1.5 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none ${
                     isSelected
                       ? 'bg-emerald-50 border-emerald-500 shadow ring-1 ring-emerald-400'
                       : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
@@ -306,7 +317,8 @@ export const NoticeBoardTicker: React.FC<NoticeBoardTickerProps> = ({ config }) 
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold"
+                aria-label="বন্ধ করুন"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 font-bold focus-visible:ring-2 focus-visible:ring-emerald-600 focus:outline-none"
               >
                 ✕
               </button>
