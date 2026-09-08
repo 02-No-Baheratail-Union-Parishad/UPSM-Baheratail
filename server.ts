@@ -35,6 +35,39 @@ const webhookStore: WebhookConfig[] = [];
 // Webhook Delivery Log History
 const webhookLogStore: WebhookLogRecord[] = [];
 
+/**
+ * Security: Prevent Server-Side Request Forgery (SSRF)
+ * Validates that a given URL is a valid http(s) URL and does not target
+ * internal, localhost, loopback, link-local, or private RFC1918/RFC4193 network ranges.
+ */
+function isSafeExternalUrl(urlStr: string): boolean {
+  if (!urlStr || typeof urlStr !== "string") return false;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0";
+    const isPrivateIpv4 =
+      /^10\./.test(hostname) ||
+      /^127\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+    const isPrivateIpv6 =
+      /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname) || hostname === "::";
+
+    if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Webhook Event Dispatcher Helper
 async function dispatchWebhooks(event: 'certificate.created' | 'certificate.approved' | 'certificate.cancelled' | 'citizen.registered', data: any) {
   const activeHooks = webhookStore.filter(w => w.enabled && w.events.includes(event));
@@ -63,6 +96,10 @@ async function dispatchWebhooks(event: 'certificate.created' | 'certificate.appr
   };
 
   for (const hook of targets) {
+    if (!isSafeExternalUrl(hook.url)) {
+      console.warn(`[Webhook SSRF Protection] Blocked dispatch to unsafe target: ${hook.url}`);
+      continue;
+    }
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -1166,10 +1203,10 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/apps-script-sync", async (req, res) => {
     try {
       const targetUrl = req.body.webAppUrl || upConfig.appsScriptUrl;
-      if (!targetUrl || !targetUrl.startsWith("http")) {
+      if (!targetUrl || !isSafeExternalUrl(targetUrl)) {
         return res.status(400).json({
           success: false,
-          message: "Google Apps Script WebApp URL পাওয়া যায়নি। অনুগ্রহ করে WebApp URL প্রদান করুন।"
+          message: "Google Apps Script WebApp URL পাওয়া যায়নি অথবা এটি একটি অবৈধ/নিরাপদ নয় এমন URL।"
         });
       }
 
@@ -1441,7 +1478,7 @@ ${upConfig.defaultPromptPrefix}
       }
 
       // Try triggering Google Apps Script to copy Google Sheet to Archive folder if WebApp URL is present
-      if (upConfig.appsScriptUrl) {
+      if (upConfig.appsScriptUrl && isSafeExternalUrl(upConfig.appsScriptUrl)) {
         try {
           fetch(upConfig.appsScriptUrl, {
             method: "POST",
@@ -1729,7 +1766,7 @@ ${upConfig.defaultPromptPrefix}
       }
 
       // Trigger Google Apps Script Webhook if configured
-      if (upConfig.appsScriptUrl) {
+      if (upConfig.appsScriptUrl && isSafeExternalUrl(upConfig.appsScriptUrl)) {
         try {
           fetch(upConfig.appsScriptUrl, {
             method: "POST",
@@ -1834,8 +1871,8 @@ ${upConfig.defaultPromptPrefix}
   app.post("/api/admin/webhooks", (req, res) => {
     const { id, name, url, secret, events, enabled } = req.body;
 
-    if (!url || !url.startsWith("http")) {
-      return res.status(400).json({ success: false, message: "একটি বৈধ Webhook URL প্রদান করুন (http:// বা https://)।" });
+    if (!url || !isSafeExternalUrl(url)) {
+      return res.status(400).json({ success: false, message: "একটি বৈধ এবং নিরাপদ বাহ্যিক Webhook URL (http:// বা https://) প্রদান করুন।" });
     }
 
     if (id) {
@@ -1888,36 +1925,11 @@ ${upConfig.defaultPromptPrefix}
     const { webhookId, url, secret } = req.body;
     const targetUrl = url || (webhookStore.find(w => w.id === webhookId)?.url) || upConfig.webhookUrl;
 
-    if (!targetUrl) {
-      return res.status(400).json({ success: false, message: "কোনো বৈধ Webhook URL সেট করা নাই।" });
+    if (!targetUrl || !isSafeExternalUrl(targetUrl)) {
+      return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal বা অবৈধ Webhook URL অনুমোদিত নয়।" });
     }
 
-    let validatedTargetUrl: string;
-    try {
-      const parsed = new URL(targetUrl);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return res.status(400).json({ success: false, message: "শুধুমাত্র http:// বা https:// Webhook URL অনুমোদিত।" });
-      }
-
-      const hostname = parsed.hostname.toLowerCase();
-      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-      const isPrivateIpv4 =
-        /^10\./.test(hostname) ||
-        /^127\./.test(hostname) ||
-        /^169\.254\./.test(hostname) ||
-        /^192\.168\./.test(hostname) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-      const isPrivateIpv6 =
-        /^\[?(fc|fd)/i.test(hostname) || /^\[?fe80:/i.test(hostname);
-
-      if (isLocalhost || isPrivateIpv4 || isPrivateIpv6) {
-        return res.status(400).json({ success: false, message: "নিরাপত্তাজনিত কারণে private/internal Webhook URL অনুমোদিত নয়।" });
-      }
-
-      validatedTargetUrl = parsed.toString();
-    } catch {
-      return res.status(400).json({ success: false, message: "Webhook URL সঠিক ফরম্যাটে নেই।" });
-    }
+    const validatedTargetUrl = new URL(targetUrl).toString();
 
     const sampleTestPayload = {
       event: "certificate.created",
