@@ -1,0 +1,3 @@
+## 2025-05-18 - Interactive Notice Cards Accessibility & Modal Controls
+**Learning:** In React components using custom styled `div` elements for interactive items (like notice cards in list views), screen readers and keyboard users cannot discover or activate them unless `role="button"`, `tabIndex={0}`, explicit `aria-label`, and `onKeyDown` handlers for `Enter`/`Space` keys are provided alongside `focus-visible` ring indicators. Additionally, icon-only modal close buttons (`✕`) require explicit localized `aria-label` attributes.
+**Action:** When creating custom list cards or modal triggers, ensure `role="button"`, `tabIndex={0}`, keyboard handlers, and localized `aria-label` attributes are consistently attached.
